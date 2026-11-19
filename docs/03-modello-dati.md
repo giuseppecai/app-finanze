@@ -142,7 +142,7 @@ Ogni modifica futura allo schema = nuova `version(n)` con `upgrade()`; non modif
 
 ## Fixture per sviluppo e test
 
-Crea `src/db/fixtures.ts` con i dati di esempio dei documenti (oggi = 2026-11-19, periodo Novembre aperto, periodi Giugno–Ottobre chiusi con gli avanzi di R11, movimenti di Novembre di `04-schermate.md` § Movimenti, prestiti di R9). Attivabile da un parametro `?demo=1` solo in sviluppo, così le schermate si vedono piene come nei mockup.
+Crea `src/db/fixtures.ts` con i dati di esempio dei documenti (oggi = 2026-11-19, periodo Novembre aperto, periodi Giugno–Ottobre chiusi con gli avanzi di R11, movimenti di Novembre di `04-schermate.md` § Movimenti, prestiti di R9). Attivabile con il parametro `?demo=1` (anche nella versione pubblicata, così si prova dall'iPhone in Safari): usa un database separato `app-finanze-demo`, si carica la prima volta (o con `&reset=1`) e poi i dati di prova restano; "oggi" è fissato al 19 novembre 2026 (o a `?oggi=YYYY-MM-DD`). L'app installata nella Home apre sempre i dati veri.
 
 Nota: la fixture contiene anche l'entrata "Interessi conto risparmio" da € 1,12 (17 nov), quindi con la fixture completa "Puoi ancora spendere" vale € 175,12 (174 + 1,12 da assegnare). I test di R3 usano invece `daAssegnare = 0` → € 174.
 

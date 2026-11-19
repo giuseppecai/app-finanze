@@ -49,3 +49,23 @@ export const IconSettings = (p: IconProps) => (
 export const IconClose = (p: IconProps) => (
   <Svg size={16} strokeWidth={2} {...p}><path d="M6 6l12 12M18 6L6 18" /></Svg>
 );
+
+export const IconSliders = (p: IconProps) => (
+  <Svg size={20} {...p}><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></Svg>
+);
+
+export const IconCalendar = (p: IconProps) => (
+  <Svg size={18} {...p}><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16" /></Svg>
+);
+
+export const IconChevronRight = (p: IconProps) => (
+  <Svg size={16} strokeWidth={2} {...p}><path d="M9 6l6 6-6 6" /></Svg>
+);
+
+export const IconChevronDown = (p: IconProps) => (
+  <Svg size={16} strokeWidth={2} {...p}><path d="M6 9l6 6 6-6" /></Svg>
+);
+
+export const IconBackspace = (p: IconProps) => (
+  <Svg size={22} {...p}><path d="M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z" /><path d="M17 9l-5 6M12 9l5 6" /></Svg>
+);

@@ -1,6 +1,7 @@
 // L'istanza del database usata dall'app.
-// In sviluppo, con `?demo=1` nell'indirizzo, si usa un database separato riempito con la fixture:
-// i dati veri non vengono mai toccati.
+// Con `?demo=1` nell'indirizzo si usa un database separato riempito con la fixture dei documenti:
+// i dati veri non vengono mai toccati. Funziona anche nella versione pubblicata, così la demo
+// si può provare dall'iPhone in Safari (l'app installata nella Home apre sempre i dati veri).
 import { openDatabase, type FinanzeDB } from './schema';
 
 export const DB_NAME = 'app-finanze';
@@ -10,12 +11,11 @@ function searchParams(): URLSearchParams {
   return typeof location === 'undefined' ? new URLSearchParams() : new URLSearchParams(location.search);
 }
 
-/** Demo attiva solo in sviluppo (`npm run dev`), mai nella build pubblicata. */
-export const isDemo: boolean = import.meta.env.DEV && searchParams().get('demo') === '1';
+export const isDemo: boolean = searchParams().get('demo') === '1';
 
-/** Solo in sviluppo: `?oggi=2026-11-24` fissa la data (per provare abbonamenti e chiusura). */
+/** In sviluppo o in demo: `?oggi=2026-11-24` fissa la data (per provare abbonamenti e chiusura). */
 export const devToday: string | null = (() => {
-  if (!import.meta.env.DEV) return null;
+  if (!import.meta.env.DEV && !isDemo) return null;
   const value = searchParams().get('oggi');
   return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
 })();

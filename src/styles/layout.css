@@ -45,14 +45,6 @@
   color: var(--text-muted);
 }
 
-/* Barra in alto delle schermate a tutto schermo */
-.topbar {
-  display: flex;
-  align-items: center;
-  min-height: var(--touch);
-  margin-bottom: 12px;
-}
-
 .icon-button {
   width: var(--touch);
   height: var(--touch);
@@ -63,8 +55,12 @@
   align-items: center;
   justify-content: center;
   padding: 0;
+  flex-shrink: 0;
   color: var(--text);
+  text-decoration: none;
 }
+
+.icon-button:hover { color: var(--text); }
 
 /* Tab bar: 50 px di contenuto + area sicura (34 px sugli iPhone con Face ID) ≈ 84 px */
 .tabbar {

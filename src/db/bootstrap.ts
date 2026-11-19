@@ -15,12 +15,14 @@ export async function seedIfEmpty(target: FinanzeDB): Promise<boolean> {
 }
 
 export async function initDatabase(): Promise<void> {
-  if (import.meta.env.DEV && isDemo) {
-    // La demo riparte sempre dalla fixture, con "oggi" = 19 novembre 2026 (o ?oggi=...).
-    // Import dinamico: nella build di produzione questo ramo sparisce insieme alla fixture.
+  if (isDemo) {
+    // Demo: "oggi" = 19 novembre 2026 (o ?oggi=...). La fixture si carica la prima volta
+    // (o con &reset=1); poi i dati di prova restano, così si prova anche che sopravvivono al riavvio.
+    // Import dinamico: la fixture si scarica solo quando serve.
     const { buildDemoData, DEMO_TODAY } = await import('./fixtures');
     setToday(devToday ?? DEMO_TODAY);
-    await replaceAll(db, buildDemoData());
+    const reset = new URLSearchParams(location.search).get('reset') === '1';
+    if (reset || !(await db.settings.get('settings'))) await replaceAll(db, buildDemoData());
   } else {
     if (devToday) setToday(devToday);
     await seedIfEmpty(db);
