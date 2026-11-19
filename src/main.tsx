@@ -9,6 +9,7 @@ import './styles/layout.css';
 import './styles/components.css';
 import './styles/flows.css';
 import './styles/sheet.css';
+import './styles/recurring.css';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Elemento #root mancante in index.html');

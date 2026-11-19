@@ -254,3 +254,20 @@ export async function saveReconciliation(db: FinanzeDB, input: SaveReconciliatio
     }
   });
 }
+
+// ── Abbonamenti ──────────────────────────────────────────────────────────────
+
+/** Crea o aggiorna un abbonamento. L'importo nuovo vale dai prossimi addebiti. */
+export async function saveRecurring(db: FinanzeDB, recurring: Recurring): Promise<void> {
+  if (recurring.name.trim() === '') throw new Error('Nome mancante');
+  if (!Number.isInteger(recurring.amount) || recurring.amount <= 0) throw new Error('Importo non valido');
+  if (!Number.isInteger(recurring.dayOfMonth) || recurring.dayOfMonth < 1 || recurring.dayOfMonth > 31) {
+    throw new Error('Giorno non valido');
+  }
+  await db.recurring.put({ ...recurring, name: recurring.name.trim() });
+}
+
+/** Elimina un abbonamento. I movimenti già creati restano. */
+export async function deleteRecurring(db: FinanzeDB, id: string): Promise<void> {
+  await db.recurring.delete(id);
+}

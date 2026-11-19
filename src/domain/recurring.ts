@@ -90,3 +90,42 @@ export function recurringStatus(
   if (date <= today) return { kind: 'charged', date };
   return { kind: 'upcoming', date, inDays: diffDays(today, date) };
 }
+
+export interface RecurringRow {
+  recurring: Recurring;
+  /** data dell'addebito nel periodo (null se quel giorno non cade nel periodo) */
+  date: ISODate | null;
+  status: RecurringStatus;
+}
+
+/** Righe della schermata Abbonamenti: in ordine di addebito nel periodo, le pause in fondo. */
+export function recurringRows(
+  recurrings: readonly Recurring[],
+  period: PeriodRange & Pick<Period, 'id'>,
+  periodTxs: readonly Transaction[],
+  today: ISODate,
+): RecurringRow[] {
+  return recurrings
+    .map((recurring) => ({
+      recurring,
+      date: chargeDateInPeriod(recurring.dayOfMonth, period),
+      status: recurringStatus(recurring, period, periodTxs, today),
+    }))
+    .sort((a, b) => {
+      const pa = a.recurring.active ? 0 : 1;
+      const pb = b.recurring.active ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      const da = a.date ?? '9999';
+      const dbb = b.date ?? '9999';
+      return da < dbb ? -1 : da > dbb ? 1 : a.recurring.name.localeCompare(b.recurring.name, 'it');
+    });
+}
+
+/** La busta da cui si scalano (quella con più abbonamenti). */
+export function mainRecurringEnvelope(recurrings: readonly Recurring[]): string | null {
+  const counts = new Map<string, number>();
+  for (const r of recurrings) counts.set(r.envelopeId, (counts.get(r.envelopeId) ?? 0) + 1);
+  let best: string | null = null;
+  for (const [id, n] of counts) if (best === null || n > (counts.get(best) ?? 0)) best = id;
+  return best;
+}

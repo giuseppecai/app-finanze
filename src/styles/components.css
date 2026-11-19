@@ -104,7 +104,7 @@
 
 .topbar {
   display: grid;
-  grid-template-columns: var(--touch) 1fr var(--touch);
+  grid-template-columns: minmax(var(--touch), auto) 1fr minmax(var(--touch), auto);
   align-items: center;
   gap: 8px;
   min-height: var(--touch);
