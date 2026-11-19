@@ -16,6 +16,7 @@ Giuseppe usa **Revolut**. Prima teneva una Pocket per ogni categoria di spesa e,
 | Pocket **Risparmi** | Soldi da non toccare; da qui escono e rientrano i prestiti | L'app dice quanto metterci |
 | Pocket **Viaggi** | Messo da parte per i viaggi, senza obiettivo | Quota scelta ogni mese |
 | Pocket **Regali & Imprevisti** | 25 € fissi al mese | Quota fissa |
+| Pocket **Bollette** | Le quote accantonate per le bollette non mensili (gas, acqua) | L'app dice quanto metterci (R13) |
 | Carta **Quotidiano** | ~100 € per le spese di tutti i giorni | Ricaricata da Budget del mese quando scende |
 | Carta **Extra & Pagamenti** | ~100 €, ci sono collegati abbonamenti e rata iPhone | Ricaricata da Budget del mese quando scende |
 

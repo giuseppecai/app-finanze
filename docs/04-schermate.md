@@ -16,7 +16,7 @@ Barra in basso (solo su Home, Movimenti, Storico, Imposta), alta 84 px con area 
 
 Le altre schermate (Inserimento, Chiusura, Inizio, Prestiti, Abbonamenti) si aprono a tutto schermo con un pulsante indietro/chiudi in alto a sinistra.
 
-Rotte (`HashRouter`): `/`, `/nuovo`, `/movimenti`, `/storico`, `/imposta`, `/chiudi`, `/inizio`, `/prestiti`, `/abbonamenti`. `/nuovo` accetta parametri `?tipo=spesa|rimborso|prestito&importo=1240&nota=...&carta=quotidiano|extra` (usati da Confronta e, in futuro, dall'inbox).
+Rotte (`HashRouter`): `/`, `/nuovo`, `/movimenti`, `/storico`, `/imposta`, `/chiudi`, `/inizio`, `/prestiti`, `/abbonamenti`, `/casa`, `/benvenuto` (onboarding). `/nuovo` accetta parametri `?tipo=spesa|rimborso|prestito&importo=1240&nota=...&carta=quotidiano|extra` (usati da Confronta e, in futuro, dall'inbox).
 
 ---
 
@@ -29,8 +29,8 @@ Dall'alto:
    - a destra, sulla stessa riga, pulsante pillola **Confronta** (apre il pannello del Confronta);
    - riga in basso: se è ora di chiudere (R2) il link "Stipendio arrivato? Chiudi il mese →", altrimenti "Ultimo confronto con Revolut: 3 giorni fa" (o "Mai confrontato").
 3. **Buste** (titolo + link "Modifica" → Imposta): righe delle buste *da spendere*. Ogni riga: nome, residuo, "di € tetto" (o "oltre il tetto"), barra. Tocco → Movimenti filtrati per quella busta.
-4. **Impegnate · si scalano da sole** con a destra "€ 77,50 rimasti": Casa & Servizi (→ Movimenti filtrati), Rate & Abbonamenti (→ Abbonamenti).
-5. **Messi da parte**: totale dei salvadanai, barra divisa in 3 tonalità (Risparmi, Viaggi, Regali & Imprevisti), legenda con importi; ultima riga "Prestiti da riavere · € 55 ›" → Prestiti (nascosta se 0).
+4. **Impegnate · si scalano da sole** con a destra "€ 77,50 rimasti": Casa & Servizi (→ Casa & Servizi, `/casa`), Rate & Abbonamenti (→ Abbonamenti).
+5. **Messi da parte**: totale dei salvadanai, barra divisa in tonalità (Risparmi, Viaggi, Regali & Imprevisti e, se ci sono bollette periodiche, Bollette), legenda con importi; ultima riga "Prestiti da riavere · € 55 ›" → Prestiti (nascosta se 0; con debiti aperti aggiunge "· devi € Y").
 
 **Pannello Confronta** (bottom sheet): sottotitolo con la data dell'ultimo confronto, 3 campi importo (Budget del mese, Carta Quotidiano, Carta Extra), riga "Su Revolut € X · Nell'app € Y", riquadro esito secondo R5 con le azioni. Al primo confronto: calibrazione della riserva.
 
@@ -104,6 +104,9 @@ Movimenti di esempio (periodo Novembre): 19 Pranzo con colleghi (Vita, 22) · 19
 - Dopo Registra: i chiusi spariscono, avviso in basso "Registrati € 25 da Mamma · 2 prestiti chiusi" con **Annulla** (resta finché non si fa un'altra azione o per 8 secondi).
 - Stato vuoto: "Nessuno ti deve niente. Tutto in pari."
 - In fondo: "Prestiti chiusi · storico ›" (lista semplice dei chiusi, raggruppati per persona).
+- **Debiti (R9-bis)**: la card di una persona mostra il **saldo unico**. Saldo positivo: come sopra ("ti deve € X", "Ti ha restituito"). Saldo negativo: "Devi € X" (testo normale, non arancione), voci aperte = debiti, campo "Le hai dato" + "Tutto" + **Registra**, anteprima "Togli € X da Risparmi". La card scura in alto: "Da riavere € X" e, se serve, sotto "Devi € Y".
+- Le voci nate da una bolletta mostrano il nome della bolletta come motivo (es. "Luce · novembre", "Gas · metà tua").
+- "+ Nuovo" apre l'inserimento in modalità Prestito; un debito a mano si registra dalla stessa modalità con l'opzione "Mi ha prestato lei/lui".
 
 ## 9 · Abbonamenti (`Abbonamenti.dc.html`)
 
@@ -112,6 +115,19 @@ Movimenti di esempio (periodo Novembre): 19 Pranzo con colleghi (Vita, 22) · 19
 - "Questo mese · 27 ott – 26 nov": righe con riquadro data (giorno + mese), nome, "Carta Extra · il 5 di ogni mese", importo e stato: **scalato** (accento), **tra N giorni / domani** (giallo), **in pausa** (grigio, importo barrato).
 - Tocco → pannello: importo, giorno del mese, carta, interruttore **Attivo**, Elimina, Salva (R8).
 - Nota in fondo: "Il giorno dell'addebito l'app scala l'importo dalla busta… Se un prezzo aumenta, te ne accorgi al Confronta con Revolut e lo aggiorni qui."
+
+## 9-bis · Casa & Servizi (non c'è mockup — stesso stile di Abbonamenti)
+
+Si apre toccando la busta Casa & Servizi in Home (rotta `/casa`). Schermo intero con chiudi.
+
+- "Casa & Servizi" · "Bollette e spese di casa" · "+ Bolletta".
+- **Card scura**: "Bollette mensili € 54 · busta € 120" con barra, e sotto "Accantonati per le bollette € X" (= salvadanaio Bollette) con "+ € 25 al mese".
+- **Con Elisa**: riga con il saldo unico ("Elisa ti deve € 24" / "Devi € 6 a Elisa") → Prestiti, card della persona aperta.
+- **Bollette mensili**: righe con nome, "metà con Elisa · la paghi tu", tua quota prevista, stato del mese ("registrata il 1 nov" / "da registrare").
+- **Bollette periodiche**: righe con nome, "ogni 2 mesi · la paga Elisa", barra `fund` / tua quota prevista, "Accantonati € 30 di € 30" (arancione solo se `fund < 0`: "Mancano € 1").
+- Tocco su una bolletta → pannello con **Registra bolletta** (importo, data, chi l'ha pagata; anteprima live dei movimenti e dei giroconti, R13) e **Modifica** (nome, frequenza, previsto, divisione, chi paga, attiva / in pausa, elimina).
+- **Altre spese di casa**: link "Vedi i movimenti di Casa & Servizi →" (Movimenti filtrati).
+- Nota in fondo: "Le bollette ogni 2 o più mesi si pagano dalla Pocket Bollette: ogni mese ci metti la quota, così quando arrivano i soldi ci sono già."
 
 ## 10 · Onboarding (non c'è mockup — stesso stile)
 

@@ -51,7 +51,17 @@ Una milestone alla volta. Ognuna finisce con: test verdi, `npm run build` pulito
 - Schermata Prestiti con card espandibili, restituzione FIFO, toast con Annulla, storico dei chiusi.
 - Riga "Prestiti da riavere" in Home.
 
-**Accettazione**: l'esempio di R9 (Mamma 10/10/20, restituzione 25 → resta 15, Annulla → 40) funziona dall'interfaccia.
+- Debiti e saldo unico per persona con compensazione automatica (R9-bis); migrazione Dexie alla versione 2 (`03-modello-dati.md`).
+
+**Accettazione**: l'esempio di R9 (Mamma 10/10/20, restituzione 25 → resta 15, Annulla → 40) funziona dall'interfaccia; l'esempio Elisa di R9-bis (40 + 14 − 30 → saldo 24, "Ti ha dato 24" → 0) torna anche con prestiti e debiti inseriti a mano; un database v1 si aggiorna alla v2 senza perdere dati.
+
+## M6b · Casa & Servizi e bollette
+- Schermata `/casa` (04 § 9-bis): bollette mensili e periodiche, saldo con la coinquilina, pannello Registra / Modifica.
+- Salvadanaio e Pocket **Bollette**; quinto giroconto a inizio mese (R7, R13); `fund` per bolletta.
+- Registrare una bolletta crea in un'unica transazione: spesa (busta o fondo), prestito o debito con compensazione, aggiornamento dei salvadanai, con le istruzioni dei giroconti.
+- Passo "Bollette" nell'onboarding (facoltativo) e Home: Casa & Servizi → `/casa`.
+
+**Accettazione**: con le 4 bollette di esempio di R13 la quota mensile è € 25 e Risparmi a inizio mese € 700; il gas da € 62 pagato da Elisa dà quota 31, `fund` − 1 e saldo Elisa aggiornato; la luce da € 80,01 dà 40,01 in Casa e 40 a Elisa; Confronta resta "Tutto in ordine" dopo ogni registrazione fatta seguendo i giroconti indicati.
 
 ## M7 · Storico e Imposta
 - Storico: grafico, selezione periodo, tabella, segnalazione.

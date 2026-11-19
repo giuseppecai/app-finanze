@@ -126,6 +126,59 @@ db.version(1).stores({
 
 Ogni modifica futura allo schema = nuova `version(n)` con `upgrade()`; non modificare mai una versione già rilasciata.
 
+## Versione 2 (M6 · Prestiti e debiti, M6b · Bollette)
+
+```ts
+type TxType = 'expense' | 'refund' | 'income' | 'loan' | 'loanRepayment' | 'debt' | 'debtRepayment';
+
+interface Transaction {
+  // …campi della v1…
+  billId: string | null;          // movimento nato da una bolletta (R13)
+}
+
+interface Loan {
+  // …campi della v1…
+  direction: 'lent' | 'borrowed'; // prestito (ti deve) o debito (devi tu), R9-bis
+  offsets: LoanAllocation[] | null; // compensazioni fatte alla nascita di questa voce
+}
+
+type PotId = 'savings' | 'travel' | 'gifts' | 'bills';   // + Pocket "Bollette"
+
+interface Bill {
+  id: string;
+  name: string;                   // 'Gas'
+  frequency: 1 | 2 | 3 | 6 | 12;  // mesi tra una bolletta e l'altra
+  estimate: Cents;                // importo previsto della bolletta intera
+  split: 'half' | 'mine';
+  payer: 'me' | 'roommate';
+  personId: string | null;        // la coinquilina (obbligatoria se split = 'half' o payer = 'roommate')
+  envelopeId: string;             // busta delle bollette mensili (default Casa & Servizi)
+  fund: Cents;                    // accantonato finora (solo periodiche), può andare sotto zero
+  active: boolean;
+  order: number;
+  createdAt: string;
+}
+
+interface Period {
+  // …campi della v1…
+  billsQuota: Cents;              // giroconto → Bollette fatto a inizio periodo (0 se nessuna periodica)
+}
+```
+
+```ts
+db.version(2).stores({
+  // tabelle della v1 invariate, più:
+  loans: 'id, personId, closedAt, date, direction',
+  transactions: 'id, periodId, date, envelopeId, type, personId, billId, [recurringId+periodId]',
+  bills: 'id, order',
+}).upgrade(async (tx) => {
+  // prestiti esistenti → direction 'lent', offsets null; movimenti → billId null;
+  // periodi → billsQuota 0; nuovo salvadanaio { id: 'bills', name: 'Bollette', balance: 0 }
+});
+```
+
+Nessuna bolletta nel seed: si creano dalla schermata Casa & Servizi (o in un passo dell'onboarding, se non ancora fatto). Le transazioni che toccano bolletta, movimenti, prestiti e salvadanai sono un'unica transazione Dexie.
+
 ## Dati iniziali (seed al primo avvio)
 
 - `Settings`: periodStartDay 27, cardReserve null, giftsQuota 2500, lastTravelQuota 5000.
