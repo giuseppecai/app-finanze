@@ -287,11 +287,13 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
             <h2 className="entry__label">{direction === 'lent' ? it.entry.toWhom : it.entry.fromWhom}</h2>
             <PersonPicker people={people} loans={loans} value={personId} onChange={setPersonId} />
           </div>
+          {amount > 0 ? (
           <InfoBox>
             {direction === 'lent'
               ? it.entry.loanInfo(formatEuro(amount, { decimals: 'always' }))
               : it.entry.debtInfo(formatEuro(amount, { decimals: 'always' }))}
           </InfoBox>
+          ) : null}
         </>
       ) : !isIncome ? (
         <div className="entry__section">

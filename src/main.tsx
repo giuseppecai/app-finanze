@@ -1,7 +1,9 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
-import { initDatabase, watchRecurringCharges } from './db/bootstrap';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { it } from './i18n/it';
+import { initDatabase, requestPersistentStorage, watchRecurringCharges } from './db/bootstrap';
 import './styles/fonts.css';
 import './styles/tokens.css';
 import './styles/base.css';
@@ -22,6 +24,7 @@ async function start() {
   try {
     await initDatabase();
     watchRecurringCharges();
+    void requestPersistentStorage();
     if (import.meta.env.DEV) {
       // Solo in sviluppo: accesso ai dati dalla console del browser per le verifiche.
       const [{ db }, { readAll }] = await Promise.all([import('./db/database'), import('./db/dataset')]);
@@ -30,15 +33,19 @@ async function start() {
   } catch (error) {
     console.error(error);
     root.render(
-      <p style={{ padding: 20 }}>
-        Non riesco ad aprire i dati dell’app. Chiudi e riapri; se succede ancora, scrivilo a chi la sviluppa.
-      </p>,
+      <main className="screen screen--full fatal">
+        <h1 className="screen-title">{it.errors.dbTitle}</h1>
+        <p className="screen-subtitle">{it.errors.dbText}</p>
+        <button type="button" className="primary-button" onClick={() => location.reload()}>{it.errors.reload}</button>
+      </main>,
     );
     return;
   }
   root.render(
     <StrictMode>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </StrictMode>,
   );
 }

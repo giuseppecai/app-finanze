@@ -16,6 +16,8 @@ export interface Settings {
   onboardingDone: boolean;
   /** data dell'ultimo backup esportato (promemoria dopo 30 giorni, M8) */
   lastBackupAt?: string | null;
+  /** promemoria backup rimandato fino a questa data (esclusa) */
+  backupSnoozedUntil?: ISODate | null;
 }
 
 export type EnvelopeKind = 'spendable' | 'committed';

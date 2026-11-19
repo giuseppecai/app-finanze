@@ -151,7 +151,8 @@
 .hero__status { font-size: 12px; color: var(--text-on-dark-muted); }
 
 .hero__link {
-  min-height: 32px;
+  min-height: var(--touch);
+  margin: -6px 0;
   display: flex;
   align-items: center;
   margin-top: 2px;
@@ -291,6 +292,7 @@
 }
 
 .segmented__option {
+  position: relative;
   min-height: 36px;
   padding: 0 14px;
   border: none;
@@ -553,3 +555,6 @@
   .keypad__key { min-height: 44px; font-size: 20px; }
   .primary-button { min-height: 50px; }
 }
+
+/* Le opzioni del selettore sono alte 36 px dentro un contenitore da 44: l'area di tocco arriva a 44 */
+.segmented__option::after { content: ""; position: absolute; inset: -4px 0; }

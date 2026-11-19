@@ -14,6 +14,17 @@ export async function seedIfEmpty(target: FinanzeDB): Promise<boolean> {
   return true;
 }
 
+/** Chiede al browser di non sfrattare i dati quando manca spazio (best effort, nessun errore se rifiuta). */
+export async function requestPersistentStorage(): Promise<boolean> {
+  try {
+    if (!navigator.storage?.persist) return false;
+    if (await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch {
+    return false;
+  }
+}
+
 export async function initDatabase(): Promise<void> {
   if (isDemo) {
     // Demo: "oggi" = 19 novembre 2026 (o ?oggi=...). La fixture si carica la prima volta

@@ -224,6 +224,15 @@ Esempio (coinquilina Elisa):
 - Acqua: dopo 12 mesi `fund` = 120. Bolletta da € 114 → `fund` = **€ 6**, resta per l'anno dopo.
 - Luce da € 80,01 pagata da te → tua quota **€ 40,01** in Casa & Servizi, prestito **€ 40** a Elisa.
 
+## R14 · Promemoria backup
+
+I dati vivono solo sul telefono. In Home compare "Fai il backup" se:
+- l'ultimo backup esportato ha **più di 30 giorni**; oppure
+- non è mai stato fatto un backup e il primo periodo è iniziato da **almeno 7 giorni**.
+
+"Più tardi" lo nasconde per 7 giorni (`backupSnoozedUntil`); esportare un backup lo azzera.
+Esempi (oggi 20 dic): ultimo backup 20 nov → no (30 giorni); 19 nov → sì (31). Mai fatto, primo periodo 14 dic → no; 13 dic → sì.
+
 ## R10 · Spesa media (Modifica buste)
 
 Media della spesa netta (spese − rimborsi) della busta negli **ultimi 6 periodi chiusi** (meno se non ce ne sono), arrotondata all'euro. Testo "Spendi in media € X"; se X > tetto attuale → arancione "Spendi in media € X · più del tetto". Senza periodi chiusi la riga non compare.

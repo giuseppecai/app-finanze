@@ -113,3 +113,6 @@
 
 .tabbar__add:hover,
 .tabbar__add:active { background: var(--accent-strong); color: var(--text-on-dark); }
+
+/* Schermata di errore */
+.fatal { display: flex; flex-direction: column; gap: 12px; justify-content: center; }

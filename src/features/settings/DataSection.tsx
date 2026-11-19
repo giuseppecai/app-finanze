@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { usePots } from '../../app/data';
 import { AmountField } from '../../components/AmountField';
 import { InfoBox } from '../../components/InfoBox';
@@ -76,8 +77,15 @@ function BalancesForm({ settings, pots }: { settings: Settings; pots: Pot[] }) {
 
 function BackupCard({ settings }: { settings: Settings }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const [params] = useSearchParams();
   const [message, setMessage] = useState<string | null>(null);
   const last = settings.lastBackupAt ?? null;
+
+  // Dal promemoria in Home: porta direttamente qui.
+  useEffect(() => {
+    if (params.get('backup') === '1') sectionRef.current?.scrollIntoView({ block: 'center' });
+  }, [params]);
 
   async function exportBackup() {
     setMessage(null);
@@ -98,7 +106,7 @@ function BackupCard({ settings }: { settings: Settings }) {
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
-      await updateSettings(db, { lastBackupAt: exportedAt });
+      await updateSettings(db, { lastBackupAt: exportedAt, backupSnoozedUntil: null });
     } catch (e) {
       // Condivisione annullata dall'utente: nessun errore da mostrare.
       if (e instanceof DOMException && e.name === 'AbortError') return;
@@ -124,7 +132,7 @@ function BackupCard({ settings }: { settings: Settings }) {
   }
 
   return (
-    <section className="settings-section">
+    <section ref={sectionRef} id="backup" className="settings-section">
       <h2 className="section-head--muted">{it.settings.backup}</h2>
       <div className="card data-card">
         <p className="muted-note">

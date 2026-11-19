@@ -128,6 +128,22 @@ export const it = {
     fromBillsPot: 'Bollette · dalla Pocket Bollette',
   },
 
+  errors: {
+    title: 'Qualcosa è andato storto',
+    text: 'I tuoi dati sono al sicuro sul telefono. Ricarica l’app; se succede ancora, chiudila del tutto e riaprila.',
+    reload: 'Ricarica',
+    dbTitle: 'Non riesco ad aprire i dati',
+    dbText: 'Chiudi l’app del tutto e riaprila. Se sei in Safari in navigazione privata, aprila in una finestra normale: in privato i dati non si possono salvare.',
+  },
+
+  backupReminder: {
+    never: 'Non hai ancora fatto un backup',
+    old: (days: number) => `Ultimo backup ${days} giorni fa`,
+    text: 'I dati vivono solo su questo iPhone: se lo perdi o cancelli l’app, senza backup li perdi. Ci vogliono 10 secondi.',
+    go: 'Fai il backup',
+    later: 'Più tardi',
+  },
+
   monthSteps: { label: 'Passaggi', items: ['Rivedi', 'Avanzi', 'Assegna'] },
   accounts: {
     salary: 'Stipendio',

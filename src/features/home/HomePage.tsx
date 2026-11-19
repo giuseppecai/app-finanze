@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { useCurrentPeriod, useEnvelopes, useLastReconciliation, useLoans, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
+import { useCurrentPeriod, useEnvelopes, useLastReconciliation, useLoans, usePeriods, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { EnvelopeRow } from '../../components/EnvelopeRow';
 import { IconCompare, IconSliders } from '../../components/icons';
@@ -14,6 +14,7 @@ import { daysAgo } from '../../domain/movements';
 import { daysUntilSalary, isTimeToClose } from '../../domain/periods';
 import type { Envelope, Period } from '../../domain/types';
 import { it } from '../../i18n/it';
+import { BackupReminder } from './BackupReminder';
 import { ReconcileSheet } from './ReconcileSheet';
 
 /** Rate & Abbonamenti apre Abbonamenti, Casa & Servizi apre Casa & Servizi, le altre i Movimenti filtrati. */
@@ -29,12 +30,14 @@ export function HomePage() {
   const pots = usePots();
   const loans = useLoans();
   const settings = useSettings();
-  if (period === undefined || !envelopes || !pots || !loans || !settings) return null;
+  const periods = usePeriods();
+  if (period === undefined || !envelopes || !pots || !loans || !settings || !periods) return null;
   // Primo avvio: prima la configurazione in 3 passi.
   if (!settings.onboardingDone && !period) return <Navigate to={routes.onboarding} replace />;
 
   return (
     <>
+      <BackupReminder settings={settings} periods={periods} />
       {period ? <CurrentPeriod period={period} envelopes={envelopes} cardReserve={settings.cardReserve} /> : <NoPeriod />}
       <PotsCard pots={pots} loansOwed={totalOwed(loans)} debtsOwed={totalDebt(loans)} />
     </>

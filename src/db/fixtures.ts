@@ -199,6 +199,8 @@ export function buildDemoData(): DataSet {
       lastTravelQuota: eur(50),
       lastEnvelopeId: ENV.vita,
       onboardingDone: true,
+      lastBackupAt: '2026-11-10T20:00:00.000Z',
+      backupSnoozedUntil: null,
     },
     envelopes: demoEnvelopes(),
     periods: demoPeriods(),

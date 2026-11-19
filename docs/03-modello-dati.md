@@ -163,6 +163,12 @@ interface Period {
   // …campi della v1…
   billsQuota: Cents;              // giroconto → Bollette fatto a inizio periodo (0 se nessuna periodica)
 }
+
+interface Settings {
+  // …campi della v1… (non indicizzati: nessuna migrazione necessaria)
+  lastBackupAt?: string | null;        // ultimo backup esportato (R14)
+  backupSnoozedUntil?: ISODate | null; // "Più tardi" sul promemoria (R14)
+}
 ```
 
 ```ts
