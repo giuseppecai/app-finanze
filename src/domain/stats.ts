@@ -137,3 +137,20 @@ function totals(period: Pick<Period, 'id' | 'allocations'>, rows: HistoryRow[], 
   const capsTotal = Object.values(period.allocations).reduce((s, v) => s + v, 0);
   return { periodId: period.id, inProgress, rows, spent, final, capsTotal, overBudget: spent > capsTotal };
 }
+
+/**
+ * R11 · Gli ultimi `count` periodi per lo Storico, dal più vecchio: i chiusi con gli avanzi
+ * fotografati e, per ultimo, quello in corso (con i residui attuali).
+ */
+export function recentHistory(
+  periods: readonly (ClosedPeriod & Pick<Period, 'id' | 'allocations'>)[],
+  envelopeOrder: readonly string[],
+  current: { period: Pick<Period, 'id' | 'allocations'>; balances: readonly EnvelopeBalance[] } | null,
+  count = 6,
+): HistoryPeriod[] {
+  const closed = closedPeriodsRecentFirst(periods)
+    .slice(0, current ? count - 1 : count)
+    .reverse()
+    .map((p) => historyForClosed(p, envelopeOrder));
+  return current ? [...closed, historyForCurrent(current.period, current.balances)] : closed;
+}

@@ -153,3 +153,27 @@ describe('R12 · Inserimento rapido', () => {
     expect(validateEntry({ type: 'refund', amount: 480, envelopeId: null, personId: null })).toEqual(['envelopeRequired']);
   });
 });
+
+describe('R11 · ultimi 6 mesi', () => {
+  it('Giugno–Ottobre chiusi e Novembre in corso, Luglio sopra il budget', async () => {
+    const { recentHistory } = await import('../stats');
+    const nov = data.periods.find((p) => p.id === '2026-11')!;
+    const s = summarizePeriod(data.envelopes, nov, data.transactions.filter((t) => t.periodId === nov.id));
+    const h = recentHistory(data.periods, data.envelopes.map((e) => e.id), { period: nov, balances: s.balances });
+    expect(h.map((p) => [p.periodId, p.spent, p.overBudget, p.inProgress])).toEqual([
+      ['2026-06', 65200, false, false],
+      ['2026-07', 73100, true, false],
+      ['2026-08', 68800, false, false],
+      ['2026-09', 64000, false, false],
+      ['2026-10', 60400, false, false],
+      ['2026-11', 44850, false, true],
+    ]);
+  });
+
+  it('senza periodo in corso mostra fino a 6 chiusi', async () => {
+    const { recentHistory } = await import('../stats');
+    expect(recentHistory(data.periods, data.envelopes.map((e) => e.id), null).map((p) => p.periodId)).toEqual([
+      '2026-06', '2026-07', '2026-08', '2026-09', '2026-10',
+    ]);
+  });
+});

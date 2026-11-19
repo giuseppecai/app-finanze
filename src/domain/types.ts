@@ -14,6 +14,8 @@ export interface Settings {
   lastTravelQuota: Cents;
   lastEnvelopeId: string | null;
   onboardingDone: boolean;
+  /** data dell'ultimo backup esportato (promemoria dopo 30 giorni, M8) */
+  lastBackupAt?: string | null;
 }
 
 export type EnvelopeKind = 'spendable' | 'committed';

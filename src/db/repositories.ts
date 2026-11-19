@@ -5,13 +5,14 @@ import { closingPreview } from '../domain/monthEnd';
 import { billsQuotaTotal, monthlyQuota, planBillPayment, type BillPaymentPlan } from '../domain/bills';
 import { it } from '../i18n/it';
 import { buildNewPeriod } from '../domain/opening';
+import { defaultShortName, planCapsChange, type CapsChange } from '../domain/settings';
 import { currentPeriod, nextPeriodToStart } from '../domain/periods';
 import { chargeToTransaction, dueCharges } from '../domain/recurring';
 import {
   applyRepayment, canDeleteLoan, createLoanEntry, deleteLoanEntry, savingsEffect, undoRepayment as undoLoanAllocations,
 } from '../domain/loans';
 import type {
-  Bill, Card, Cents, ISODate, Loan, LoanDirection, Period, Person, PotId, Reconciliation, Recurring, Settings, Transaction,
+  Bill, Card, Cents, Envelope, ISODate, Loan, LoanDirection, Period, Person, PotId, Reconciliation, Recurring, Settings, Transaction,
 } from '../domain/types';
 import type { FinanzeDB } from './schema';
 
@@ -517,4 +518,46 @@ export async function deleteBillPayment(db: FinanzeDB, txId: string): Promise<vo
       }
     }
   });
+}
+
+// ── Imposta (M7) ──────────────────────────────────────────────────────────────
+
+export interface SaveEnvelopesInput {
+  /** tetti nuovi delle buste esistenti */
+  caps: Record<string, Cents>;
+  /** buste nuove da creare (con il loro tetto) */
+  added: Omit<Envelope, 'order' | 'archived'>[];
+  periodStartDay: number;
+}
+
+/**
+ * "Salva le buste": tetti e buste nuove valgono da questo mese. Se c'è un mese aperto, aggiorna
+ * le sue allocazioni e il salvadanaio Risparmi (il giroconto lo fa l'utente su Revolut).
+ */
+export async function saveEnvelopes(db: FinanzeDB, input: SaveEnvelopesInput): Promise<CapsChange> {
+  if (!Number.isInteger(input.periodStartDay) || input.periodStartDay < 1 || input.periodStartDay > 31) {
+    throw new Error('Giorno di inizio non valido');
+  }
+  for (const cap of [...Object.values(input.caps), ...input.added.map((e) => e.cap)]) {
+    if (!Number.isInteger(cap) || cap < 0) throw new Error('Tetto non valido');
+  }
+  return db.transaction('rw', [db.envelopes, db.periods, db.pots, db.settings], async () => {
+    const envelopes = await db.envelopes.orderBy('order').toArray();
+    let order = envelopes.reduce((m, e) => Math.max(m, e.order), 0);
+    const newEnvelopes: Envelope[] = input.added.map((e) => ({ ...e, name: e.name.trim(), shortName: e.shortName.trim() || defaultShortName(e.name), order: ++order, archived: false }));
+    const current = await getCurrentPeriod(db);
+    const caps = { ...input.caps, ...Object.fromEntries(newEnvelopes.map((e) => [e.id, e.cap])) };
+    const change = planCapsChange([...envelopes, ...newEnvelopes], caps, current);
+    for (const [id, cap] of Object.entries(input.caps)) await db.envelopes.update(id, { cap });
+    if (newEnvelopes.length > 0) await db.envelopes.bulkAdd(newEnvelopes);
+    if (current && change.allocations) await db.periods.update(current.id, { allocations: change.allocations });
+    await adjustPot(db, 'savings', change.savingsDelta);
+    await db.settings.update('settings', { periodStartDay: input.periodStartDay });
+    return change;
+  });
+}
+
+export async function setCardReserve(db: FinanzeDB, cardReserve: Cents | null): Promise<void> {
+  if (cardReserve !== null && !Number.isInteger(cardReserve)) throw new Error('Riserva non valida');
+  await db.settings.update('settings', { cardReserve });
 }
