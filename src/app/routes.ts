@@ -9,6 +9,7 @@ export const routes = {
   opening: '/inizio',
   loans: '/prestiti',
   recurring: '/abbonamenti',
+  onboarding: '/benvenuto',
 } as const;
 
 export type RouteName = keyof typeof routes;

@@ -1,0 +1,335 @@
+/* Chiusura del mese, Inizio del mese, Onboarding */
+
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 36px);
+}
+
+.flow__spacer { flex-grow: 1; }
+
+.month-header { margin-top: 4px; }
+
+/* ── Indicatore a passi ───────────────────────────────────── */
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.steps__item { display: flex; flex-direction: column; gap: 5px; }
+.steps__bar { height: 4px; border-radius: 2px; background: var(--line); }
+.steps__item.is-done .steps__bar { background: var(--accent); }
+.steps__label { font-size: 12px; color: var(--text-muted); }
+.steps__item[aria-current='step'] .steps__label { font-weight: 600; color: var(--text); }
+
+/* ── Riepilogo "Com'è andata" ─────────────────────────────── */
+
+.summary-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+
+.summary-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.summary-card__total {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.summary-card__list { list-style: none; margin: 0; padding: 0; }
+
+.summary-card__list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 32px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 14px;
+}
+
+.summary-card__value { font-weight: 600; }
+.summary-card__note { font-size: 12px; color: var(--text-muted); }
+
+/* ── Opzioni a scelta singola ─────────────────────────────── */
+
+.options { border: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.options legend { padding: 0; margin-bottom: 8px; }
+
+.option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 10px 14px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.option input { position: absolute; opacity: 0; pointer-events: none; }
+.option:has(input:checked) { background: var(--accent-soft); border-color: var(--accent); }
+.option:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.option__dot {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  border: 2px solid var(--neutral-bar);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.option input:checked + .option__dot { border-color: var(--accent); }
+
+.option input:checked + .option__dot::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--accent);
+}
+
+.option__text { display: flex; flex-direction: column; gap: 2px; }
+.option__title { font-size: 14px; font-weight: 600; }
+.option__detail { font-size: 12px; color: var(--text-muted); }
+
+/* ── Riquadri informativi ─────────────────────────────────── */
+
+.info-box {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: var(--radius-card);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.info-box--info { background: var(--surface-sunk); color: var(--text); }
+.info-box--warning { background: var(--danger-soft); color: var(--danger-strong); }
+.info-box__icon { flex-shrink: 0; margin-top: 1px; }
+.info-box__body { display: flex; flex-direction: column; gap: 8px; }
+
+.info-box__action {
+  align-self: flex-start;
+  min-height: var(--touch);
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #C9764B;
+  background: var(--surface);
+  color: var(--danger-strong);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── Campo importo ────────────────────────────────────────── */
+
+.amount-field { display: flex; flex-direction: column; gap: 6px; }
+.amount-field__label { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+
+.amount-field__box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--touch);
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-row);
+  background: var(--surface);
+}
+
+.amount-field__box:focus-within { border-color: var(--accent); }
+.amount-field__box.is-invalid { border-color: var(--danger); }
+
+.amount-field__box input {
+  flex-grow: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-align: right;
+}
+
+.amount-field__currency { color: var(--text-muted); }
+
+.amount-field--large .amount-field__box { height: 52px; }
+.amount-field--large .amount-field__box input { font-size: 24px; text-align: left; }
+
+.amount-field--large .amount-field__currency {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ── Checklist dei giroconti ──────────────────────────────── */
+
+.check-list { display: flex; flex-direction: column; gap: 8px; }
+
+.check-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 14px;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.check-row.is-checked { background: var(--accent-soft); }
+.check-row input { position: absolute; opacity: 0; pointer-events: none; }
+.check-row:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.check-row__box {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 2px solid var(--neutral-bar);
+  background: var(--surface);
+  color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.check-row.is-checked .check-row__box {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-dark);
+}
+
+.check-row__text { display: flex; flex-direction: column; gap: 1px; flex-grow: 1; min-width: 0; }
+.check-row__title { font-size: 14px; font-weight: 600; }
+.check-row__note { font-size: 12px; color: var(--text-muted); }
+
+.check-row__amount {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Varie ────────────────────────────────────────────────── */
+
+.muted-note { font-size: 12px; color: var(--text-muted); line-height: 1.45; }
+
+.link-button {
+  align-self: flex-start;
+  min-height: var(--touch);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+
+/* ── Liste modificabili (tetti, abbonamenti, salvadanai) ──── */
+
+.edit-list { list-style: none; margin: 0; padding: 4px 14px; }
+.edit-list > li + li { border-top: 1px solid var(--line-soft); }
+
+.cap-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 6px 0;
+}
+
+.cap-row__text { display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0; }
+.cap-row__name { font-size: 15px; font-weight: 500; }
+.cap-row__detail { font-size: 12px; color: var(--text-muted); }
+
+.stepper { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+.stepper__button {
+  width: var(--touch);
+  height: var(--touch);
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.stepper__button:disabled { opacity: 0.4; cursor: default; }
+.stepper__value { min-width: 64px; text-align: center; font-size: 15px; font-weight: 600; }
+
+.total-card {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.total-card__value { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
+
+/* Riga abbonamento nell'onboarding: nome + importo + giorno */
+.rec-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; }
+.rec-row__head { display: flex; align-items: center; gap: 8px; }
+.rec-row__name { flex-grow: 1; min-width: 0; }
+.rec-row__fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.rec-row__remove {
+  min-height: var(--touch);
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.select-field { display: flex; flex-direction: column; gap: 6px; }
+.select-field label { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+
+.select-field select {
+  height: var(--touch);
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-row);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--touch);
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.switch-row input { width: 22px; height: 22px; accent-color: var(--accent); }

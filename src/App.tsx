@@ -8,6 +8,7 @@ import { HistoryPage } from './features/history/HistoryPage';
 import { HomePage } from './features/home/HomePage';
 import { LoansPage } from './features/loans/LoansPage';
 import { MovementsPage } from './features/movements/MovementsPage';
+import { OnboardingPage } from './features/onboarding/OnboardingPage';
 import { OpeningPage } from './features/opening/OpeningPage';
 import { RecurringPage } from './features/recurring/RecurringPage';
 import { SettingsPage } from './features/settings/SettingsPage';
@@ -28,6 +29,7 @@ export function App() {
           <Route path={routes.opening} element={<OpeningPage />} />
           <Route path={routes.loans} element={<LoansPage />} />
           <Route path={routes.recurring} element={<RecurringPage />} />
+          <Route path={routes.onboarding} element={<OnboardingPage />} />
         </Route>
         <Route path="*" element={<Navigate to={routes.home} replace />} />
       </Routes>

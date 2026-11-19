@@ -69,3 +69,19 @@ export const IconChevronDown = (p: IconProps) => (
 export const IconBackspace = (p: IconProps) => (
   <Svg size={22} {...p}><path d="M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z" /><path d="M17 9l-5 6M12 9l5 6" /></Svg>
 );
+
+export const IconCheck = (p: IconProps) => (
+  <Svg size={14} strokeWidth={3} {...p}><path d="M5 12l5 5 9-10" /></Svg>
+);
+
+export const IconMinus = (p: IconProps) => (
+  <Svg size={18} strokeWidth={2.2} {...p}><path d="M5 12h14" /></Svg>
+);
+
+export const IconAlert = (p: IconProps) => (
+  <Svg size={20} {...p}><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16v.5" /></Svg>
+);
+
+export const IconShare = (p: IconProps) => (
+  <Svg size={18} {...p}><path d="M12 3v12M8 7l4-4 4 4" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" /></Svg>
+);

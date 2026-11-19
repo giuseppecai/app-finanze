@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import { useCurrentPeriod, useEnvelopes, useLastReconciliation, useLoans, usePeriodTransactions, usePots, useRecurring } from '../../app/data';
+import { Link, Navigate } from 'react-router-dom';
+import { useCurrentPeriod, useEnvelopes, useLastReconciliation, useLoans, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { EnvelopeRow } from '../../components/EnvelopeRow';
 import { IconSliders } from '../../components/icons';
@@ -25,7 +25,10 @@ export function HomePage() {
   const envelopes = useEnvelopes();
   const pots = usePots();
   const loans = useLoans();
-  if (period === undefined || !envelopes || !pots || !loans) return null;
+  const settings = useSettings();
+  if (period === undefined || !envelopes || !pots || !loans || !settings) return null;
+  // Primo avvio: prima la configurazione in 3 passi.
+  if (!settings.onboardingDone && !period) return <Navigate to={routes.onboarding} replace />;
 
   return (
     <>
