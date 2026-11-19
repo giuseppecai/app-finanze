@@ -1,6 +1,11 @@
 // Tutte le stringhe dell'interfaccia, in italiano.
 export const it = {
   appName: 'Finanze',
+  months: {
+    long: ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'],
+    short: ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'],
+  },
+  weekdays: ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'],
   tabs: {
     envelopes: 'Buste',
     movements: 'Movimenti',
