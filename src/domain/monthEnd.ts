@@ -34,10 +34,10 @@ export function closingPreview(
   return { pending, txs, summary, leftovers: leftoversOf(summary.balances), unassigned: summary.unassigned };
 }
 
-export type ChecklistAccount = 'salary' | 'budget' | 'savings' | 'travel' | 'gifts';
+export type ChecklistAccount = 'salary' | 'budget' | 'savings' | 'travel' | 'gifts' | 'bills';
 
 export interface ChecklistItem {
-  id: 'closing' | 'budget' | 'travel' | 'gifts' | 'savings';
+  id: 'closing' | 'budget' | 'travel' | 'gifts' | 'bills' | 'savings';
   from: ChecklistAccount;
   to: ChecklistAccount;
   /** importo da spostare; per "savings" può essere negativo (lo stipendio non copre le buste) */
@@ -47,7 +47,8 @@ export interface ChecklistItem {
 
 /**
  * Giroconti da fare su Revolut, in ordine: prima quello della chiusura (se c'è), poi i 4 dell'inizio
- * del mese (R7). L'app non li esegue: sono una lista da spuntare.
+ * del mese (R7), più quello delle Bollette se ci sono bollette periodiche (R13).
+ * L'app non li esegue: sono una lista da spuntare.
  */
 export function transferChecklist(opening: OpeningPlan, closing: Pick<ClosingPlan, 'transfer'> | null): ChecklistItem[] {
   const items: ChecklistItem[] = [];
@@ -58,6 +59,7 @@ export function transferChecklist(opening: OpeningPlan, closing: Pick<ClosingPla
     { id: 'budget', from: 'salary', to: 'budget', amount: opening.budget, warn: false },
     { id: 'travel', from: 'salary', to: 'travel', amount: opening.travel, warn: false },
     { id: 'gifts', from: 'salary', to: 'gifts', amount: opening.gifts, warn: false },
+    ...(opening.bills > 0 ? [{ id: 'bills' as const, from: 'salary' as const, to: 'bills' as const, amount: opening.bills, warn: false }] : []),
     { id: 'savings', from: 'salary', to: 'savings', amount: opening.savings, warn: opening.short },
   );
   return items;

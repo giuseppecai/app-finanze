@@ -118,7 +118,7 @@ const NOVEMBER: Row[] = [
   [1, 'Rata iPhone', ENV.rate, 'extra', -70, REC.iphone],
 ];
 
-const PEOPLE = { mamma: 'person-mamma', marco: 'person-marco' } as const;
+const PEOPLE = { mamma: 'person-mamma', marco: 'person-marco', elisa: 'person-elisa' } as const;
 
 function demoTransactions(): Transaction[] {
   const n = NOVEMBER.length;
@@ -207,13 +207,14 @@ export function buildDemoData(): DataSet {
     people: [
       { id: PEOPLE.mamma, name: 'Mamma', createdAt: '2026-10-23T18:00:00.000Z' },
       { id: PEOPLE.marco, name: 'Marco', createdAt: '2026-11-12T18:00:00.000Z' },
+      { id: PEOPLE.elisa, name: 'Elisa', createdAt: '2026-06-01T09:00:00.000Z' },
     ],
     loans: demoLoans(),
     pots: [
       { id: 'savings', name: 'Risparmi', balance: eur(1240) },
       { id: 'travel', name: 'Viaggi', balance: eur(180) },
       { id: 'gifts', name: 'Regali & Imprevisti', balance: eur(75) },
-      { id: 'bills', name: 'Bollette', balance: 0 },
+      { id: 'bills', name: 'Bollette', balance: eur(80) },
     ],
     reconciliations: [
       {
@@ -222,6 +223,20 @@ export function buildDemoData(): DataSet {
         expected: eur(541.72), diff: 0, outcome: 'ok',
       },
     ],
-    bills: [],
+    bills: demoBills(),
   };
+}
+
+/** Le bollette di esempio di R13: gas accantonato per 2 mesi (30), acqua per 5 (50). */
+function demoBills(): Bill[] {
+  const b = (id: string, name: string, frequency: Bill['frequency'], estimate: number, split: Bill['split'], payer: Bill['payer'], fund: number, order: number): Bill => ({
+    id, name, frequency, estimate: eur(estimate), split, payer, personId: split === 'half' ? PEOPLE.elisa : null,
+    envelopeId: ENV.casa, fund: eur(fund), active: true, order, createdAt: '2026-06-01T09:00:00.000Z',
+  });
+  return [
+    b('bill-luce', 'Luce', 1, 80, 'half', 'me', 0, 1),
+    b('bill-internet', 'Internet', 1, 28, 'half', 'me', 0, 2),
+    b('bill-gas', 'Gas', 2, 60, 'half', 'roommate', 30, 3),
+    b('bill-acqua', 'Acqua', 12, 120, 'mine', 'me', 50, 4),
+  ];
 }

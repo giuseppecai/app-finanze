@@ -16,9 +16,10 @@ import type { Envelope, Period } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { ReconcileSheet } from './ReconcileSheet';
 
-/** Rate & Abbonamenti (la busta degli abbonamenti) apre Abbonamenti, le altre i Movimenti filtrati. */
+/** Rate & Abbonamenti apre Abbonamenti, Casa & Servizi apre Casa & Servizi, le altre i Movimenti filtrati. */
 function envelopeLink(envelope: Envelope, recurringEnvelopes: ReadonlySet<string>): string {
   if (envelope.kind === 'committed' && recurringEnvelopes.has(envelope.id)) return routes.recurring;
+  if (envelope.kind === 'committed') return routes.casa;
   return `${routes.movements}?busta=${encodeURIComponent(envelope.id)}`;
 }
 

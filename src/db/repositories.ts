@@ -2,6 +2,8 @@
 import { nowISO } from '../domain/clock';
 import { planClosing, type ClosingOption, type ClosingPlan } from '../domain/closing';
 import { closingPreview } from '../domain/monthEnd';
+import { billsQuotaTotal, monthlyQuota, planBillPayment, type BillPaymentPlan } from '../domain/bills';
+import { it } from '../i18n/it';
 import { buildNewPeriod } from '../domain/opening';
 import { currentPeriod, nextPeriodToStart } from '../domain/periods';
 import { chargeToTransaction, dueCharges } from '../domain/recurring';
@@ -9,7 +11,7 @@ import {
   applyRepayment, canDeleteLoan, createLoanEntry, deleteLoanEntry, savingsEffect, undoRepayment as undoLoanAllocations,
 } from '../domain/loans';
 import type {
-  Card, Cents, ISODate, Loan, LoanDirection, Period, Person, PotId, Reconciliation, Recurring, Settings, Transaction,
+  Bill, Card, Cents, ISODate, Loan, LoanDirection, Period, Person, PotId, Reconciliation, Recurring, Settings, Transaction,
 } from '../domain/types';
 import type { FinanzeDB } from './schema';
 
@@ -123,7 +125,7 @@ export interface StartPeriodResult {
  * 1. se c'è un periodo aperto lo chiude (genera gli abbonamenti mancanti fino alla fine del periodo,
  *    salva avanzi, scelta e data di chiusura);
  * 2. crea il periodo nuovo fotografando i tetti e applicando riporti / da assegnare;
- * 3. aggiorna i salvadanai e la quota Viaggi usata.
+ * 3. aggiorna i salvadanai (Bollette compresa), il fondo di ogni bolletta e la quota Viaggi usata.
  * Così non resta mai un momento senza periodo aperto.
  */
 export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promise<StartPeriodResult> {
@@ -131,14 +133,15 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
   if (!Number.isInteger(input.travel) || input.travel < 0) throw new Error('Quota Viaggi non valida');
   return db.transaction(
     'rw',
-    [db.settings, db.envelopes, db.periods, db.transactions, db.recurring, db.pots],
+    [db.settings, db.envelopes, db.periods, db.transactions, db.recurring, db.pots, db.bills],
     async () => {
-      const [settings, envelopes, periods, recurrings, pots] = await Promise.all([
+      const [settings, envelopes, periods, recurrings, pots, bills] = await Promise.all([
         getSettings(db),
         db.envelopes.orderBy('order').toArray(),
         db.periods.toArray(),
         db.recurring.toArray(),
         db.pots.toArray(),
+        db.bills.toArray(),
       ]);
       const open = currentPeriod(periods);
       const closedAt = nowISO();
@@ -166,9 +169,16 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
         envelopes,
         travel: input.travel,
         gifts: settings.giftsQuota,
+        billsQuota: billsQuotaTotal(bills),
         closing,
       });
       await db.periods.add(period);
+
+      // Ogni bolletta periodica attiva accantona la sua quota (R13).
+      for (const bill of bills) {
+        const quota = bill.active ? monthlyQuota(bill) : 0;
+        if (quota > 0) await db.bills.update(bill.id, { fund: bill.fund + quota });
+      }
 
       for (const pot of pots) {
         await db.pots.update(pot.id, { balance: pot.balance + potDeltas[pot.id] });
@@ -307,6 +317,8 @@ export interface LoanEntryInput {
   reason: string;
   card: Card | null;
   billId?: string | null;
+  /** stesso createdAt per i movimenti nati da una bolletta */
+  createdAt?: string;
 }
 
 /**
@@ -319,7 +331,7 @@ export async function addLoanEntry(db: FinanzeDB, input: LoanEntryInput): Promis
     const period = await getCurrentPeriod(db);
     if (!period) throw new Error('Nessun periodo aperto: fai prima "Inizio del mese"');
     if (!(await db.people.get(input.personId))) throw new Error('Persona non trovata');
-    const createdAt = nowISO();
+    const createdAt = input.createdAt ?? nowISO();
     const type = input.direction === 'lent' ? 'loan' : 'debt';
     const tx: Transaction = {
       id: newId(), periodId: period.id, date: input.date, type, amount: input.amount, envelopeId: null,
@@ -401,5 +413,108 @@ export async function undoRepaymentTransaction(db: FinanzeDB, txId: string): Pro
     await putLoans(db, undoLoanAllocations(loans, tx.loanAllocations ?? []));
     await db.transactions.delete(txId);
     await adjustPot(db, 'savings', -savingsEffect(tx.type, tx.amount));
+  });
+}
+
+// ── Bollette (R13) ────────────────────────────────────────────────────────────
+
+/** Crea o aggiorna una bolletta (il fondo accantonato resta quello che è). */
+export async function saveBill(db: FinanzeDB, bill: Bill): Promise<void> {
+  if (bill.name.trim() === '') throw new Error('Nome mancante');
+  if (!Number.isInteger(bill.estimate) || bill.estimate <= 0) throw new Error('Importo previsto non valido');
+  if (![1, 2, 3, 6, 12].includes(bill.frequency)) throw new Error('Frequenza non valida');
+  if ((bill.split === 'half' || bill.payer === 'roommate') && !bill.personId) throw new Error('Manca la coinquilina');
+  await db.bills.put({ ...bill, name: bill.name.trim() });
+}
+
+/** Elimina una bolletta. I movimenti già registrati e i soldi nella Pocket Bollette restano. */
+export async function deleteBill(db: FinanzeDB, id: string): Promise<void> {
+  await db.bills.delete(id);
+}
+
+export interface RegisterBillInput {
+  billId: string;
+  amount: Cents;
+  date: ISODate;
+  payer: Bill['payer'];
+}
+
+export interface RegisterBillResult {
+  plan: BillPaymentPlan;
+  transactionIds: string[];
+}
+
+/**
+ * Registra una bolletta arrivata (tabella di R13), in un'unica transazione: la tua spesa
+ * (nella busta o dal fondo), il prestito o il debito con la coinquilina (con compensazione),
+ * il fondo della bolletta e il salvadanaio Bollette. Tutti i movimenti condividono createdAt
+ * e billId, così si possono eliminare insieme.
+ */
+export async function registerBill(db: FinanzeDB, input: RegisterBillInput): Promise<RegisterBillResult> {
+  return db.transaction('rw', [db.periods, db.transactions, db.loans, db.pots, db.people, db.bills], async () => {
+    const bill = await db.bills.get(input.billId);
+    if (!bill) throw new Error('Bolletta non trovata');
+    const period = await getCurrentPeriod(db);
+    if (!period) throw new Error('Nessun periodo aperto: fai prima "Inizio del mese"');
+    const plan = planBillPayment(bill, input.amount, input.payer);
+    if (plan.loan && !bill.personId) throw new Error('Manca la coinquilina');
+    const createdAt = nowISO();
+    const month = it.months.long[Number(input.date.slice(5, 7)) - 1] ?? '';
+
+    const expense: Transaction = {
+      id: newId(), periodId: period.id, date: input.date, type: 'expense', amount: plan.expense.amount,
+      envelopeId: plan.expense.envelopeId, note: `${bill.name} · ${month}`,
+      card: input.payer === 'me' ? 'extra' : null, source: 'manual', recurringId: null, personId: null,
+      loanAllocations: null, billId: bill.id, createdAt,
+    };
+    await db.transactions.add(expense);
+    const ids = [expense.id];
+
+    if (plan.loan && bill.personId) {
+      const reason = plan.loan.direction === 'lent' ? `${bill.name} · ${month}` : `${bill.name} · ${it.casa.yourHalf}`;
+      const loanTx = await addLoanEntry(db, {
+        personId: bill.personId, direction: plan.loan.direction, amount: plan.loan.amount, date: input.date,
+        reason, card: input.payer === 'me' ? 'extra' : null, billId: bill.id, createdAt,
+      });
+      ids.push(loanTx.id);
+    }
+    if (plan.fundDelta !== 0) await db.bills.update(bill.id, { fund: bill.fund + plan.fundDelta });
+    await adjustPot(db, 'bills', plan.potDeltas.bills ?? 0);
+    return { plan, transactionIds: ids };
+  });
+}
+
+/** Movimenti nati dalla stessa registrazione di una bolletta. */
+export async function billPaymentSiblings(db: FinanzeDB, txId: string): Promise<Transaction[]> {
+  const tx = await db.transactions.get(txId);
+  if (!tx || !tx.billId) return tx ? [tx] : [];
+  return db.transactions.where('billId').equals(tx.billId).filter((t) => t.createdAt === tx.createdAt).toArray();
+}
+
+/**
+ * Elimina una registrazione di bolletta: spesa, prestito/debito (se non ancora restituito),
+ * fondo e salvadanaio Bollette tornano come prima.
+ */
+export async function deleteBillPayment(db: FinanzeDB, txId: string): Promise<void> {
+  await db.transaction('rw', [db.transactions, db.loans, db.pots, db.bills], async () => {
+    const siblings = await billPaymentSiblings(db, txId);
+    if (siblings.length === 0) throw new Error('Movimento non trovato');
+    for (const t of siblings) {
+      if ((t.type === 'loan' || t.type === 'debt') && !(await canDeleteLoanTransaction(db, t.id))) {
+        throw new Error('La parte della coinquilina è già stata restituita: annulla prima le restituzioni');
+      }
+    }
+    for (const t of siblings) {
+      if (t.type === 'loan' || t.type === 'debt') {
+        await deleteLoanTransaction(db, t.id);
+      } else {
+        if (t.type === 'expense' && t.envelopeId === null && t.billId) {
+          const bill = await db.bills.get(t.billId);
+          if (bill) await db.bills.update(bill.id, { fund: bill.fund + t.amount });
+          await adjustPot(db, 'bills', t.amount);
+        }
+        await db.transactions.delete(t.id);
+      }
+    }
   });
 }

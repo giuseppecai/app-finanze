@@ -3,7 +3,7 @@ import type { ClosingPlan } from './closing';
 import type { CalendarPeriod } from './periods';
 import type { Cents, Envelope, ISODate, Period, PotId } from './types';
 
-export type OpeningTransferId = 'budget' | 'travel' | 'gifts' | 'savings';
+export type OpeningTransferId = 'budget' | 'travel' | 'gifts' | 'bills' | 'savings';
 
 export interface OpeningTransfer {
   id: OpeningTransferId;
@@ -14,7 +14,9 @@ export interface OpeningPlan {
   budget: Cents;
   travel: Cents;
   gifts: Cents;
-  /** S − budget − Viaggi − Regali; negativo se lo stipendio non copre le buste */
+  /** giroconto mensile → Bollette (R13), 0 se non ci sono bollette periodiche */
+  bills: Cents;
+  /** S − budget − Viaggi − Regali − Bollette; negativo se lo stipendio non copre */
   savings: Cents;
   short: boolean;
   /** Checklist dei 4 giroconti su Revolut, in ordine */
@@ -30,19 +32,21 @@ export function capsTotal(envelopes: readonly Envelope[]): Cents {
   return activeEnvelopes(envelopes).reduce((s, e) => s + e.cap, 0);
 }
 
-export function planOpening(salary: Cents, envelopes: readonly Envelope[], travel: Cents, gifts: Cents): OpeningPlan {
+export function planOpening(salary: Cents, envelopes: readonly Envelope[], travel: Cents, gifts: Cents, bills: Cents = 0): OpeningPlan {
   const budget = capsTotal(envelopes);
-  const savings = salary - budget - travel - gifts;
+  const savings = salary - budget - travel - gifts - bills;
   return {
     budget,
     travel,
     gifts,
+    bills,
     savings,
     short: savings < 0,
     transfers: [
       { id: 'budget', amount: budget },
       { id: 'travel', amount: travel },
       { id: 'gifts', amount: gifts },
+      ...(bills > 0 ? [{ id: 'bills' as const, amount: bills }] : []),
       { id: 'savings', amount: savings },
     ],
   };
@@ -55,6 +59,8 @@ export interface NewPeriodInput {
   envelopes: readonly Envelope[];
   travel: Cents;
   gifts: Cents;
+  /** giroconto mensile → Bollette (R13) */
+  billsQuota?: Cents;
   /** piano di chiusura del periodo precedente (null per il primo periodo) */
   closing: Pick<ClosingPlan, 'nextCarryIn' | 'nextUnassigned' | 'savingsDelta'> | null;
 }
@@ -67,7 +73,8 @@ export interface NewPeriodResult {
 
 /** Crea il periodo: fotografa i tetti, applica riporti / da assegnare della chiusura. */
 export function buildNewPeriod(input: NewPeriodInput): NewPeriodResult {
-  const plan = planOpening(input.salary, input.envelopes, input.travel, input.gifts);
+  const billsQuota = input.billsQuota ?? 0;
+  const plan = planOpening(input.salary, input.envelopes, input.travel, input.gifts, billsQuota);
   const allocations = Object.fromEntries(activeEnvelopes(input.envelopes).map((e) => [e.id, e.cap]));
   const period: Period = {
     ...input.target,
@@ -81,7 +88,7 @@ export function buildNewPeriod(input: NewPeriodInput): NewPeriodResult {
     closedAt: null,
     leftoverChoice: null,
     leftovers: null,
-    billsQuota: 0,
+    billsQuota,
   };
   return {
     period,
@@ -89,7 +96,7 @@ export function buildNewPeriod(input: NewPeriodInput): NewPeriodResult {
       savings: plan.savings + (input.closing?.savingsDelta ?? 0),
       travel: input.travel,
       gifts: input.gifts,
-      bills: 0,
+      bills: billsQuota,
     },
   };
 }

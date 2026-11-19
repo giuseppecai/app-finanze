@@ -2,7 +2,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import { currentPeriod } from '../domain/periods';
-import type { Envelope, Loan, Period, Person, Pot, Reconciliation, Recurring, Settings, Transaction } from '../domain/types';
+import type { Bill, Envelope, Loan, Period, Person, Pot, Reconciliation, Recurring, Settings, Transaction } from '../domain/types';
 
 /** `undefined` finché i dati non sono caricati. */
 export function useSettings(): Settings | undefined {
@@ -40,6 +40,10 @@ export function useTransaction(id: string | null): Transaction | null | undefine
 
 export function useRecurring(): Recurring[] | undefined {
   return useLiveQuery(() => db.recurring.toArray());
+}
+
+export function useBills(): Bill[] | undefined {
+  return useLiveQuery(() => db.bills.orderBy('order').toArray());
 }
 
 export function usePots(): Pot[] | undefined {

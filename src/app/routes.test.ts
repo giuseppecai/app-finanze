@@ -6,7 +6,7 @@ describe('rotte', () => {
     const paths = Object.values(routes);
     expect(paths).toEqual([
       '/', '/nuovo', '/movimenti', '/storico', '/imposta',
-      '/chiudi', '/inizio', '/prestiti', '/abbonamenti', '/benvenuto',
+      '/chiudi', '/inizio', '/prestiti', '/abbonamenti', '/benvenuto', '/casa',
     ]);
     expect(new Set(paths).size).toBe(paths.length);
   });

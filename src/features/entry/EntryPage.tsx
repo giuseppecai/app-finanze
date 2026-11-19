@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  useCurrentPeriod, useEnvelopes, useLoans, usePeople, usePeriods, usePeriodTransactions, useSettings, useTransaction,
+  useBills, useCurrentPeriod, useEnvelopes, useLoans, usePeople, usePeriods, usePeriodTransactions, useSettings, useTransaction,
   useTransactionsSince,
 } from '../../app/data';
 import { routes } from '../../app/routes';
@@ -24,6 +24,7 @@ import { formatEuro, KEYPAD_MAX_DIGITS } from '../../domain/money';
 import { entryFeedback } from '../../domain/movements';
 import type { Card, Cents, Envelope, ISODate, Loan, LoanDirection, Period, Person, Settings, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
+import { BillTxEdit } from './BillTxEdit';
 import { LoanEntryEdit } from './LoanEntryEdit';
 import { PersonPicker } from './PersonPicker';
 
@@ -42,15 +43,19 @@ export function EntryPage() {
   const settings = useSettings();
   const people = usePeople();
   const loans = useLoans();
+  const bills = useBills();
   const now = today();
   const recent = useTransactionsSince(addDays(now, -60));
   const periodId = editing ? editing.periodId : current?.id;
   const periodTxs = usePeriodTransactions(periodId);
 
-  if (editing === undefined || current === undefined || !periods || !envelopes || !settings || !recent || !periodTxs || !people || !loans) {
+  if (editing === undefined || current === undefined || !periods || !envelopes || !settings || !recent || !periodTxs || !people || !loans || !bills) {
     return null;
   }
   if (editId && editing === null) return <Message text={it.entry.notFound} />;
+  if (editing && editing.billId) {
+    return <BillTxEdit tx={editing} billName={bills.find((b) => b.id === editing.billId)?.name ?? it.casa.title} />;
+  }
   if (editing && (editing.type === 'loan' || editing.type === 'debt')) {
     return <LoanEntryEdit tx={editing} people={people} />;
   }

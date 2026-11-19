@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { useCurrentPeriod, useEnvelopes, usePeriods, usePeriodTransactions, useRecurring, useSettings } from '../../app/data';
+import { useBills, useCurrentPeriod, useEnvelopes, usePeriods, usePeriodTransactions, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { AmountField } from '../../components/AmountField';
 import { CheckRow } from '../../components/CheckRow';
@@ -16,7 +16,8 @@ import { formatEuro, parseEuro } from '../../domain/money';
 import { closingPreview, transferChecklist, type ChecklistItem } from '../../domain/monthEnd';
 import { activeEnvelopes, planOpening } from '../../domain/opening';
 import { nextPeriodToStart } from '../../domain/periods';
-import type { Envelope, Period, Recurring, Settings, Transaction } from '../../domain/types';
+import { billsQuotaTotal } from '../../domain/bills';
+import type { Bill, Envelope, Period, Recurring, Settings, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { CapsEditor } from '../settings/CapsEditor';
 
@@ -30,7 +31,8 @@ export function OpeningPage() {
   const settings = useSettings();
   const recurring = useRecurring();
   const txs = usePeriodTransactions(current?.id ?? null);
-  if (current === undefined || !periods || !envelopes || !settings || !recurring || !txs) return null;
+  const bills = useBills();
+  if (current === undefined || !periods || !envelopes || !settings || !recurring || !txs || !bills) return null;
 
   const raw = params.get('scelta');
   const option = OPTIONS.find((o) => o === raw) ?? null;
@@ -46,6 +48,7 @@ export function OpeningPage() {
       settings={settings}
       recurring={recurring}
       txs={txs}
+      bills={bills}
     />
   );
 }
@@ -58,9 +61,10 @@ type Props = {
   settings: Settings;
   recurring: Recurring[];
   txs: Transaction[];
+  bills: Bill[];
 };
 
-function Opening({ current, option, periods, envelopes, settings, recurring, txs }: Props) {
+function Opening({ current, option, periods, envelopes, settings, recurring, txs, bills }: Props) {
   const navigate = useNavigate();
   const now = today();
   const [salaryText, setSalaryText] = useState('');
@@ -83,7 +87,7 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   const travel = parseEuro(travelText);
   const salaryOk = salary !== null && salary > 0;
   const travelOk = travel !== null;
-  const opening = planOpening(salary ?? 0, envelopes, travel ?? 0, settings.giftsQuota);
+  const opening = planOpening(salary ?? 0, envelopes, travel ?? 0, settings.giftsQuota, billsQuotaTotal(bills));
   const items = transferChecklist(opening, closing);
   // La spunta vale per quell'importo: se l'importo cambia, la riga torna da fare.
   const keyOf = (i: ChecklistItem) => `${i.id}:${i.amount}`;
@@ -117,6 +121,8 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
         return it.opening.notes.travel;
       case 'gifts':
         return it.opening.notes.gifts;
+      case 'bills':
+        return it.opening.notes.bills;
       case 'savings':
         return item.warn && salaryOk ? it.opening.notes.short : it.opening.notes.savings;
     }

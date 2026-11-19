@@ -10,6 +10,7 @@ export const routes = {
   loans: '/prestiti',
   recurring: '/abbonamenti',
   onboarding: '/benvenuto',
+  casa: '/casa',
 } as const;
 
 export type RouteName = keyof typeof routes;

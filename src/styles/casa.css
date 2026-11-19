@@ -1,0 +1,48 @@
+/* Casa & Servizi */
+
+.link-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 16px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.link-row:hover { color: var(--text); }
+
+.bill-row {
+  width: 100%;
+  min-height: 62px;
+  padding: 10px 0;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+  text-align: left;
+}
+
+.fund { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.fund .bar { max-width: 220px; }
+
+.bill-preview-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--radius-card);
+  background: var(--surface-sunk);
+}
+
+.bill-preview { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.4; }
+.bill-preview__soft { color: var(--text-muted); }
+.bill-preview .is-over { color: var(--danger); font-weight: 500; }
+
+/* Salvadanaio Bollette nella card "Messi da parte" */
+.pots__segment--bills, .pots__dot--bills { background: var(--accent-strong); }

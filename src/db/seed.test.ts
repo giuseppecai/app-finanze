@@ -44,7 +44,8 @@ describe('dati iniziali', () => {
 describe('fixture demo', () => {
   const demo = buildDemoData();
   it('salvadanai come nella Home: € 1.495 messi da parte', () => {
-    expect(demo.pots.reduce((s, p) => s + p.balance, 0)).toBe(149500);
+    expect(demo.pots.filter((p) => p.id !== 'bills').reduce((s, p) => s + p.balance, 0)).toBe(149500);
+    expect(demo.pots.find((p) => p.id === 'bills')?.balance).toBe(8000);
   });
   it('Novembre: 16 spese per € 448,50', () => {
     const spese = demo.transactions.filter((t) => t.periodId === '2026-11' && t.type === 'expense');

@@ -163,6 +163,10 @@ function MovementRow({ tx, envelope, person }: { tx: Transaction; envelope?: Env
     }[tx.type as 'loan' | 'loanRepayment' | 'debt' | 'debtRepayment'];
     title = tx.note || label;
     detail = label;
+  } else if (tx.type === 'expense' && !tx.envelopeId && tx.billId) {
+    initial = 'B';
+    title = tx.note || it.casa.title;
+    detail = it.movements.fromBillsPot;
   } else {
     initial = (envelope?.shortName ?? '?').charAt(0).toUpperCase();
     title = tx.note || envelope?.name || '';

@@ -2,6 +2,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { routes } from './app/routes';
 import { AppLayout } from './components/AppLayout';
 import { FullScreenLayout } from './components/FullScreenLayout';
+import { CasaPage } from './features/casa/CasaPage';
 import { ClosingPage } from './features/closing/ClosingPage';
 import { EntryPage } from './features/entry/EntryPage';
 import { HistoryPage } from './features/history/HistoryPage';
@@ -30,6 +31,7 @@ export function App() {
           <Route path={routes.loans} element={<LoansPage />} />
           <Route path={routes.recurring} element={<RecurringPage />} />
           <Route path={routes.onboarding} element={<OnboardingPage />} />
+          <Route path={routes.casa} element={<CasaPage />} />
         </Route>
         <Route path="*" element={<Navigate to={routes.home} replace />} />
       </Routes>
