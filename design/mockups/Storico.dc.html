@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Storico</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E6B5C}a:hover{color:#0A4F44}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F3EF; font-family: Inter, system-ui, sans-serif; color: #1A1A18; display: flex; flex-direction: column; position: relative; overflow: hidden; font-variant-numeric: tabular-nums">
+
+<header style="display: flex; flex-direction: column; gap: 2px; padding: 28px 20px 0 20px">
+<h1 style="margin: 0; font-family: 'Space Grotesk', Inter, sans-serif; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Storico</h1>
+<p style="margin: 0; font-size: 13px; color: #5F5E58">Ultimi 6 mesi · ogni mese va dal 27 al 26</p>
+</header>
+
+<section aria-label="Spese per mese" style="margin: 14px 20px 0 20px; background: #FFFFFF; border-radius: 16px; padding: 14px 14px 10px 14px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 13px; color: #5F5E58">{{meseNome}}</span>
+<span style="font-family: 'Space Grotesk', Inter, sans-serif; font-size: 20px; font-weight: 600">€ {{meseSpeso}} <span style="font-family: Inter, sans-serif; font-size: 13px; font-weight: 400; color: #5F5E58">di € 700</span></span>
+</div>
+<div style="position: relative; height: 130px; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; align-items: end">
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: {{lineaBottom}}; border-top: 1.5px dashed #8E8C85"></div>
+<sc-for list="{{mesi}}" as="m" hint-placeholder-count="6">
+<button aria-label="{{m.aria}}" aria-pressed="{{m.sel}}" onClick="{{m.pick}}" style="height: 100%; border: none; background: transparent; padding: 0; cursor: pointer; display: flex; align-items: flex-end">
+<span style="{{m.barStyle}}"></span>
+</button>
+</sc-for>
+</div>
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{mesi}}" as="m" hint-placeholder-count="6">
+<span style="{{m.labelStyle}}">{{m.breve}}</span>
+</sc-for>
+</div>
+<div style="display: flex; gap: 14px; font-size: 12px; color: #5F5E58; padding-top: 2px">
+<span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 16px; border-top: 1.5px dashed #8E8C85"></span>Budget € 700</span>
+<span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 3px; background: #F2C2A8"></span>Sopra il budget</span>
+</div>
+</section>
+
+<section aria-label="Dettaglio per busta" style="margin: 12px 20px 0 20px; background: #FFFFFF; border-radius: 16px; padding: 6px 14px 4px 14px">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px">
+<thead>
+<tr style="font-size: 12px; color: #5F5E58; text-align: right">
+<th scope="col" style="text-align: left; font-weight: 500; padding: 8px 0 6px 0">Busta</th>
+<th scope="col" style="font-weight: 500; padding: 8px 0 6px 0">Messo</th>
+<th scope="col" style="font-weight: 500; padding: 8px 0 6px 0">Speso</th>
+<th scope="col" style="font-weight: 500; padding: 8px 0 6px 0">{{colonnaFinale}}</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{righe}}" as="r" hint-placeholder-count="6">
+<tr style="border-top: 1px solid #EFEDE8; height: 34px; text-align: right">
+<th scope="row" style="text-align: left; font-weight: 500; font-size: 13px; padding: 6px 8px 6px 0">{{r.nome}}</th>
+<td style="color: #5F5E58">{{r.messo}}</td>
+<td style="color: #5F5E58">{{r.speso}}</td>
+<td style="{{r.finaleStyle}}">{{r.finale}}</td>
+</tr>
+</sc-for>
+<tr style="border-top: 1px solid #DAD8D1; height: 38px; text-align: right; font-weight: 600">
+<th scope="row" style="text-align: left">Totale</th>
+<td>€ 700</td>
+<td>{{totSpeso}}</td>
+<td style="{{totFinaleStyle}}">{{totFinale}}</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<section style="margin: 12px 20px 0 20px; background: #FBE7DC; border-radius: 14px; padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A3209" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M4 17l6-6 4 4 6-7"></path><path d="M15 8h5v5"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<p style="margin: 0; font-size: 13px; color: #6B2707; line-height: 1.4"><strong>Spesa alimentare</strong> ha sforato in 5 mesi su 5, in media di € 8. Con un tetto di € 60 sarebbe realistica.</p>
+<a href="ModificaBuste.dc.html" style="font-size: 13px; font-weight: 600; color: #6B2707; min-height: 32px; display: flex; align-items: center">Modifica le buste →</a>
+</div>
+</section>
+
+<nav aria-label="Navigazione principale" style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: #FFFFFF; border-top: 1px solid #E4E2DC; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding-bottom: 14px; box-sizing: border-box">
+<a href="Main.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: #5F5E58; font-size: 11px; font-weight: 500; min-height: 44px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"></rect><path d="M3 9l9 5 9-5"></path></svg>
+Buste</a>
+<a href="Movimenti.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: #5F5E58; font-size: 11px; font-weight: 500; min-height: 44px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9"></path></svg>
+Movimenti</a>
+<a href="NuovaSpesa.dc.html" aria-label="Aggiungi spesa" style="justify-self: center; width: 60px; height: 60px; border-radius: 30px; background: {{accent}}; display: flex; align-items: center; justify-content: center; margin-top: -26px; box-shadow: 0 6px 16px rgba(14,107,92,0.28)">
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+</a>
+<a href="Storico.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: #1A1A18; font-size: 11px; font-weight: 600; min-height: 44px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
+Storico</a>
+<a href="ModificaBuste.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: #5F5E58; font-size: 11px; font-weight: 500; min-height: 44px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
+Imposta</a>
+</nav>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0E6B5C","options":["#0E6B5C","#2F4FB3","#6B3FA0","#1A1A18"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { mese: 4 };
+  }
+  renderVals() {
+    var self = this;
+    var accent = this.props.accent ?? '#0E6B5C';
+    var f = function (v) { return v.toLocaleString('it-IT', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }); };
+    var buste = ['Casa & Servizi', 'Rate & Abbonamenti', 'Trasporti', 'Vita', 'Spesa alimentare', 'Shopping'];
+    var tetti = [120, 110, 100, 200, 50, 120];
+    // avanzo per busta (mesi chiusi) o speso finora (mese in corso)
+    var mesi = [
+      { nome: 'Giugno', breve: 'Giu', av: [10, 0.5, 8, 20, -6, 15.5] },
+      { nome: 'Luglio', breve: 'Lug', av: [5, 0.5, -20, -30, -8, 21.5] },
+      { nome: 'Agosto', breve: 'Ago', av: [15, 0.5, -10, 5, -4, 5.5] },
+      { nome: 'Settembre', breve: 'Set', av: [18, 0.5, 6, 25, -9, 19.5] },
+      { nome: 'Ottobre', breve: 'Ott', av: [22, 0.5, 14, 31, -12, 40.5] },
+      { nome: 'Novembre', breve: 'Nov', speso: [63, 89.5, 62, 131, 58, 45], inCorso: true }
+    ];
+    var H = 130, MAX = 780;
+    var sel = this.state.mese;
+    var lista = mesi.map(function (m, i) {
+      var speso = m.inCorso ? m.speso.reduce(function (a, b) { return a + b; }, 0)
+        : tetti.reduce(function (a, t, k) { return a + t - m.av[k]; }, 0);
+      m.tot = speso;
+      var over = speso > 700;
+      var isSel = i === sel;
+      var color;
+      if (m.inCorso) color = isSel ? accent : '#CFE6DF';
+      else if (over) color = isSel ? '#B4410E' : '#F2C2A8';
+      else color = isSel ? accent : '#CFE6DF';
+      var h = Math.round((speso / MAX) * H);
+      return {
+        breve: m.breve,
+        sel: isSel ? 'true' : 'false',
+        aria: m.nome + ': speso ' + f(speso) + ' euro' + (m.inCorso ? ', in corso' : ''),
+        pick: function () { self.setState({ mese: i }); },
+        barStyle: 'display: block; width: 100%; height: ' + h + 'px; border-radius: 6px 6px 3px 3px; background: ' + color + ';' +
+          (m.inCorso ? ' background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.35) 0 4px, transparent 4px 8px);' : ''),
+        labelStyle: 'text-align: center; font-size: 12px; ' + (isSel ? 'font-weight: 600; color: #1A1A18' : 'color: #5F5E58')
+      };
+    });
+    var m = mesi[sel];
+    var righe = buste.map(function (nome, k) {
+      var speso = m.inCorso ? m.speso[k] : tetti[k] - m.av[k];
+      var fin = tetti[k] - speso;
+      var neg = fin < 0;
+      return {
+        nome: nome,
+        messo: '€ ' + f(tetti[k]),
+        speso: '€ ' + f(speso),
+        finale: neg ? '− € ' + f(-fin) : (m.inCorso ? '€ ' + f(fin) : '+ € ' + f(fin)),
+        finaleStyle: 'font-weight: 600; color: ' + (neg ? '#B4410E' : '#1A1A18')
+      };
+    });
+    var totFin = 700 - m.tot;
+    return {
+      accent: accent,
+      mesi: lista,
+      meseNome: m.nome + (m.inCorso ? ' · in corso' : ''),
+      meseSpeso: f(m.tot),
+      lineaBottom: Math.round((700 / MAX) * H) + 'px',
+      etichettaBottom: (Math.round((700 / MAX) * H) + 3) + 'px',
+      righe: righe,
+      colonnaFinale: m.inCorso ? 'Resta' : 'Avanzo',
+      totSpeso: '€ ' + f(m.tot),
+      totFinale: totFin < 0 ? '− € ' + f(-totFin) : (m.inCorso ? '€ ' + f(totFin) : '+ € ' + f(totFin)),
+      totFinaleStyle: 'color: ' + (totFin < 0 ? '#B4410E' : accent)
+    };
+  }
+}
+</script>
+</body>
+</html>

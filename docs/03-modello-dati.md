@@ -1,0 +1,151 @@
+# 03 · Modello dati
+
+Database IndexedDB tramite Dexie, nome `app-finanze`. Tutti gli importi in **centesimi interi**, tutte le date `YYYY-MM-DD` (ora locale), i timestamp ISO completi. Id: `crypto.randomUUID()`.
+
+## Tipi TypeScript
+
+```ts
+type Cents = number;          // intero
+type ISODate = string;        // 'YYYY-MM-DD'
+type PeriodId = string;       // 'YYYY-MM' del mese in cui il periodo finisce
+
+interface Settings {
+  id: 'settings';
+  periodStartDay: number;          // default 27
+  cardReserve: Cents | null;       // null finché non calibrata al primo confronto (R5)
+  giftsQuota: Cents;               // Regali & Imprevisti, default 2500
+  lastTravelQuota: Cents;          // ultima quota Viaggi usata, default 5000
+  lastEnvelopeId: string | null;   // per la preselezione (R12)
+  onboardingDone: boolean;
+}
+
+interface Envelope {
+  id: string;
+  name: string;            // 'Spesa alimentare'
+  shortName: string;       // 'Spesa' (pulsanti, filtri)
+  kind: 'spendable' | 'committed';
+  cap: Cents;              // tetto attuale
+  order: number;
+  archived: boolean;
+}
+
+interface Period {
+  id: PeriodId;            // '2026-11'
+  name: string;            // 'Novembre'
+  calendarStart: ISODate;  // '2026-10-27'
+  calendarEnd: ISODate;    // '2026-11-26'
+  startedAt: ISODate;      // quando è stato fatto "Inizio del mese"
+  salary: Cents;
+  allocations: Record<string, Cents>;  // envelopeId → tetto fotografato
+  carryIn: Record<string, Cents>;      // envelopeId → riporto (opzione B), anche negativo
+  unassigned: Cents;                   // "da assegnare" iniziale (opzione C) — le entrate si sommano a runtime
+  travelQuota: Cents;
+  giftsQuota: Cents;
+  closedAt: string | null;
+  leftoverChoice: 'toSavings' | 'carryOver' | 'half' | 'deficit' | null;
+  leftovers: Record<string, Cents> | null;  // snapshot alla chiusura
+}
+
+type TxType = 'expense' | 'refund' | 'income' | 'loan' | 'loanRepayment';
+
+interface Transaction {
+  id: string;
+  periodId: PeriodId;
+  date: ISODate;
+  type: TxType;
+  amount: Cents;                 // sempre positivo; il segno lo dà il tipo
+  envelopeId: string | null;     // expense/refund
+  note: string;                  // nota o motivo
+  card: 'quotidiano' | 'extra' | null;
+  source: 'manual' | 'recurring' | 'reconcile' | 'inbox';
+  recurringId: string | null;
+  personId: string | null;       // loan/loanRepayment
+  loanAllocations: { loanId: string; amount: Cents }[] | null; // solo loanRepayment (per l'annulla)
+  createdAt: string;
+}
+
+interface Recurring {
+  id: string;
+  name: string;
+  amount: Cents;
+  dayOfMonth: number;      // 1..31
+  envelopeId: string;      // default Rate & Abbonamenti
+  card: 'quotidiano' | 'extra';
+  active: boolean;
+  createdAt: string;
+}
+
+interface Person { id: string; name: string; createdAt: string; }
+
+interface Loan {
+  id: string;
+  personId: string;
+  date: ISODate;
+  reason: string;
+  amount: Cents;
+  remaining: Cents;
+  closedAt: string | null;
+  transactionId: string;   // il movimento 'loan' che l'ha creato
+  createdAt: string;
+}
+
+interface Pot {               // specchio dei salvadanai Revolut
+  id: 'savings' | 'travel' | 'gifts';
+  name: string;               // 'Risparmi' | 'Viaggi' | 'Regali & Imprevisti'
+  balance: Cents;             // aggiornato da R6, R7, R9; correggibile a mano
+}
+
+interface Reconciliation {
+  id: string;
+  date: ISODate;
+  periodId: PeriodId;
+  budgetPocket: Cents;
+  quotidiano: Cents;
+  extra: Cents;
+  expected: Cents;
+  diff: Cents;
+  outcome: 'ok' | 'calibrated' | 'missingExpense' | 'extraIncome' | 'ignored';
+}
+```
+
+## Schema Dexie (versione 1)
+
+```ts
+db.version(1).stores({
+  settings: 'id',
+  envelopes: 'id, order',
+  periods: 'id, closedAt',
+  transactions: 'id, periodId, date, envelopeId, type, personId, [recurringId+periodId]',
+  recurring: 'id',
+  people: 'id',
+  loans: 'id, personId, closedAt, date',
+  pots: 'id',
+  reconciliations: 'id, date',
+});
+```
+
+Ogni modifica futura allo schema = nuova `version(n)` con `upgrade()`; non modificare mai una versione già rilasciata.
+
+## Dati iniziali (seed al primo avvio)
+
+- `Settings`: periodStartDay 27, cardReserve null, giftsQuota 2500, lastTravelQuota 5000.
+- `Envelope` (ordine):
+  1. Trasporti / Trasporti — spendable — 10000
+  2. Vita / Vita — spendable — 20000
+  3. Spesa alimentare / Spesa — spendable — 5000
+  4. Shopping / Shopping — spendable — 12000
+  5. Casa & Servizi / Casa — committed — 12000
+  6. Rate & Abbonamenti / Rate — committed — 11000
+- `Recurring` (envelope Rate & Abbonamenti, card extra, active): Rata iPhone 7000 giorno 1 · Spotify 850 giorno 5 · Disney+ 600 giorno 12 · Prime 500 giorno 15 · iCloud 100 giorno 24. **I giorni sono da verificare con l'utente al primo avvio** (schermata di onboarding: "Controlla giorni e importi").
+- `Pot`: savings, travel, gifts con balance 0 → l'onboarding chiede i saldi attuali.
+- Nessun periodo: il primo avvio porta a "Inizio del mese".
+
+## Fixture per sviluppo e test
+
+Crea `src/db/fixtures.ts` con i dati di esempio dei documenti (oggi = 2026-11-19, periodo Novembre aperto, periodi Giugno–Ottobre chiusi con gli avanzi di R11, movimenti di Novembre di `04-schermate.md` § Movimenti, prestiti di R9). Attivabile da un parametro `?demo=1` solo in sviluppo, così le schermate si vedono piene come nei mockup.
+
+Nota: la fixture contiene anche l'entrata "Interessi conto risparmio" da € 1,12 (17 nov), quindi con la fixture completa "Puoi ancora spendere" vale € 175,12 (174 + 1,12 da assegnare). I test di R3 usano invece `daAssegnare = 0` → € 174.
+
+## Backup
+
+In "Imposta": **Esporta backup** (file JSON con tutte le tabelle + `schemaVersion` + data) tramite `navigator.share` se disponibile, altrimenti download; **Importa backup** con conferma (sostituisce tutto). È l'unica protezione contro la perdita dei dati: ricordalo all'utente con un promemoria se l'ultimo backup ha più di 30 giorni.

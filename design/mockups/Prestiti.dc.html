@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Prestiti</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E6B5C}a:hover{color:#0A4F44}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F3EF; font-family: Inter, system-ui, sans-serif; color: #1A1A18; display: flex; flex-direction: column; gap: 14px; padding: 24px 20px 24px 20px; font-variant-numeric: tabular-nums; position: relative; overflow: hidden">
+
+<header style="display: flex; align-items: center; gap: 12px">
+<a href="Main.dc.html" aria-label="Indietro" style="width: 44px; height: 44px; border-radius: 22px; background: #FFFFFF; border: 1px solid #E4E2DC; display: flex; align-items: center; justify-content: center; box-sizing: border-box; flex-shrink: 0">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1A18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+</a>
+<div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+<h1 style="margin: 0; font-family: 'Space Grotesk', Inter, sans-serif; font-size: 22px; font-weight: 600">Prestiti</h1>
+<p style="margin: 0; font-size: 12px; color: #5F5E58">Escono e rientrano da Risparmi</p>
+</div>
+<a href="NuovaSpesa.dc.html" style="height: 44px; padding: 0 14px; border-radius: 22px; background: #FFFFFF; border: 1px solid #E4E2DC; font: 600 13px Inter, sans-serif; color: #1A1A18; display: flex; align-items: center; text-decoration: none; box-sizing: border-box">+ Nuovo</a>
+</header>
+
+<section style="background: #1A1A18; color: #FFFFFF; border-radius: 20px; padding: 16px 18px; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<p style="margin: 0; font-size: 13px; color: #D4D2CB">Da riavere</p>
+<p style="margin: 0; font-family: 'Space Grotesk', Inter, sans-serif; font-size: 36px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1">€ {{totale}}</p>
+</div>
+<p style="margin: 0 0 4px 0; font-size: 12px; color: #D4D2CB; text-align: right">{{totaleSub}}</p>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 500; color: #5F5E58; padding: 0 2px">Chi ti deve · tocca un nome</h2>
+
+<sc-if value="{{nessuno}}" hint-placeholder-val="{{ false }}">
+<div style="background: #FFFFFF; border-radius: 16px; padding: 20px 16px; text-align: center; font-size: 14px; color: #5F5E58">Nessuno ti deve niente. Tutto in pari.</div>
+</sc-if>
+
+<sc-for list="{{persone}}" as="p" hint-placeholder-count="2">
+<div style="{{p.cardStyle}}">
+<button aria-expanded="{{p.aperta}}" onClick="{{p.toggle}}" style="width: 100%; min-height: 64px; padding: 10px 14px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 12px; font-family: Inter, sans-serif; color: #1A1A18; text-align: left">
+<span style="{{p.avatarStyle}}">{{p.iniziale}}</span>
+<span style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0">
+<span style="font-size: 15px; font-weight: 600">{{p.nome}}</span>
+<span style="font-size: 12px; color: #5F5E58">{{p.sub}}</span>
+</span>
+<span style="font-family: 'Space Grotesk', Inter, sans-serif; font-size: 18px; font-weight: 600">€ {{p.totale}}</span>
+<svg style="{{p.chevronStyle}}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5F5E58" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+
+<sc-if value="{{p.aperta}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 0 14px 14px 14px; display: flex; flex-direction: column; gap: 10px">
+<ul style="list-style: none; margin: 0; padding: 0; border-top: 1px solid #EFEDE8">
+<sc-for list="{{p.voci}}" as="v" hint-placeholder-count="3">
+<li style="display: flex; align-items: center; gap: 10px; min-height: 50px; border-bottom: 1px solid #EFEDE8">
+<span style="display: flex; flex-direction: column; gap: 1px; flex-grow: 1; min-width: 0">
+<span style="{{v.motivoStyle}}">{{v.motivo}}</span>
+<span style="font-size: 12px; color: #5F5E58">{{v.data}}</span>
+</span>
+<span style="display: flex; flex-direction: column; align-items: flex-end; gap: 1px">
+<span style="{{v.importoStyle}}">€ {{v.importo}}</span>
+<span style="{{v.statoStyle}}">{{v.stato}}</span>
+</span>
+</li>
+</sc-for>
+</ul>
+<label for="rest" style="font-size: 13px; font-weight: 600">Ti ha restituito</label>
+<div style="display: flex; gap: 8px">
+<div style="display: flex; align-items: center; gap: 6px; flex-grow: 1; height: 48px; box-sizing: border-box; border: 1px solid #DAD8D1; border-radius: 12px; padding: 0 12px; background: #FFFFFF">
+<span style="font: 600 18px 'Space Grotesk', Inter, sans-serif">€</span>
+<input id="rest" type="text" inputmode="decimal" value="{{rest}}" onChange="{{onRest}}" placeholder="0" style="border: none; outline: none; width: 100%; min-width: 0; font: 600 18px 'Space Grotesk', Inter, sans-serif; color: #1A1A18; background: transparent">
+</div>
+<button onClick="{{p.tutto}}" style="height: 48px; padding: 0 12px; border-radius: 12px; border: 1px solid #E4E2DC; background: #F4F3EF; font: 600 13px Inter, sans-serif; color: #1A1A18; cursor: pointer">Tutto</button>
+<button onClick="{{p.registra}}" style="{{registraStyle}}">Registra</button>
+</div>
+<p style="margin: 0; font-size: 12px; color: #5F5E58; line-height: 1.4">{{anteprima}}</p>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</section>
+
+<div style="flex-grow: 1"></div>
+
+<a href="#" style="display: flex; justify-content: space-between; align-items: center; min-height: 48px; padding: 0 16px; border-radius: 14px; background: #FFFFFF; text-decoration: none; color: #1A1A18; font-size: 14px; font-weight: 500">
+<span>Prestiti chiusi</span>
+<span style="display: flex; align-items: center; gap: 6px; color: #5F5E58; font-size: 13px">{{chiusiTesto}}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5F5E58" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span>
+</a>
+
+<sc-if value="{{toast}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="position: absolute; left: 20px; right: 20px; bottom: 24px; background: #1A1A18; color: #FFFFFF; border-radius: 14px; padding: 0 8px 0 16px; min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.18)">
+<span style="font-size: 13px; line-height: 1.35">{{toastTesto}}</span>
+<button onClick="{{annulla}}" style="height: 44px; padding: 0 12px; border: none; background: transparent; color: #9FD8CB; font: 600 14px Inter, sans-serif; cursor: pointer; flex-shrink: 0">Annulla</button>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0E6B5C","options":["#0E6B5C","#2F4FB3","#6B3FA0","#1A1A18"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      aperta: 'Mamma',
+      rest: '25',
+      chiusi: 0,
+      toast: '',
+      prima: null,
+      dati: {
+        'Mamma': [
+          { data: '23 ott', motivo: 'Monete Homescapes', importo: 10 },
+          { data: '26 ott', motivo: 'Monete Homescapes', importo: 10 },
+          { data: '27 ott', motivo: 'Monete Homescapes', importo: 20 }
+        ],
+        'Marco': [
+          { data: '12 nov', motivo: 'Biglietto concerto', importo: 15 }
+        ]
+      }
+    };
+  }
+  renderVals() {
+    var self = this;
+    var accent = this.props.accent ?? '#0E6B5C';
+    var f = function (v) { return v.toLocaleString('it-IT', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }); };
+    var dati = this.state.dati;
+    var somma = function (l) { return l.reduce(function (a, x) { return a + x.importo; }, 0); };
+    var nomi = Object.keys(dati).filter(function (n) { return dati[n].length > 0; });
+    var totale = nomi.reduce(function (a, n) { return a + somma(dati[n]); }, 0);
+    var rest = parseFloat(String(this.state.rest || '').replace(',', '.'));
+    if (isNaN(rest) || rest < 0) rest = 0;
+
+    var anteprima = '';
+    var applicatoAperta = 0;
+
+    var persone = nomi.map(function (n) {
+      var l = dati[n];
+      var dovuto = somma(l);
+      var aperta = self.state.aperta === n;
+      var applicato = aperta ? Math.min(rest, dovuto) : 0;
+      if (aperta) {
+        applicatoAperta = applicato;
+        if (applicato === 0) anteprima = 'L’app chiude per primi i prestiti più vecchi.';
+        else if (applicato >= dovuto) anteprima = 'Si chiude tutto. Rimetti € ' + f(applicato) + ' in Risparmi.';
+        else anteprima = 'Ti dovrà ancora € ' + f(dovuto - applicato) + '. Rimetti € ' + f(applicato) + ' in Risparmi.';
+      }
+      var residuo = applicato;
+      var voci = l.map(function (x) {
+        var copre = Math.min(residuo, x.importo);
+        residuo -= copre;
+        var chiuso = copre >= x.importo;
+        var parziale = copre > 0 && !chiuso;
+        return {
+          data: x.data, motivo: x.motivo, importo: f(x.importo),
+          stato: chiuso ? 'si chiude' : (parziale ? 'restano € ' + f(x.importo - copre) : ''),
+          statoStyle: 'font-size: 12px; font-weight: 600; color: ' + (chiuso ? accent : '#A86A00'),
+          motivoStyle: 'font-size: 14px; font-weight: 500; ' + (chiuso ? 'color: #5F5E58; text-decoration: line-through' : 'color: #1A1A18'),
+          importoStyle: 'font-size: 14px; font-weight: 600; ' + (chiuso ? 'color: #5F5E58; text-decoration: line-through' : 'color: #1A1A18')
+        };
+      });
+      return {
+        nome: n,
+        iniziale: n.charAt(0),
+        totale: f(dovuto),
+        sub: (l.length === 1 ? '1 prestito' : l.length + ' prestiti') + ' · dal ' + l[0].data,
+        aperta: aperta,
+        voci: voci,
+        toggle: function () { self.setState({ aperta: aperta ? '' : n, rest: '' }); },
+        tutto: function () { self.setState({ rest: String(dovuto) }); },
+        registra: function () {
+          if (applicato <= 0) return;
+          var r = applicato, nuovi = [], chiusi = 0;
+          l.forEach(function (x) {
+            if (r >= x.importo) { r -= x.importo; chiusi++; }
+            else if (r > 0) { nuovi.push(Object.assign({}, x, { importo: x.importo - r })); r = 0; }
+            else nuovi.push(x);
+          });
+          var d = Object.assign({}, dati); d[n] = nuovi;
+          self.setState({
+            prima: { dati: dati, chiusi: self.state.chiusi },
+            dati: d,
+            chiusi: self.state.chiusi + chiusi,
+            rest: '',
+            aperta: nuovi.length ? n : '',
+            toast: 'Registrati € ' + f(applicato) + ' da ' + n + (chiusi ? ' · ' + (chiusi === 1 ? '1 prestito chiuso' : chiusi + ' prestiti chiusi') : '')
+          });
+        },
+        cardStyle: 'background: #FFFFFF; border-radius: 16px; overflow: hidden; ' + (aperta ? 'box-shadow: 0 0 0 2px ' + accent + ';' : ''),
+        avatarStyle: 'width: 36px; height: 36px; border-radius: 18px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font: 600 15px \'Space Grotesk\', Inter, sans-serif; ' +
+          (aperta ? 'background: ' + accent + '; color: #FFFFFF' : 'background: #EFEDE8; color: #1A1A18'),
+        chevronStyle: 'flex-shrink: 0; transition: transform 0.15s; ' + (aperta ? 'transform: rotate(180deg)' : '')
+      };
+    });
+
+    return {
+      totale: f(totale),
+      totaleSub: nomi.length === 1 ? 'da 1 persona' : 'da ' + nomi.length + ' persone',
+      persone: persone,
+      nessuno: nomi.length === 0,
+      rest: this.state.rest,
+      onRest: function (e) { self.setState({ rest: e.target.value }); },
+      anteprima: anteprima,
+      registraStyle: 'height: 48px; padding: 0 14px; border-radius: 12px; border: none; font: 600 14px Inter, sans-serif; color: #FFFFFF; cursor: pointer; background: ' + (applicatoAperta > 0 ? accent : '#A9A7A0'),
+      chiusiTesto: this.state.chiusi ? this.state.chiusi + ' · storico' : 'storico',
+      toast: !!this.state.toast,
+      toastTesto: this.state.toast,
+      annulla: function () {
+        var p = self.state.prima;
+        if (!p) { self.setState({ toast: '' }); return; }
+        self.setState({ dati: p.dati, chiusi: p.chiusi, toast: '', prima: null, aperta: Object.keys(p.dati)[0] });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

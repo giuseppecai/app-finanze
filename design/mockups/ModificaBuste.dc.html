@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Modifica buste</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E6B5C}a:hover{color:#0A4F44}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F3EF; font-family: Inter, system-ui, sans-serif; color: #1A1A18; display: flex; flex-direction: column; gap: 14px; padding: 24px 20px 24px 20px; font-variant-numeric: tabular-nums">
+
+<header style="display: flex; align-items: center; gap: 12px">
+<a href="Main.dc.html" aria-label="Indietro" style="width: 44px; height: 44px; border-radius: 22px; background: #FFFFFF; border: 1px solid #E4E2DC; display: flex; align-items: center; justify-content: center; box-sizing: border-box; flex-shrink: 0">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1A18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+</a>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<h1 style="margin: 0; font-family: 'Space Grotesk', Inter, sans-serif; font-size: 22px; font-weight: 600">Buste</h1>
+<p style="margin: 0; font-size: 12px; color: #5F5E58">Le modifiche valgono da questo mese</p>
+</div>
+</header>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 500; color: #5F5E58; padding: 0 2px">Da spendere</h2>
+<ul style="list-style: none; margin: 0; padding: 0 14px; background: #FFFFFF; border-radius: 16px">
+<sc-for list="{{spendibili}}" as="b" hint-placeholder-count="4">
+<li style="{{b.rowStyle}}">
+<span style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0">
+<span style="font-size: 15px; font-weight: 500">{{b.nome}}</span>
+<span style="{{b.mediaStyle}}">{{b.media}}</span>
+</span>
+<span style="display: flex; align-items: center; gap: 4px; flex-shrink: 0">
+<button onClick="{{b.meno}}" aria-label="Riduci {{b.nome}} di 5 euro" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #E4E2DC; background: #F4F3EF; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1A18" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg>
+</button>
+<span style="width: 64px; text-align: center; font: 600 17px 'Space Grotesk', Inter, sans-serif">€ {{b.tetto}}</span>
+<button onClick="{{b.piu}}" aria-label="Aumenta {{b.nome}} di 5 euro" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #E4E2DC; background: #F4F3EF; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1A18" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+</button>
+</span>
+</li>
+</sc-for>
+</ul>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 500; color: #5F5E58; padding: 0 2px">Impegnate · si scalano da sole</h2>
+<ul style="list-style: none; margin: 0; padding: 0 14px; background: #FFFFFF; border-radius: 16px">
+<sc-for list="{{impegnate}}" as="b" hint-placeholder-count="2">
+<li style="{{b.rowStyle}}">
+<span style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0">
+<span style="font-size: 15px; font-weight: 500">{{b.nome}}</span>
+<span style="font-size: 12px; color: #5F5E58">{{b.dettaglio}}</span>
+</span>
+<span style="display: flex; align-items: center; gap: 4px; flex-shrink: 0">
+<button onClick="{{b.meno}}" aria-label="Riduci {{b.nome}} di 5 euro" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #E4E2DC; background: #F4F3EF; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1A18" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg>
+</button>
+<span style="width: 64px; text-align: center; font: 600 17px 'Space Grotesk', Inter, sans-serif">€ {{b.tetto}}</span>
+<button onClick="{{b.piu}}" aria-label="Aumenta {{b.nome}} di 5 euro" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #E4E2DC; background: #F4F3EF; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1A18" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+</button>
+</span>
+</li>
+</sc-for>
+</ul>
+</section>
+
+<div style="background: #FFFFFF; border-radius: 16px; padding: 0 14px; min-height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<span style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 15px; font-weight: 500">Il mese inizia</span>
+<span style="font-size: 12px; color: #5F5E58">Quando arriva lo stipendio</span>
+</span>
+<button style="height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid #E4E2DC; background: #F4F3EF; font: 600 15px 'Space Grotesk', Inter, sans-serif; color: #1A1A18; cursor: pointer">il 27</button>
+</div>
+
+<button style="align-self: flex-start; height: 44px; padding: 0 14px; border-radius: 22px; border: 1px dashed #8E8C85; background: transparent; font: 600 14px Inter, sans-serif; color: #1A1A18; cursor: pointer; display: flex; align-items: center; gap: 6px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+Nuova busta</button>
+
+<div style="flex-grow: 1"></div>
+
+<section style="background: #1A1A18; color: #FFFFFF; border-radius: 16px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13px; color: #D4D2CB">Totale buste</span>
+<span style="font-size: 12px; color: #D4D2CB">{{differenza}}</span>
+</div>
+<span style="font-family: 'Space Grotesk', Inter, sans-serif; font-size: 26px; font-weight: 600">€ {{totale}}</span>
+</section>
+
+<a href="Main.dc.html" style="height: 56px; border-radius: 16px; background: {{accent}}; color: #FFFFFF; font: 600 16px Inter, sans-serif; display: flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0">Salva le buste</a>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0E6B5C","options":["#0E6B5C","#2F4FB3","#6B3FA0","#1A1A18"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tetti: { tra: 100, vita: 200, spesa: 50, shop: 120, casa: 120, rate: 110 } };
+  }
+  renderVals() {
+    var self = this;
+    var accent = this.props.accent ?? '#0E6B5C';
+    var t = this.state.tetti;
+    var set = function (id, v) {
+      var n = Object.assign({}, self.state.tetti);
+      n[id] = Math.max(0, v);
+      self.setState({ tetti: n });
+    };
+    var mk = function (list) {
+      return list.map(function (b, i) {
+        return {
+          nome: b.nome,
+          dettaglio: b.dettaglio || '',
+          tetto: t[b.id],
+          media: b.media == null ? '' : (b.media > t[b.id] ? 'Spendi in media € ' + b.media + ' · più del tetto' : 'Spendi in media € ' + b.media),
+          mediaStyle: 'font-size: 12px; ' + (b.media != null && b.media > t[b.id] ? 'color: #B4410E; font-weight: 500' : 'color: #5F5E58'),
+          meno: function () { set(b.id, t[b.id] - 5); },
+          piu: function () { set(b.id, t[b.id] + 5); },
+          rowStyle: 'display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 6px 0; box-sizing: border-box; ' + (i < list.length - 1 ? 'border-bottom: 1px solid #EFEDE8' : '')
+        };
+      });
+    };
+    var spendibili = mk([
+      { id: 'tra', nome: 'Trasporti', media: 100 },
+      { id: 'vita', nome: 'Vita', media: 190 },
+      { id: 'spesa', nome: 'Spesa alimentare', media: 58 },
+      { id: 'shop', nome: 'Shopping', media: 100 }
+    ]);
+    var impegnate = mk([
+      { id: 'casa', nome: 'Casa & Servizi', dettaglio: 'Bollette e spese di casa' },
+      { id: 'rate', nome: 'Rate & Abbonamenti', dettaglio: '5 voci · si scalano da sole' }
+    ]);
+    var tot = Object.keys(t).reduce(function (a, k) { return a + t[k]; }, 0);
+    var diff = tot - 700;
+    return {
+      accent: accent,
+      spendibili: spendibili,
+      impegnate: impegnate,
+      totale: tot,
+      differenza: diff === 0 ? 'Va nel Budget del mese a inizio mese' : (diff > 0 ? '€ ' + diff + ' in più rispetto a prima' : '€ ' + (-diff) + ' in meno rispetto a prima')
+    };
+  }
+}
+</script>
+</body>
+</html>

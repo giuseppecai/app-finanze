@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Home – Buste</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E6B5C}a:hover{color:#0A4F44}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F3EF; font-family: Inter, system-ui, sans-serif; color: #1A1A18; display: flex; flex-direction: column; position: relative; overflow: hidden; font-variant-numeric: tabular-nums">
+
+<header style="display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 20px 0 20px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<h1 style="margin: 0; font-family: 'Space Grotesk', Inter, sans-serif; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Novembre</h1>
+<p style="margin: 0; font-size: 13px; color: #5F5E58">Stipendio tra 8 giorni · 27 ott – 26 nov</p>
+</div>
+<button aria-label="Impostazioni" style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid #E4E2DC; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A18" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg>
+</button>
+</header>
+
+<section style="margin: 12px 20px 0 20px; background: #1A1A18; color: #FFFFFF; border-radius: 20px; padding: 14px 20px; display: flex; flex-direction: column; gap: 4px">
+<p style="margin: 0; font-size: 13px; color: #D4D2CB">Puoi ancora spendere</p>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 12px">
+<p style="margin: 0; font-family: 'Space Grotesk', Inter, sans-serif; font-size: 40px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.05">€ {{spendibile}}</p>
+<button onClick="{{apri}}" style="height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid #4A4943; background: #2A2926; color: #FFFFFF; font: 600 13px Inter, sans-serif; display: flex; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4L3 8l4 4"></path><path d="M3 8h13"></path><path d="M17 20l4-4-4-4"></path><path d="M21 16H8"></path></svg>
+Confronta</button>
+</div>
+<sc-if value="{{fineMese}}" hint-placeholder-val="{{ true }}">
+<a href="ChiusuraMese.dc.html" style="margin-top: 4px; font-size: 13px; font-weight: 600; color: #9FD8CB; text-decoration: none; min-height: 32px; display: flex; align-items: center">Stipendio arrivato? Chiudi il mese →</a>
+</sc-if>
+<sc-if value="{{nonFineMese}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; font-size: 12px; color: #D4D2CB">Ultimo confronto con Revolut: 3 giorni fa</p>
+</sc-if>
+</section>
+
+<div style="display: flex; justify-content: space-between; align-items: baseline; padding: 14px 20px 8px 20px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Buste</h2>
+<a href="ModificaBuste.dc.html" style="font-size: 13px; font-weight: 600; text-decoration: none; min-height: 44px; display: flex; align-items: center; margin: -14px 0">Modifica</a>
+</div>
+
+<ul style="list-style: none; margin: 0; padding: 0 20px; display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{spendibili}}" as="b" hint-placeholder-count="4">
+<li>
+<a href="{{b.href}}" style="background: #FFFFFF; border-radius: 14px; padding: 7px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1A1A18">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 15px; font-weight: 500">{{b.nome}}</span>
+<span style="display: flex; align-items: baseline; gap: 6px">
+<span style="{{b.amountStyle}}">{{b.amount}}</span>
+<span style="font-size: 12px; color: #5F5E58">{{b.label}}</span>
+</span>
+</div>
+<div style="height: 6px; border-radius: 3px; background: #ECEAE4; overflow: hidden">
+<div style="{{b.barStyle}}"></div>
+</div>
+</a>
+</li>
+</sc-for>
+</ul>
+<div style="display: flex; justify-content: space-between; align-items: baseline; padding: 10px 22px 6px 22px; font-size: 12px; color: #5F5E58">
+<span>Impegnate · si scalano da sole</span>
+<span>€ {{impegnato}} rimasti</span>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0 20px; display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{impegnate}}" as="b" hint-placeholder-count="2">
+<li>
+<a href="{{b.href}}" style="background: #FFFFFF; border-radius: 14px; padding: 7px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1A1A18">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 15px; font-weight: 500">{{b.nome}}</span>
+<span style="display: flex; align-items: baseline; gap: 6px">
+<span style="{{b.amountStyle}}">{{b.amount}}</span>
+<span style="font-size: 12px; color: #5F5E58">{{b.label}}</span>
+</span>
+</div>
+<div style="height: 6px; border-radius: 3px; background: #ECEAE4; overflow: hidden">
+<div style="{{b.barStyle}}"></div>
+</div>
+</a>
+</li>
+</sc-for>
+</ul>
+
+<section aria-label="Messi da parte" style="margin: 10px 20px 0 20px; background: #FFFFFF; border-radius: 14px; padding: 10px 14px 12px 14px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Messi da parte</h2>
+<span style="font-family: 'Space Grotesk', Inter, sans-serif; font-size: 18px; font-weight: 600">€ 1.495</span>
+</div>
+<div aria-hidden="true" style="display: flex; gap: 3px; height: 8px">
+<div style="flex: 1240 1 0; border-radius: 4px; background: {{accent}}"></div>
+<div style="flex: 180 1 0; min-width: 8px; border-radius: 4px; background: #6FB3A5"></div>
+<div style="flex: 75 1 0; min-width: 8px; border-radius: 4px; background: #C3E0D8"></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5F5E58; white-space: nowrap"><span style="width: 8px; height: 8px; border-radius: 4px; background: {{accent}}; flex-shrink: 0"></span>Risparmi</span>
+<span style="font-size: 15px; font-weight: 600">€ 1.240</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5F5E58; white-space: nowrap"><span style="width: 8px; height: 8px; border-radius: 4px; background: #6FB3A5; flex-shrink: 0"></span>Viaggi</span>
+<span style="font-size: 15px; font-weight: 600">€ 180</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5F5E58; white-space: nowrap"><span style="width: 8px; height: 8px; border-radius: 4px; background: #C3E0D8; flex-shrink: 0"></span>Regali &amp; Imprev.</span>
+<span style="font-size: 15px; font-weight: 600">€ 75</span>
+</div>
+</div>
+<a href="Prestiti.dc.html" style="display: flex; justify-content: space-between; align-items: center; min-height: 36px; margin-bottom: -6px; border-top: 1px solid #EFEDE8; padding-top: 4px; text-decoration: none; color: #1A1A18">
+<span style="font-size: 13px; color: #5F5E58">Prestiti da riavere</span>
+<span style="display: flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 600">€ 55<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5F5E58" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span>
+</a>
+</section>
+
+<nav aria-label="Navigazione principale" style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: #FFFFFF; border-top: 1px solid #E4E2DC; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding-bottom: 14px; box-sizing: border-box">
+<a href="Main.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: #1A1A18; font-size: 11px; font-weight: 600; min-height: 44px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"></rect><path d="M3 9l9 5 9-5"></path></svg>
+Buste</a>
+<a href="Movimenti.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: #5F5E58; font-size: 11px; font-weight: 500; min-height: 44px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9"></path></svg>
+Movimenti</a>
+<a href="NuovaSpesa.dc.html" aria-label="Aggiungi spesa" style="justify-self: center; width: 60px; height: 60px; border-radius: 30px; background: {{accent}}; display: flex; align-items: center; justify-content: center; margin-top: -26px; box-shadow: 0 6px 16px rgba(14,107,92,0.28)">
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+</a>
+<a href="Storico.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: #5F5E58; font-size: 11px; font-weight: 500; min-height: 44px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
+Storico</a>
+<a href="ModificaBuste.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: #5F5E58; font-size: 11px; font-weight: 500; min-height: 44px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
+Imposta</a>
+</nav>
+
+<sc-if value="{{aperto}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: rgba(26,26,24,0.45); display: flex; flex-direction: column; justify-content: flex-end">
+<div role="dialog" aria-label="Confronta con Revolut" style="background: #FFFFFF; border-radius: 24px 24px 0 0; padding: 20px 20px 28px 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 3px">
+<h2 style="margin: 0; font-family: 'Space Grotesk', Inter, sans-serif; font-size: 20px; font-weight: 600">Confronta con Revolut</h2>
+<p style="margin: 0; font-size: 13px; color: #5F5E58; line-height: 1.4">Apri Revolut e ricopia questi tre saldi. Ultimo confronto: 3 giorni fa.</p>
+</div>
+<button onClick="{{chiudi}}" aria-label="Chiudi" style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid #E4E2DC; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; padding: 0">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1A18" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+</button>
+</div>
+<sc-for list="{{campi}}" as="c" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<label for="{{c.id}}" style="font-size: 14px; font-weight: 500">{{c.nome}}</label>
+<div style="display: flex; align-items: center; gap: 6px; width: 140px; height: 44px; box-sizing: border-box; border: 1px solid #DAD8D1; border-radius: 12px; padding: 0 12px">
+<span style="font-size: 15px; color: #5F5E58">€</span>
+<input id="{{c.id}}" type="text" inputmode="decimal" value="{{c.val}}" onChange="{{c.onChange}}" style="border: none; outline: none; width: 100%; min-width: 0; text-align: right; font: 600 16px 'Space Grotesk', Inter, sans-serif; color: #1A1A18; background: transparent">
+</div>
+</div>
+</sc-for>
+<div style="display: flex; justify-content: space-between; font-size: 13px; color: #5F5E58; border-top: 1px solid #EFEDE8; padding-top: 10px">
+<span>Su Revolut € {{somma}}</span>
+<span>Nell'app € {{totale}}</span>
+</div>
+<div style="{{esitoStyle}}">
+<p style="margin: 0; font-size: 15px; font-weight: 600">{{esitoTitolo}}</p>
+<p style="margin: 0; font-size: 13px; line-height: 1.4">{{esitoTesto}}</p>
+<sc-if value="{{manca}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; gap: 8px; margin-top: 4px">
+<a href="NuovaSpesa.dc.html" style="height: 44px; padding: 0 14px; border-radius: 12px; background: #B4410E; color: #FFFFFF; font: 600 14px Inter, sans-serif; display: flex; align-items: center; text-decoration: none">Aggiungi la spesa</a>
+<button onClick="{{chiudi}}" style="height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid #C9764B; background: #FFFFFF; color: #6B2707; font: 600 14px Inter, sans-serif; cursor: pointer">Ignora per ora</button>
+</div>
+</sc-if>
+<sc-if value="{{inPiu}}" hint-placeholder-val="{{ false }}">
+<button style="align-self: flex-start; height: 44px; padding: 0 14px; border-radius: 12px; border: none; background: #1A1A18; color: #FFFFFF; font: 600 14px Inter, sans-serif; cursor: pointer; margin-top: 4px">Registra come entrata</button>
+</sc-if>
+</div>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"fineMese":{"editor":"boolean","default":true},"accent":{"editor":"color","default":"#0E6B5C","options":["#0E6B5C","#2F4FB3","#6B3FA0","#1A1A18"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { aperto: false, bm: '139,10', q: '62,00', ex: '38,00' };
+  }
+  renderVals() {
+    var self = this;
+    var fineMese = this.props.fineMese ?? true;
+    var accent = this.props.accent ?? '#0E6B5C';
+    var fmt = function (v) {
+      return v.toLocaleString('it-IT', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+    };
+    var mk = function (b) {
+      var rem = b.cap - b.sp;
+      var over = rem < 0;
+      var low = !over && rem / b.cap < 0.2;
+      var color = over ? '#B4410E' : (low ? '#A86A00' : (b.auto ? '#8E8C85' : accent));
+      var pct = Math.min(100, (b.sp / b.cap) * 100);
+      return {
+        rem: rem,
+        nome: b.nome,
+        href: b.href || 'Movimenti.dc.html',
+        amount: over ? '− € ' + fmt(-rem) : '€ ' + fmt(rem),
+        amountStyle: 'font-size: 15px; font-weight: 600; color: ' + (over ? '#B4410E' : '#1A1A18'),
+        label: over ? 'oltre il tetto' : 'di € ' + b.cap,
+        barStyle: 'width: ' + pct + '%; height: 100%; border-radius: 3px; background: ' + color
+      };
+    };
+    var spendibili = [
+      { nome: 'Trasporti', cap: 100, sp: 62 },
+      { nome: 'Vita', cap: 200, sp: 131 },
+      { nome: 'Spesa alimentare', cap: 50, sp: 58 },
+      { nome: 'Shopping', cap: 120, sp: 45 }
+    ].map(mk);
+    var impegnate = [
+      { nome: 'Casa & Servizi', cap: 120, sp: 63, auto: true },
+      { nome: 'Rate & Abbonamenti', cap: 110, sp: 89.5, auto: true, href: 'Abbonamenti.dc.html' }
+    ].map(mk);
+    var sum = function (l) { return l.reduce(function (a, b) { return a + b.rem; }, 0); };
+    var spend = sum(spendibili), imp = sum(impegnate);
+    var tot = spend + imp;
+    var num = function (v) { var n = parseFloat(String(v || '').replace(/\./g, '').replace(',', '.')); return isNaN(n) ? 0 : n; };
+    var f2 = function (v) { return v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    var somma = num(this.state.bm) + num(this.state.q) + num(this.state.ex);
+    var diff = Math.round((somma - tot) * 100) / 100;
+    var campi = [['bm', 'Budget del mese'], ['q', 'Carta Quotidiano'], ['ex', 'Carta Extra']].map(function (c) {
+      return { id: 'saldo-' + c[0], nome: c[1], val: self.state[c[0]], onChange: function (e) { var o = {}; o[c[0]] = e.target.value; self.setState(o); } };
+    });
+    var esitoTitolo, esitoTesto, esitoStyle;
+    var base = 'border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 4px; ';
+    if (diff === 0) {
+      esitoTitolo = 'Tutto in ordine';
+      esitoTesto = 'App e Revolut coincidono. Prossimo confronto tra una settimana.';
+      esitoStyle = base + 'background: #DCEFEA; color: #0A4F44';
+    } else if (diff < 0) {
+      esitoTitolo = 'Manca una spesa da € ' + f2(-diff);
+      esitoTesto = 'Su Revolut ci sono meno soldi di quanti ne risultano nelle buste.';
+      esitoStyle = base + 'background: #FBE7DC; color: #6B2707';
+    } else {
+      esitoTitolo = '€ ' + f2(diff) + ' in più su Revolut';
+      esitoTesto = 'Di solito sono gli interessi del conto risparmio o un rimborso.';
+      esitoStyle = base + 'background: #EFEDE8; color: #1A1A18';
+    }
+    return {
+      accent: accent, spendibili: spendibili, impegnate: impegnate,
+      spendibile: f2(spend), impegnato: f2(imp), totale: f2(tot),
+      fineMese: fineMese, nonFineMese: !fineMese,
+      aperto: this.state.aperto,
+      apri: function () { self.setState({ aperto: true }); },
+      chiudi: function () { self.setState({ aperto: false }); },
+      campi: campi, somma: f2(somma),
+      esitoTitolo: esitoTitolo, esitoTesto: esitoTesto, esitoStyle: esitoStyle,
+      manca: diff < 0, inPiu: diff > 0
+    };
+  }
+}
+</script>
+</body>
+</html>

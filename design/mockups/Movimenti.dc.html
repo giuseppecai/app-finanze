@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Movimenti</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E6B5C}a:hover{color:#0A4F44}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F3EF; font-family: Inter, system-ui, sans-serif; color: #1A1A18; display: flex; flex-direction: column; position: relative; overflow: hidden; font-variant-numeric: tabular-nums">
+
+<header style="display: flex; justify-content: space-between; align-items: flex-start; padding: 28px 20px 0 20px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<h1 style="margin: 0; font-family: 'Space Grotesk', Inter, sans-serif; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Movimenti</h1>
+<p style="margin: 0; font-size: 13px; color: #5F5E58">{{riepilogo}}</p>
+</div>
+<button style="height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid #E4E2DC; background: #FFFFFF; font: 600 13px Inter, sans-serif; color: #1A1A18; display: flex; align-items: center; gap: 6px; cursor: pointer">
+27 ott – 26 nov
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+</header>
+
+<div role="radiogroup" aria-label="Filtra per busta" style="display: flex; gap: 6px; padding: 14px 20px 6px 20px; overflow-x: auto; flex-shrink: 0">
+<sc-for list="{{filtri}}" as="f" hint-placeholder-count="7">
+<button role="radio" aria-checked="{{f.sel}}" onClick="{{f.pick}}" style="{{f.style}}">{{f.nome}}</button>
+</sc-for>
+</div>
+
+<sc-if value="{{filtrato}}" hint-placeholder-val="{{ false }}">
+<div style="margin: 6px 20px 0 20px; display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: #5F5E58">
+<span>{{busta}}: speso € {{spesoBusta}} di € {{tettoBusta}}</span>
+<span style="font-weight: 600; color: #1A1A18">resta {{restoBusta}}</span>
+</div>
+</sc-if>
+
+<div style="flex-grow: 1; overflow-y: auto; padding: 4px 20px 100px 20px; display: flex; flex-direction: column; gap: 14px">
+<sc-for list="{{giorni}}" as="g" hint-placeholder-count="4">
+<section style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; padding: 8px 2px 0 2px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 600; color: #5F5E58">{{g.etichetta}}</h2>
+<span style="font-size: 12px; color: #5F5E58">{{g.totale}}</span>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0 14px; background: #FFFFFF; border-radius: 14px">
+<sc-for list="{{g.voci}}" as="v" hint-placeholder-count="2">
+<li>
+<a href="NuovaSpesa.dc.html" aria-label="Modifica {{v.nome}}" style="{{v.rowStyle}}">
+<span style="{{v.iconStyle}}">{{v.iniziale}}</span>
+<span style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0">
+<span style="font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{v.nome}}</span>
+<span style="font-size: 12px; color: #5F5E58">{{v.dettaglio}}</span>
+</span>
+<span style="{{v.importoStyle}}">{{v.importo}}</span>
+</a>
+</li>
+</sc-for>
+</ul>
+</section>
+</sc-for>
+</div>
+
+<nav aria-label="Navigazione principale" style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: #FFFFFF; border-top: 1px solid #E4E2DC; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding-bottom: 14px; box-sizing: border-box">
+<a href="Main.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: #5F5E58; font-size: 11px; font-weight: 500; min-height: 44px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"></rect><path d="M3 9l9 5 9-5"></path></svg>
+Buste</a>
+<a href="Movimenti.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: #1A1A18; font-size: 11px; font-weight: 600; min-height: 44px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9"></path></svg>
+Movimenti</a>
+<a href="NuovaSpesa.dc.html" aria-label="Aggiungi spesa" style="justify-self: center; width: 60px; height: 60px; border-radius: 30px; background: {{accent}}; display: flex; align-items: center; justify-content: center; margin-top: -26px; box-shadow: 0 6px 16px rgba(14,107,92,0.28)">
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+</a>
+<a href="Storico.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: #5F5E58; font-size: 11px; font-weight: 500; min-height: 44px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
+Storico</a>
+<a href="ModificaBuste.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: #5F5E58; font-size: 11px; font-weight: 500; min-height: 44px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
+Imposta</a>
+</nav>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0E6B5C","options":["#0E6B5C","#2F4FB3","#6B3FA0","#1A1A18"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { filtro: 'Tutte' };
+  }
+  renderVals() {
+    var self = this;
+    var accent = this.props.accent ?? '#0E6B5C';
+    var f2 = function (v) { return v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    var tetti = { 'Casa': 120, 'Rate': 110, 'Trasporti': 100, 'Vita': 200, 'Spesa': 50, 'Shopping': 120 };
+    var nomiBusta = { 'Casa': 'Casa & Servizi', 'Rate': 'Rate & Abbonamenti', 'Spesa': 'Spesa alimentare' };
+    // [giorno, nome, busta, conto, importo, auto]
+    var dati = [
+      [19, 'Pranzo con colleghi', 'Vita', 'Quotidiano', -22],
+      [19, 'Conad', 'Spesa', 'Quotidiano', -24],
+      [18, 'Aperitivo', 'Vita', 'Quotidiano', -24],
+      [17, 'Interessi conto risparmio', null, 'Budget del mese', 1.12],
+      [16, 'Cinema', 'Vita', 'Quotidiano', -18],
+      [15, 'Prime', 'Rate', 'Extra', -5, true],
+      [15, 'Treno Roma – Capaccio', 'Trasporti', 'Quotidiano', -46],
+      [14, 'Zalando', 'Shopping', 'Quotidiano', -45],
+      [12, 'Cena fuori', 'Vita', 'Quotidiano', -42],
+      [12, 'Disney+', 'Rate', 'Extra', -6, true],
+      [10, 'Bolletta luce', 'Casa', 'Extra', -38],
+      [8, 'Carrefour', 'Spesa', 'Quotidiano', -34],
+      [6, 'Detersivi e casa', 'Casa', 'Quotidiano', -25],
+      [5, 'Caffè della settimana', 'Vita', 'Quotidiano', -25],
+      [5, 'Spotify', 'Rate', 'Extra', -8.5, true],
+      [3, 'ATAC', 'Trasporti', 'Quotidiano', -16],
+      [1, 'Rata iPhone', 'Rate', 'Extra', -70, true]
+    ];
+    var filtro = this.state.filtro;
+    var visibili = dati.filter(function (d) { return filtro === 'Tutte' || d[2] === filtro; });
+
+    var etichetta = function (g) {
+      if (g === 19) return 'Oggi';
+      if (g === 18) return 'Ieri';
+      var gg = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'][new Date(2026, 10, g).getDay()];
+      return gg.charAt(0).toUpperCase() + gg.slice(1) + ' ' + g + ' novembre';
+    };
+
+    var giorni = [];
+    visibili.forEach(function (d) {
+      var last = giorni[giorni.length - 1];
+      if (!last || last.g !== d[0]) { last = { g: d[0], voci: [], sum: 0 }; giorni.push(last); }
+      last.voci.push(d);
+      last.sum += d[4];
+    });
+    giorni = giorni.map(function (gr) {
+      var n = gr.voci.length;
+      return {
+        etichetta: etichetta(gr.g),
+        totale: gr.sum < 0 ? '− € ' + f2(-gr.sum) : '+ € ' + f2(gr.sum),
+        voci: gr.voci.map(function (d, i) {
+          var entrata = d[4] > 0;
+          var busta = d[2] ? (nomiBusta[d[2]] || d[2]) : 'Entrata';
+          return {
+            nome: d[1],
+            iniziale: entrata ? '+' : d[2].charAt(0),
+            dettaglio: busta + ' · ' + d[3] + (d[5] ? ' · auto' : ''),
+            importo: entrata ? '+ € ' + f2(d[4]) : '− € ' + f2(-d[4]),
+            importoStyle: 'font-size: 15px; font-weight: 600; flex-shrink: 0; color: ' + (entrata ? accent : '#1A1A18'),
+            iconStyle: 'width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font: 600 15px \'Space Grotesk\', Inter, sans-serif; ' +
+              (entrata ? 'background: #DCEFEA; color: ' + accent : 'background: #EFEDE8; color: #1A1A18'),
+            rowStyle: 'display: flex; align-items: center; gap: 12px; min-height: 60px; text-decoration: none; color: #1A1A18; ' + (i < n - 1 ? 'border-bottom: 1px solid #EFEDE8' : '')
+          };
+        })
+      };
+    });
+
+    var filtri = ['Tutte', 'Casa', 'Rate', 'Trasporti', 'Vita', 'Spesa', 'Shopping'].map(function (f) {
+      var sel = f === filtro;
+      return {
+        nome: f,
+        sel: sel ? 'true' : 'false',
+        pick: function () { self.setState({ filtro: f }); },
+        style: 'height: 44px; padding: 0 16px; border-radius: 22px; flex-shrink: 0; cursor: pointer; font: ' + (sel ? '600' : '500') + ' 13px Inter, sans-serif; ' +
+          (sel ? 'background: #1A1A18; color: #FFFFFF; border: 1px solid #1A1A18;' : 'background: #FFFFFF; color: #1A1A18; border: 1px solid #E4E2DC;')
+      };
+    });
+
+    var spese = dati.filter(function (d) { return d[4] < 0; });
+    var totSpeso = spese.reduce(function (a, d) { return a - d[4]; }, 0);
+    var spesoBusta = 0;
+    if (filtro !== 'Tutte') {
+      spesoBusta = dati.filter(function (d) { return d[2] === filtro; }).reduce(function (a, d) { return a - d[4]; }, 0);
+    }
+    var tetto = tetti[filtro] || 0;
+    var resto = tetto - spesoBusta;
+
+    return {
+      accent: accent,
+      riepilogo: 'Speso € ' + f2(totSpeso) + ' · ' + spese.length + ' spese',
+      filtri: filtri,
+      giorni: giorni,
+      filtrato: filtro !== 'Tutte',
+      busta: nomiBusta[filtro] || filtro,
+      spesoBusta: f2(spesoBusta),
+      tettoBusta: tetto,
+      restoBusta: resto < 0 ? '− € ' + f2(-resto) : '€ ' + f2(resto)
+    };
+  }
+}
+</script>
+</body>
+</html>

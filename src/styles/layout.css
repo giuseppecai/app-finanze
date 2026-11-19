@@ -1,0 +1,119 @@
+/* Guscio delle schermate: area sicura iOS, tab bar, intestazioni */
+
+.screen {
+  min-height: 100dvh;
+  padding-top: calc(var(--safe-top) + 20px);
+  padding-left: calc(var(--safe-left) + var(--gutter));
+  padding-right: calc(var(--safe-right) + var(--gutter));
+}
+
+/* Schermate con tab bar: spazio in fondo per non finirci sotto */
+.screen--tabbed {
+  padding-bottom: calc(84px + 24px);
+}
+
+.screen--full {
+  padding-top: calc(var(--safe-top) + 12px);
+  padding-bottom: calc(var(--safe-bottom) + 24px);
+}
+
+.screen-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.screen-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.screen-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.placeholder {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: var(--radius-card);
+  background: var(--surface-sunk);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Barra in alto delle schermate a tutto schermo */
+.topbar {
+  display: flex;
+  align-items: center;
+  min-height: var(--touch);
+  margin-bottom: 12px;
+}
+
+.icon-button {
+  width: var(--touch);
+  height: var(--touch);
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--text);
+}
+
+/* Tab bar: 50 px di contenuto + area sicura (34 px sugli iPhone con Face ID) ≈ 84 px */
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+  padding: 6px var(--safe-right) max(var(--safe-bottom), 14px) var(--safe-left);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.tabbar__item {
+  min-height: var(--touch);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.tabbar__item:hover { color: var(--text); }
+
+.tabbar__item[aria-current='page'] {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.tabbar__add {
+  justify-self: center;
+  width: 60px;
+  height: 60px;
+  margin-top: -26px;
+  border-radius: 30px;
+  background: var(--accent);
+  color: var(--text-on-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(14, 107, 92, 0.28);
+}
+
+.tabbar__add:hover,
+.tabbar__add:active { background: var(--accent-strong); color: var(--text-on-dark); }

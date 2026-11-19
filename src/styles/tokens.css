@@ -1,0 +1,49 @@
+/* Colori e misure di docs/05-design-system.md */
+:root {
+  --bg:            #F4F3EF;
+  --surface:       #FFFFFF;
+  --surface-dark:  #1A1A18;
+  --surface-sunk:  #E9E7E1;
+  --surface-muted: #EFEDE8;
+
+  --text:          #1A1A18;
+  --text-muted:    #5F5E58;
+  --text-on-dark:  #FFFFFF;
+  --text-on-dark-muted: #D4D2CB;
+  --link-on-dark:  #9FD8CB;
+
+  --line:          #E4E2DC;
+  --line-soft:     #EFEDE8;
+  --track:         #ECEAE4;
+
+  --accent:        #0E6B5C;
+  --accent-strong: #0A4F44;
+  --accent-soft:   #DCEFEA;
+  --accent-2:      #6FB3A5;
+  --accent-3:      #C3E0D8;
+
+  --danger:        #B4410E;
+  --danger-strong: #6B2707;
+  --danger-soft:   #FBE7DC;
+  --danger-light:  #F2C2A8;
+
+  --warning:       #A86A00;
+  --warning-soft:  #FDF0D5;
+  --warning-text:  #7A4D00;
+
+  --neutral-bar:   #8E8C85;
+
+  --font-text: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+
+  --gutter: 20px;
+  --radius-hero: 20px;
+  --radius-card: 14px;
+  --radius-row: 12px;
+  --touch: 44px;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}

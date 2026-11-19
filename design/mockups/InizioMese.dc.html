@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Inizio del mese</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E6B5C}a:hover{color:#0A4F44}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F3EF; font-family: Inter, system-ui, sans-serif; color: #1A1A18; display: flex; flex-direction: column; gap: 14px; padding: 24px 20px 24px 20px; font-variant-numeric: tabular-nums">
+
+<header style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 12px">
+<a href="ChiusuraMese.dc.html" aria-label="Indietro" style="width: 44px; height: 44px; border-radius: 22px; background: #FFFFFF; border: 1px solid #E4E2DC; display: flex; align-items: center; justify-content: center; box-sizing: border-box; flex-shrink: 0">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1A18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+</a>
+<h1 style="margin: 0; font-family: 'Space Grotesk', Inter, sans-serif; font-size: 22px; font-weight: 600; line-height: 1.15">Inizia novembre<br><span style="font-family: Inter, sans-serif; font-size: 12px; font-weight: 400; color: #5F5E58">27 ottobre – 26 novembre</span></h1>
+</div>
+<ol aria-label="Passaggi" style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+<li style="display: flex; flex-direction: column; gap: 5px"><span style="height: 4px; border-radius: 2px; background: {{accent}}"></span><span style="font-size: 12px; color: #5F5E58">1 · Rivedi</span></li>
+<li style="display: flex; flex-direction: column; gap: 5px"><span style="height: 4px; border-radius: 2px; background: {{accent}}"></span><span style="font-size: 12px; color: #5F5E58">2 · Avanzi</span></li>
+<li style="display: flex; flex-direction: column; gap: 5px"><span style="height: 4px; border-radius: 2px; background: {{accent}}"></span><span style="font-size: 12px; font-weight: 600; color: #1A1A18">3 · Assegna</span></li>
+</ol>
+</header>
+
+<section style="background: #FFFFFF; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px">
+<label for="stipendio" style="font-size: 13px; font-weight: 500; color: #5F5E58">Stipendio arrivato il 27</label>
+<div style="display: flex; align-items: center; gap: 8px; border: 1px solid #DAD8D1; border-radius: 12px; padding: 0 14px; height: 52px">
+<span style="font-family: 'Space Grotesk', Inter, sans-serif; font-size: 24px; font-weight: 600">€</span>
+<input id="stipendio" type="text" inputmode="decimal" placeholder="importo netto" value="{{stip}}" onChange="{{onStip}}" style="border: none; outline: none; flex-grow: 1; min-width: 0; font: 600 24px 'Space Grotesk', Inter, sans-serif; color: #1A1A18; background: transparent">
+</div>
+</section>
+
+
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Giroconti da fare su Revolut</h2>
+<sc-for list="{{giroconti}}" as="g" hint-placeholder-count="4">
+<button role="checkbox" aria-checked="{{g.sel}}" onClick="{{g.toggle}}" style="{{g.style}}">
+<span style="{{g.boxStyle}}">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>
+</span>
+<span style="display: flex; flex-direction: column; gap: 1px; text-align: left; flex-grow: 1">
+<span style="font-size: 14px; font-weight: 600; color: #1A1A18">→ {{g.dove}}</span>
+<span style="font-size: 12px; color: #5F5E58">{{g.nota}}</span>
+</span>
+<span style="{{g.importoStyle}}">{{g.importo}}</span>
+</button>
+</sc-for>
+</section>
+
+<p style="margin: 0; font-size: 12px; color: #5F5E58; line-height: 1.45">Le due carte restano a € 100: quando scendono le ricarichi da Budget del mese, senza registrare niente.</p>
+<a href="ModificaBuste.dc.html" style="font-size: 13px; font-weight: 600; text-decoration: none; min-height: 32px; display: flex; align-items: center">Vuoi cambiare le buste di questo mese? Modifica →</a>
+
+<div style="flex-grow: 1"></div>
+<a href="Main.dc.html" style="height: 56px; border-radius: 16px; background: {{accent}}; color: #FFFFFF; font: 600 16px Inter, sans-serif; display: flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0">{{cta}}</a>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0E6B5C","options":["#0E6B5C","#2F4FB3","#6B3FA0","#1A1A18"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { stip: '', fatti: {} };
+  }
+  renderVals() {
+    var self = this;
+    var accent = this.props.accent ?? '#0E6B5C';
+    var fmt = function (v) {
+      return v.toLocaleString('it-IT', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+    };
+    var buste = [
+      ['Casa & Servizi', 120], ['Rate & Abbonamenti', 110], ['Trasporti', 100],
+      ['Vita', 200], ['Spesa alimentare', 50], ['Shopping', 120]
+    ].map(function (b) { return { nome: b[0], tetto: '€ ' + b[1] }; });
+
+    var budget = 700, viaggi = 50, regali = 25;
+    var raw = (this.state.stip || '').replace(/\./g, '').replace(',', '.');
+    var stip = parseFloat(raw);
+    var hasStip = !isNaN(stip) && stip > 0;
+    var resto = hasStip ? stip - budget - viaggi - regali : null;
+    var corto = hasStip && resto < 0;
+
+    var righe = [
+      { id: 'budget', dove: 'Budget del mese', nota: 'Le 6 buste: Casa, Rate, Trasporti, Vita, Spesa, Shopping', importo: '€ ' + fmt(budget) },
+      { id: 'viaggi', dove: 'Viaggi', nota: 'Quanto vuoi mettere da parte', importo: '€ ' + fmt(viaggi) },
+      { id: 'regali', dove: 'Regali & Imprevisti', nota: 'Quota fissa mensile', importo: '€ ' + fmt(regali) },
+      { id: 'risparmi', dove: 'Risparmi', nota: corto ? 'Lo stipendio non copre le buste' : 'Tutto quello che resta',
+        importo: hasStip ? (corto ? '− € ' + fmt(-resto) : '€ ' + fmt(resto)) : 'il resto', warn: corto }
+    ];
+    var fatti = this.state.fatti;
+    var nFatti = 0;
+    var giroconti = righe.map(function (r) {
+      var sel = !!fatti[r.id];
+      if (sel) nFatti++;
+      return {
+        dove: r.dove, nota: r.nota, importo: r.importo,
+        sel: sel ? 'true' : 'false',
+        toggle: function () {
+          var f = Object.assign({}, self.state.fatti);
+          f[r.id] = !f[r.id];
+          self.setState({ fatti: f });
+        },
+        style: 'display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 14px; border-radius: 14px; border: none; cursor: pointer; font-family: Inter, sans-serif; width: 100%; box-sizing: border-box; background: ' + (sel ? '#DCEFEA' : '#FFFFFF'),
+        boxStyle: 'width: 22px; height: 22px; border-radius: 6px; box-sizing: border-box; flex-shrink: 0; display: flex; align-items: center; justify-content: center; ' +
+          (sel ? 'background: ' + accent + '; border: 2px solid ' + accent + ';' : 'background: #FFFFFF; border: 2px solid #8E8C85;'),
+        importoStyle: 'font-family: \'Space Grotesk\', Inter, sans-serif; font-size: 16px; font-weight: 600; color: ' + (r.warn ? '#B4410E' : '#1A1A18')
+      };
+    });
+
+    return {
+      accent: accent,
+      stip: this.state.stip,
+      onStip: function (e) { self.setState({ stip: e.target.value }); },
+      buste: buste,
+      giroconti: giroconti,
+      cta: nFatti === 4 ? 'Fatto: inizia il mese' : 'Giroconti fatti: ' + nFatti + ' di 4'
+    };
+  }
+}
+</script>
+</body>
+</html>
