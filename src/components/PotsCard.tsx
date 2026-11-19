@@ -5,14 +5,16 @@ import type { Cents, Pot, PotId } from '../domain/types';
 import { it } from '../i18n/it';
 import { IconChevronRight } from './icons';
 
-const ORDER: PotId[] = ['savings', 'travel', 'gifts'];
+const ORDER: PotId[] = ['savings', 'travel', 'gifts', 'bills'];
 
-type Props = { pots: readonly Pot[]; loansOwed: Cents };
+type Props = { pots: readonly Pot[]; loansOwed: Cents; debtsOwed?: Cents };
 
 /** "Messi da parte": totale dei salvadanai, barra in 3 tonalità, legenda, prestiti da riavere. */
-export function PotsCard({ pots, loansOwed }: Props) {
+export function PotsCard({ pots, loansOwed, debtsOwed = 0 }: Props) {
   const byId = new Map(pots.map((p) => [p.id, p]));
-  const list = ORDER.map((id) => ({ id, balance: byId.get(id)?.balance ?? 0 }));
+  // Bollette compare solo quando c'è qualcosa accantonato (R13).
+  const list = ORDER.filter((id) => id !== 'bills' || (byId.get(id)?.balance ?? 0) !== 0)
+    .map((id) => ({ id, balance: byId.get(id)?.balance ?? 0 }));
   const total = list.reduce((s, p) => s + p.balance, 0);
   return (
     <section className="card pots" aria-labelledby="pots-title">
@@ -33,9 +35,9 @@ export function PotsCard({ pots, loansOwed }: Props) {
           </div>
         ))}
       </dl>
-      {loansOwed > 0 ? (
+      {loansOwed > 0 || debtsOwed > 0 ? (
         <Link to={routes.loans} className="pots__loans">
-          <span>{it.home.loansToGet}</span>
+          <span>{it.home.loansToGet}{debtsOwed > 0 ? ` · ${it.home.youOwe(formatEuro(debtsOwed))}` : ''}</span>
           <span className="pots__loans-amount">{formatEuro(loansOwed)}<IconChevronRight /></span>
         </Link>
       ) : null}

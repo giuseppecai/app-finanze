@@ -8,7 +8,7 @@ import { PotsCard } from '../../components/PotsCard';
 import { today } from '../../domain/clock';
 import { formatShortRange } from '../../domain/dates';
 import { summarizePeriod } from '../../domain/envelopes';
-import { totalOwed } from '../../domain/loans';
+import { totalDebt, totalOwed } from '../../domain/loans';
 import { formatEuro } from '../../domain/money';
 import { daysAgo } from '../../domain/movements';
 import { daysUntilSalary, isTimeToClose } from '../../domain/periods';
@@ -35,7 +35,7 @@ export function HomePage() {
   return (
     <>
       {period ? <CurrentPeriod period={period} envelopes={envelopes} cardReserve={settings.cardReserve} /> : <NoPeriod />}
-      <PotsCard pots={pots} loansOwed={totalOwed(loans)} />
+      <PotsCard pots={pots} loansOwed={totalOwed(loans)} debtsOwed={totalDebt(loans)} />
     </>
   );
 }

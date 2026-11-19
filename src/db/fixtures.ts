@@ -2,7 +2,7 @@
 // Solo dati: niente Dexie, così li usano anche i test di dominio.
 import { calendarPeriodById } from '../domain/periods';
 import type {
-  Card, Cents, Envelope, Loan, Period, Person, Pot, Reconciliation, Recurring, Settings, Transaction,
+  Bill, Card, Cents, Envelope, Loan, Period, Person, Pot, Reconciliation, Recurring, Settings, Transaction,
 } from '../domain/types';
 
 export const DEMO_TODAY = '2026-11-19';
@@ -18,6 +18,7 @@ export interface DataSet {
   loans: Loan[];
   pots: Pot[];
   reconciliations: Reconciliation[];
+  bills: Bill[];
 }
 
 const eur = (v: number): Cents => Math.round(v * 100);
@@ -86,6 +87,7 @@ function period(id: string, closed: number[] | null): Period {
     closedAt: closed ? `${cal.calendarEnd}T19:00:00.000Z` : null,
     leftoverChoice: closed ? 'toSavings' : null,
     leftovers: closed ? Object.fromEntries(CLOSED_ORDER.map((envId, i) => [envId, eur(closed[i] ?? 0)])) : null,
+    billsQuota: 0,
   };
 }
 
@@ -136,6 +138,7 @@ function demoTransactions(): Transaction[] {
       recurringId: recurringId ?? null,
       personId: null,
       loanAllocations: null,
+      billId: null,
       // createdAt crescente dal più vecchio al più recente
       createdAt: `${date}T${String(8 + ((n - i) % 12)).padStart(2, '0')}:00:00.000Z`,
     };
@@ -154,6 +157,7 @@ function demoTransactions(): Transaction[] {
       recurringId: null,
       personId: loan.personId,
       loanAllocations: null,
+      billId: null,
       createdAt: `${loan.date}T18:00:00.000Z`,
     });
   }
@@ -173,12 +177,14 @@ function demoLoans(): Loan[] {
   return demoLoanRows().map((l) => ({
     id: l.id,
     personId: l.personId,
+    direction: 'lent' as const,
     date: l.date,
     reason: l.reason,
     amount: eur(l.amount),
     remaining: eur(l.amount),
     closedAt: null,
     transactionId: l.txId,
+    offsets: null,
     createdAt: `${l.date}T18:00:00.000Z`,
   }));
 }
@@ -207,6 +213,7 @@ export function buildDemoData(): DataSet {
       { id: 'savings', name: 'Risparmi', balance: eur(1240) },
       { id: 'travel', name: 'Viaggi', balance: eur(180) },
       { id: 'gifts', name: 'Regali & Imprevisti', balance: eur(75) },
+      { id: 'bills', name: 'Bollette', balance: 0 },
     ],
     reconciliations: [
       {
@@ -215,5 +222,6 @@ export function buildDemoData(): DataSet {
         expected: eur(541.72), diff: 0, outcome: 'ok',
       },
     ],
+    bills: [],
   };
 }

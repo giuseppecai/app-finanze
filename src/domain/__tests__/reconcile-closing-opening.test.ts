@@ -102,7 +102,7 @@ describe('R7 · Inizio del mese', () => {
       salary: 150000, unassigned: 4800, carryIn: {}, closedAt: null,
     });
     expect(period.allocations[ENV.vita]).toBe(20000);
-    expect(potDeltas).toEqual({ savings: 72500 + 4800, travel: 5000, gifts: 2500 });
+    expect(potDeltas).toEqual({ savings: 72500 + 4800, travel: 5000, gifts: 2500, bills: 0 });
   });
   it('opzione B: i riporti passano al periodo nuovo', () => {
     const ott = data.periods.find((p) => p.id === '2026-10')!;

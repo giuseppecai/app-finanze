@@ -141,7 +141,8 @@ function RecurringStep({ initial, envelopes, onBack, onNext }: { initial: Recurr
   );
 }
 
-const POTS: PotId[] = ['savings', 'travel', 'gifts'];
+type StartPot = Exclude<PotId, 'bills'>;
+const POTS: StartPot[] = ['savings', 'travel', 'gifts'];
 
 function isStandalone(): boolean {
   const nav = navigator as Navigator & { standalone?: boolean };
@@ -150,9 +151,9 @@ function isStandalone(): boolean {
 
 function PotsStep({ pots, onBack }: { pots: Pot[]; onBack: () => void }) {
   const navigate = useNavigate();
-  const [values, setValues] = useState<Record<PotId, string>>(() => {
+  const [values, setValues] = useState<Record<StartPot, string>>(() => {
     const byId = new Map(pots.map((p) => [p.id, p.balance]));
-    const text = (id: PotId) => {
+    const text = (id: StartPot) => {
       const b = byId.get(id) ?? 0;
       return b === 0 ? '' : formatEuro(b, { decimals: 'always' }).replace('€ ', '');
     };

@@ -60,6 +60,7 @@ export function chargeToTransaction(charge: DueCharge, periodId: string, id: str
     recurringId: charge.recurring.id,
     personId: null,
     loanAllocations: null,
+    billId: null,
     createdAt,
   };
 }

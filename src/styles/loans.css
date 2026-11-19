@@ -1,0 +1,144 @@
+/* Prestiti, scelta persona, toast */
+
+.pill-button--link { display: inline-flex; align-items: center; text-decoration: none; }
+.pill-button--link:hover { color: var(--text); }
+
+.hero__status--right { text-align: right; align-self: flex-end; line-height: 1.5; }
+
+.loans-section { display: flex; flex-direction: column; gap: 8px; }
+.loans-section h2 { margin: 0 2px; }
+
+.empty-card { padding: 20px 16px; text-align: center; font-size: 14px; color: var(--text-muted); }
+
+.person-card { overflow: hidden; }
+.person-card.is-open { box-shadow: 0 0 0 2px var(--accent); }
+
+.person-card__head {
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+  text-align: left;
+}
+
+.person-card__avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 18px;
+  background: var(--surface-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.person-card.is-open .person-card__avatar { background: var(--accent); color: var(--text-on-dark); }
+.person-card__name { font-size: 15px; font-weight: 600; }
+.person-card__total { font-family: var(--font-display); font-size: 18px; font-weight: 600; white-space: nowrap; }
+
+.chevron { flex-shrink: 0; color: var(--text-muted); transition: transform 150ms; }
+.chevron.is-open { transform: rotate(180deg); }
+
+.person-card__body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+.person-card__loans { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line-soft); }
+
+.person-card__loans li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.person-card__reason { font-size: 14px; font-weight: 500; }
+.person-card__right { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.person-card__amount { font-size: 14px; font-weight: 600; }
+.person-card__reason.is-closing, .person-card__amount.is-closing { color: var(--text-muted); text-decoration: line-through; }
+.person-card__state { font-size: 12px; font-weight: 600; }
+.person-card__state.is-closes { color: var(--accent); }
+.person-card__state.is-partial { color: var(--warning); }
+
+.person-card__label { font-size: 13px; font-weight: 600; }
+
+.person-card__repay { display: flex; gap: 8px; }
+.person-card__repay .amount-field__box { flex: 1 1 0; min-width: 0; height: 48px; }
+.person-card__repay .outcome__button { flex-shrink: 0; padding: 0 12px; }
+.person-card__repay .amount-field__box input { font-size: 18px; text-align: left; }
+.person-card__repay .outcome__button { min-height: 48px; }
+
+.history-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 16px;
+  border: none;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.closed-loan { display: flex; align-items: center; gap: 12px; min-height: 56px; }
+
+/* ── Scelta persona (inserimento in modalità Prestito) ────── */
+
+.person-picker { display: flex; flex-direction: column; gap: 8px; }
+.person-picker__list { display: flex; flex-wrap: wrap; gap: 8px; }
+.person-picker__option { min-width: 104px; }
+
+.person-picker__add {
+  min-height: 56px;
+  padding: 0 16px;
+  border: 1px dashed var(--neutral-bar);
+  border-radius: var(--radius-row);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.person-picker__new { display: flex; gap: 8px; }
+
+/* ── Toast ────────────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  left: calc(var(--gutter) + var(--safe-left));
+  right: calc(var(--gutter) + var(--safe-right));
+  bottom: calc(24px + var(--safe-bottom));
+  z-index: 30;
+  min-height: 56px;
+  padding: 0 8px 0 16px;
+  border-radius: var(--radius-card);
+  background: var(--surface-dark);
+  color: var(--text-on-dark);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  animation: toast-in 200ms ease-out;
+}
+
+@keyframes toast-in { from { transform: translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.toast__text { font-size: 13px; line-height: 1.35; }
+
+.toast__action {
+  min-height: var(--touch);
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  color: var(--link-on-dark);
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}

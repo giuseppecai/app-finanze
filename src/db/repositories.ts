@@ -1,12 +1,16 @@
 // Funzioni che leggono e scrivono il database. Ogni scrittura su più tabelle è in una transazione.
-// Le scritture dei prestiti arrivano con la loro schermata (M6).
 import { nowISO } from '../domain/clock';
 import { planClosing, type ClosingOption, type ClosingPlan } from '../domain/closing';
 import { closingPreview } from '../domain/monthEnd';
 import { buildNewPeriod } from '../domain/opening';
 import { currentPeriod, nextPeriodToStart } from '../domain/periods';
 import { chargeToTransaction, dueCharges } from '../domain/recurring';
-import type { Cents, ISODate, Period, PotId, Reconciliation, Recurring, Settings, Transaction } from '../domain/types';
+import {
+  applyRepayment, canDeleteLoan, createLoanEntry, deleteLoanEntry, savingsEffect, undoRepayment as undoLoanAllocations,
+} from '../domain/loans';
+import type {
+  Card, Cents, ISODate, Loan, LoanDirection, Period, Person, PotId, Reconciliation, Recurring, Settings, Transaction,
+} from '../domain/types';
 import type { FinanzeDB } from './schema';
 
 export function newId(): string {
@@ -249,6 +253,7 @@ export async function saveReconciliation(db: FinanzeDB, input: SaveReconciliatio
         recurringId: null,
         personId: null,
         loanAllocations: null,
+        billId: null,
         createdAt: nowISO(),
       });
     }
@@ -270,4 +275,131 @@ export async function saveRecurring(db: FinanzeDB, recurring: Recurring): Promis
 /** Elimina un abbonamento. I movimenti già creati restano. */
 export async function deleteRecurring(db: FinanzeDB, id: string): Promise<void> {
   await db.recurring.delete(id);
+}
+
+// ── Prestiti e debiti (R9, R9-bis) ───────────────────────────────────────────
+
+async function adjustPot(db: FinanzeDB, id: PotId, delta: Cents): Promise<void> {
+  if (delta === 0) return;
+  const pot = await db.pots.get(id);
+  if (!pot) throw new Error(`Salvadanaio mancante: ${id}`);
+  await db.pots.update(id, { balance: pot.balance + delta });
+}
+
+async function putLoans(db: FinanzeDB, loans: Loan[]): Promise<void> {
+  if (loans.length > 0) await db.loans.bulkPut(loans);
+}
+
+export async function addPerson(db: FinanzeDB, name: string): Promise<Person> {
+  const clean = name.trim();
+  if (clean === '') throw new Error('Nome mancante');
+  const person: Person = { id: newId(), name: clean, createdAt: nowISO() };
+  await db.people.add(person);
+  return person;
+}
+
+export interface LoanEntryInput {
+  personId: string;
+  /** 'lent' = presti tu, 'borrowed' = ti presta lei/lui (debito) */
+  direction: LoanDirection;
+  amount: Cents;
+  date: ISODate;
+  reason: string;
+  card: Card | null;
+  billId?: string | null;
+}
+
+/**
+ * Registra un prestito o un debito: movimento, voce (con compensazione automatica sulle voci
+ * opposte della stessa persona) e salvadanaio Risparmi, in un'unica transazione.
+ */
+export async function addLoanEntry(db: FinanzeDB, input: LoanEntryInput): Promise<Transaction> {
+  if (!Number.isInteger(input.amount) || input.amount <= 0) throw new Error('Importo non valido');
+  return db.transaction('rw', [db.periods, db.transactions, db.loans, db.pots, db.people], async () => {
+    const period = await getCurrentPeriod(db);
+    if (!period) throw new Error('Nessun periodo aperto: fai prima "Inizio del mese"');
+    if (!(await db.people.get(input.personId))) throw new Error('Persona non trovata');
+    const createdAt = nowISO();
+    const type = input.direction === 'lent' ? 'loan' : 'debt';
+    const tx: Transaction = {
+      id: newId(), periodId: period.id, date: input.date, type, amount: input.amount, envelopeId: null,
+      note: input.reason.trim(), card: input.card, source: 'manual', recurringId: null, personId: input.personId,
+      loanAllocations: null, billId: input.billId ?? null, createdAt,
+    };
+    const loans = await db.loans.where('personId').equals(input.personId).toArray();
+    const { loan, updated } = createLoanEntry(loans, {
+      id: newId(), personId: input.personId, direction: input.direction, date: input.date,
+      reason: input.reason.trim(), amount: input.amount, transactionId: tx.id, createdAt,
+    });
+    await db.transactions.add(tx);
+    await putLoans(db, [...updated, loan]);
+    await adjustPot(db, 'savings', savingsEffect(type, input.amount));
+    return tx;
+  });
+}
+
+/** Si può eliminare il movimento di un prestito/debito? (nessuna restituzione o compensazione successiva) */
+export async function canDeleteLoanTransaction(db: FinanzeDB, txId: string): Promise<boolean> {
+  const loan = await db.loans.filter((l) => l.transactionId === txId).first();
+  return loan ? canDeleteLoan(loan) : true;
+}
+
+/** Elimina un prestito o un debito: ripristina le voci compensate e il salvadanaio Risparmi. */
+export async function deleteLoanTransaction(db: FinanzeDB, txId: string): Promise<void> {
+  await db.transaction('rw', [db.transactions, db.loans, db.pots], async () => {
+    const tx = await db.transactions.get(txId);
+    if (!tx || (tx.type !== 'loan' && tx.type !== 'debt')) throw new Error('Movimento di prestito non trovato');
+    const loan = await db.loans.filter((l) => l.transactionId === txId).first();
+    if (loan) {
+      const all = await db.loans.where('personId').equals(loan.personId).toArray();
+      await putLoans(db, deleteLoanEntry(all, loan));
+      await db.loans.delete(loan.id);
+    }
+    await db.transactions.delete(txId);
+    await adjustPot(db, 'savings', -savingsEffect(tx.type, tx.amount));
+  });
+}
+
+export interface RepaymentEntryResult {
+  transaction: Transaction;
+  closedCount: number;
+}
+
+/**
+ * "Ti ha restituito" / "Le hai dato": restituzione nel senso del saldo, FIFO.
+ * Salva le allocazioni sul movimento per poterla annullare.
+ */
+export async function registerRepayment(
+  db: FinanzeDB,
+  input: { personId: string; amount: Cents; date: ISODate },
+): Promise<RepaymentEntryResult> {
+  return db.transaction('rw', [db.periods, db.transactions, db.loans, db.pots], async () => {
+    const period = await getCurrentPeriod(db);
+    if (!period) throw new Error('Nessun periodo aperto');
+    const createdAt = nowISO();
+    const loans = await db.loans.where('personId').equals(input.personId).toArray();
+    const r = applyRepayment(loans, input.personId, input.amount, createdAt);
+    const type = r.direction === 'lent' ? 'loanRepayment' : 'debtRepayment';
+    const tx: Transaction = {
+      id: newId(), periodId: period.id, date: input.date, type, amount: input.amount, envelopeId: null, note: '',
+      card: null, source: 'manual', recurringId: null, personId: input.personId,
+      loanAllocations: r.allocations, billId: null, createdAt,
+    };
+    await db.transactions.add(tx);
+    await putLoans(db, r.updated);
+    await adjustPot(db, 'savings', savingsEffect(type, input.amount));
+    return { transaction: tx, closedCount: r.closedCount };
+  });
+}
+
+/** Annulla una restituzione: ripristina le voci e il salvadanaio, elimina il movimento. */
+export async function undoRepaymentTransaction(db: FinanzeDB, txId: string): Promise<void> {
+  await db.transaction('rw', [db.transactions, db.loans, db.pots], async () => {
+    const tx = await db.transactions.get(txId);
+    if (!tx || (tx.type !== 'loanRepayment' && tx.type !== 'debtRepayment')) throw new Error('Restituzione non trovata');
+    const loans = await db.loans.toArray();
+    await putLoans(db, undoLoanAllocations(loans, tx.loanAllocations ?? []));
+    await db.transactions.delete(txId);
+    await adjustPot(db, 'savings', -savingsEffect(tx.type, tx.amount));
+  });
 }

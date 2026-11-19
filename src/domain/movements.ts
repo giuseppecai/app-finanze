@@ -2,9 +2,9 @@
 import { diffDays } from './dates';
 import type { Cents, ISODate, Transaction, TxType } from './types';
 
-/** Effetto del movimento sui soldi "di casa": spese e prestiti escono, il resto entra. */
+/** Effetto sui tuoi soldi: spese, prestiti dati e debiti pagati escono; il resto entra. */
 export function signedAmount(tx: Pick<Transaction, 'type' | 'amount'>): Cents {
-  return tx.type === 'expense' || tx.type === 'loan' ? -tx.amount : tx.amount;
+  return tx.type === 'expense' || tx.type === 'loan' || tx.type === 'debtRepayment' ? -tx.amount : tx.amount;
 }
 
 /** I prestiti non sono spese: restano fuori dai totali di giorno e di periodo. */

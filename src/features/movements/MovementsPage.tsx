@@ -142,7 +142,7 @@ function MovementList({ txs, envelopes, people, emptyText }: ListProps) {
 }
 
 function MovementRow({ tx, envelope, person }: { tx: Transaction; envelope?: Envelope; person?: Person }) {
-  const isLoan = tx.type === 'loan' || tx.type === 'loanRepayment';
+  const isLoan = tx.type === 'loan' || tx.type === 'loanRepayment' || tx.type === 'debt' || tx.type === 'debtRepayment';
   const personName = person?.name ?? it.movements.unknownPerson;
   const cardName = tx.card ? it.cards[tx.card] : it.budgetPocket;
 
@@ -155,8 +155,14 @@ function MovementRow({ tx, envelope, person }: { tx: Transaction; envelope?: Env
     detail = `${it.movements.income} · ${cardName}`;
   } else if (isLoan) {
     initial = personName.charAt(0).toUpperCase();
-    title = tx.note || (tx.type === 'loan' ? it.movements.loan(personName) : it.movements.repayment(personName));
-    detail = tx.type === 'loan' ? it.movements.loan(personName) : it.movements.repayment(personName);
+    const label = {
+      loan: it.movements.loan(personName),
+      loanRepayment: it.movements.repayment(personName),
+      debt: it.movements.debt(personName),
+      debtRepayment: it.movements.debtRepayment(personName),
+    }[tx.type as 'loan' | 'loanRepayment' | 'debt' | 'debtRepayment'];
+    title = tx.note || label;
+    detail = label;
   } else {
     initial = (envelope?.shortName ?? '?').charAt(0).toUpperCase();
     title = tx.note || envelope?.name || '';
@@ -178,8 +184,9 @@ function MovementRow({ tx, envelope, person }: { tx: Transaction; envelope?: Env
     </>
   );
 
-  // Prestiti e restituzioni si gestiscono dalla schermata Prestiti.
-  const to = isLoan ? routes.loans : `${routes.entry}?id=${encodeURIComponent(tx.id)}`;
+  // Le restituzioni si gestiscono (e si annullano) dalla schermata Prestiti.
+  const isRepayment = tx.type === 'loanRepayment' || tx.type === 'debtRepayment';
+  const to = isRepayment ? `${routes.loans}?persona=${encodeURIComponent(tx.personId ?? '')}` : `${routes.entry}?id=${encodeURIComponent(tx.id)}`;
   return (
     <li>
       <Link to={to} className="movement">

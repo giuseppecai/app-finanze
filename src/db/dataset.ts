@@ -15,6 +15,7 @@ export async function replaceAll(db: FinanzeDB, data: DataSet): Promise<void> {
     await db.loans.bulkPut(data.loans);
     await db.pots.bulkPut(data.pots);
     await db.reconciliations.bulkPut(data.reconciliations);
+    await db.bills.bulkPut(data.bills);
   });
 }
 
@@ -33,6 +34,7 @@ export async function readAll(db: FinanzeDB): Promise<DataSet> {
       loans: await db.loans.toArray(),
       pots: await db.pots.toArray(),
       reconciliations: await db.reconciliations.toArray(),
+      bills: await db.bills.orderBy('order').toArray(),
     };
   });
 }

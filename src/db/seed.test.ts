@@ -31,7 +31,7 @@ describe('dati iniziali', () => {
       id: 'settings', periodStartDay: 27, cardReserve: null, giftsQuota: 2500,
       lastTravelQuota: 5000, lastEnvelopeId: null, onboardingDone: false,
     });
-    expect(seed.pots.map((p) => [p.id, p.balance])).toEqual([['savings', 0], ['travel', 0], ['gifts', 0]]);
+    expect(seed.pots.map((p) => [p.id, p.balance])).toEqual([['savings', 0], ['travel', 0], ['gifts', 0], ['bills', 0]]);
     expect(seed.periods).toEqual([]);
   });
 

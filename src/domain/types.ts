@@ -45,9 +45,11 @@ export interface Period {
   closedAt: string | null;
   leftoverChoice: LeftoverChoice | null;
   leftovers: Record<string, Cents> | null;
+  /** giroconto → Bollette fatto a inizio periodo (R13, v2) */
+  billsQuota: Cents;
 }
 
-export type TxType = 'expense' | 'refund' | 'income' | 'loan' | 'loanRepayment';
+export type TxType = 'expense' | 'refund' | 'income' | 'loan' | 'loanRepayment' | 'debt' | 'debtRepayment';
 export type Card = 'quotidiano' | 'extra';
 export type TxSource = 'manual' | 'recurring' | 'reconcile' | 'inbox';
 
@@ -70,6 +72,8 @@ export interface Transaction {
   recurringId: string | null;
   personId: string | null;
   loanAllocations: LoanAllocation[] | null;
+  /** movimento nato da una bolletta (R13, v2) */
+  billId: string | null;
   createdAt: string;
 }
 
@@ -90,19 +94,25 @@ export interface Person {
   createdAt: string;
 }
 
+/** 'lent' = prestito (ti deve), 'borrowed' = debito (devi tu), R9-bis */
+export type LoanDirection = 'lent' | 'borrowed';
+
 export interface Loan {
   id: string;
   personId: string;
+  direction: LoanDirection;
   date: ISODate;
   reason: string;
   amount: Cents;
   remaining: Cents;
   closedAt: string | null;
   transactionId: string;
+  /** compensazioni fatte alla nascita di questa voce (R9-bis) */
+  offsets: LoanAllocation[] | null;
   createdAt: string;
 }
 
-export type PotId = 'savings' | 'travel' | 'gifts';
+export type PotId = 'savings' | 'travel' | 'gifts' | 'bills';
 
 export interface Pot {
   id: PotId;
@@ -122,4 +132,24 @@ export interface Reconciliation {
   expected: Cents;
   diff: Cents;
   outcome: ReconciliationOutcome;
+}
+
+export type BillFrequency = 1 | 2 | 3 | 6 | 12;
+
+/** Bolletta di Casa & Servizi (R13, v2) */
+export interface Bill {
+  id: string;
+  name: string;
+  frequency: BillFrequency;
+  /** importo previsto della bolletta intera */
+  estimate: Cents;
+  split: 'half' | 'mine';
+  payer: 'me' | 'roommate';
+  personId: string | null;
+  envelopeId: string;
+  /** accantonato finora (solo periodiche), può andare sotto zero */
+  fund: Cents;
+  active: boolean;
+  order: number;
+  createdAt: string;
 }

@@ -81,6 +81,7 @@ export function buildNewPeriod(input: NewPeriodInput): NewPeriodResult {
     closedAt: null,
     leftoverChoice: null,
     leftovers: null,
+    billsQuota: 0,
   };
   return {
     period,
@@ -88,6 +89,7 @@ export function buildNewPeriod(input: NewPeriodInput): NewPeriodResult {
       savings: plan.savings + (input.closing?.savingsDelta ?? 0),
       travel: input.travel,
       gifts: input.gifts,
+      bills: 0,
     },
   };
 }
