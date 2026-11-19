@@ -27,3 +27,4 @@ Differenze note tra mockup e regole (vincono le regole):
 - Il pannello Confronta del mockup non include la **riserva delle carte** (R5).
 - In Imposta mancano la sezione **Dati** (riserva, saldi salvadanai, backup) e l'onboarding.
 - La tab "Imposta" nei mockup apre direttamente Modifica buste: va bene così.
+- I mockup usano l'accento **verde** (`#0E6B5C`): l'app usa il **viola** di `docs/05-design-system.md` (`#6B3FA0` e tonalità collegate). Ovunque nei mockup c'è il verde, va letto come il token corrispondente.

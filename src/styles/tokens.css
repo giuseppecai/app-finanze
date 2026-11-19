@@ -10,17 +10,17 @@
   --text-muted:    #5F5E58;
   --text-on-dark:  #FFFFFF;
   --text-on-dark-muted: #D4D2CB;
-  --link-on-dark:  #9FD8CB;
+  --link-on-dark:  #CDB8EC;
 
   --line:          #E4E2DC;
   --line-soft:     #EFEDE8;
   --track:         #ECEAE4;
 
-  --accent:        #0E6B5C;
-  --accent-strong: #0A4F44;
-  --accent-soft:   #DCEFEA;
-  --accent-2:      #6FB3A5;
-  --accent-3:      #C3E0D8;
+  --accent:        #6B3FA0;
+  --accent-strong: #522C80;
+  --accent-soft:   #ECE4F6;
+  --accent-2:      #A98BD0;
+  --accent-3:      #D9CCEB;
 
   --danger:        #B4410E;
   --danger-strong: #6B2707;

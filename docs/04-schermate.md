@@ -61,7 +61,7 @@ Movimenti di esempio (periodo Novembre): 19 Pranzo con colleghi (Vita, 22) · 19
 ## 4 · Storico (`Storico.dc.html`)
 
 - Sottotitolo "Ultimi 6 mesi · ogni mese va dal 27 al 26".
-- **Grafico a barre** dei 6 periodi più recenti (spesa totale), linea tratteggiata = somma dei tetti. Barre sopra il budget in arancione chiaro (selezionata: arancione pieno), altre verde chiaro (selezionata: accento), periodo in corso tratteggiato. Le barre sono pulsanti: tocco → seleziona il periodo. Legenda sotto: "– – Budget € 700", "■ Sopra il budget".
+- **Grafico a barre** dei 6 periodi più recenti (spesa totale), linea tratteggiata = somma dei tetti. Barre sopra il budget in arancione chiaro (selezionata: arancione pieno), altre viola chiaro `--accent-3` (selezionata: accento), periodo in corso tratteggiato. Le barre sono pulsanti: tocco → seleziona il periodo. Legenda sotto: "– – Budget € 700", "■ Sopra il budget".
 - In alto nella card: nome del periodo selezionato e "€ speso di € 700".
 - **Tabella** del periodo selezionato: Busta · Messo · Speso · Avanzo (in corso: Resta) + riga Totale (R11). Nomi completi.
 - **Segnalazione** (R6, suggerimento tetto) con link "Modifica le buste →".
@@ -109,7 +109,7 @@ Movimenti di esempio (periodo Novembre): 19 Pranzo con colleghi (Vita, 22) · 19
 
 - "Abbonamenti" · "Si scalano da soli da Rate & Abbonamenti" · "+ Aggiungi".
 - Card scura: "Ogni mese € 90,50", "busta € 110", barra, link "Avanzano € 19,50 al mese · modifica la busta →" (o "Sfori la busta di € X · alza il tetto →").
-- "Questo mese · 27 ott – 26 nov": righe con riquadro data (giorno + mese), nome, "Carta Extra · il 5 di ogni mese", importo e stato: **scalato** (verde), **tra N giorni / domani** (giallo), **in pausa** (grigio, importo barrato).
+- "Questo mese · 27 ott – 26 nov": righe con riquadro data (giorno + mese), nome, "Carta Extra · il 5 di ogni mese", importo e stato: **scalato** (accento), **tra N giorni / domani** (giallo), **in pausa** (grigio, importo barrato).
 - Tocco → pannello: importo, giorno del mese, carta, interruttore **Attivo**, Elimina, Salva (R8).
 - Nota in fondo: "Il giorno dell'addebito l'app scala l'importo dalla busta… Se un prezzo aumenta, te ne accorgi al Confronta con Revolut e lo aggiorni qui."
 

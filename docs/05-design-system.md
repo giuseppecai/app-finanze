@@ -1,6 +1,6 @@
 # 05 · Design system
 
-Stile: **calmo, essenziale, un solo colore d'accento**. Niente gradienti, niente emoji, niente bordi colorati laterali. I numeri sono i protagonisti. Riferimento visivo: i mockup in `design/mockups/`.
+Stile: **calmo, essenziale, un solo colore d'accento**. L'accento è **viola** (`#6B3FA0`): i mockup usano ancora il verde `#0E6B5C`, vincono i token qui sotto. Niente gradienti, niente emoji, niente bordi colorati laterali. I numeri sono i protagonisti. Riferimento visivo: i mockup in `design/mockups/`.
 
 ## Colori (`src/styles/tokens.css`)
 
@@ -16,17 +16,17 @@ Stile: **calmo, essenziale, un solo colore d'accento**. Niente gradienti, niente
   --text-muted:    #5F5E58;  /* ≥ 4.5:1 su --bg e --surface */
   --text-on-dark:  #FFFFFF;
   --text-on-dark-muted: #D4D2CB;
-  --link-on-dark:  #9FD8CB;
+  --link-on-dark:  #CDB8EC;
 
   --line:          #E4E2DC;  /* bordi di input e pulsanti secondari */
   --line-soft:     #EFEDE8;  /* separatori tra righe */
   --track:         #ECEAE4;  /* binario delle barre */
 
-  --accent:        #0E6B5C;  /* azione principale, stato ok */
-  --accent-strong: #0A4F44;  /* hover/pressed, testo su accent-soft */
-  --accent-soft:   #DCEFEA;  /* selezione, esito ok */
-  --accent-2:      #6FB3A5;  /* seconda tonalità (salvadanai) */
-  --accent-3:      #C3E0D8;  /* terza tonalità (salvadanai), barre non selezionate */
+  --accent:        #6B3FA0;  /* azione principale, stato ok */
+  --accent-strong: #522C80;  /* hover/pressed, testo su accent-soft */
+  --accent-soft:   #ECE4F6;  /* selezione, esito ok */
+  --accent-2:      #A98BD0;  /* seconda tonalità (salvadanai) */
+  --accent-3:      #D9CCEB;  /* terza tonalità (salvadanai), barre non selezionate */
 
   --danger:        #B4410E;  /* sforamento: testo e barre */
   --danger-strong: #6B2707;  /* testo su danger-soft */
