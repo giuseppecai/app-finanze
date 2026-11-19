@@ -85,3 +85,7 @@ export const IconAlert = (p: IconProps) => (
 export const IconShare = (p: IconProps) => (
   <Svg size={18} {...p}><path d="M12 3v12M8 7l4-4 4 4" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" /></Svg>
 );
+
+export const IconCompare = (p: IconProps) => (
+  <Svg size={16} strokeWidth={2} {...p}><path d="M7 4L3 8l4 4" /><path d="M3 8h13" /><path d="M17 20l4-4-4-4" /><path d="M21 16H8" /></Svg>
+);

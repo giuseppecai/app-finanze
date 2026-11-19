@@ -1,0 +1,122 @@
+/* Bottom sheet (Confronta con Revolut) */
+
+html.sheet-open, html.sheet-open body { overflow: hidden; }
+
+.sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - var(--safe-top) - 24px);
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 24px 24px 0 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 -8px 32px rgba(26, 26, 24, 0.18);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.sheet::backdrop { background: rgba(26, 26, 24, 0.45); }
+
+.sheet[open] { animation: sheet-in 200ms ease-out; }
+.sheet[open]::backdrop { animation: veil-in 200ms ease-out; }
+
+@keyframes sheet-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes veil-in { from { opacity: 0; } to { opacity: 1; } }
+
+.sheet__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px calc(var(--gutter) + var(--safe-right)) calc(28px + var(--safe-bottom)) calc(var(--gutter) + var(--safe-left));
+}
+
+.sheet__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.sheet__titles { display: flex; flex-direction: column; gap: 3px; }
+
+.sheet__title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.sheet__subtitle { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+
+/* ── Confronta ────────────────────────────────────────────── */
+
+.balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.balance-row label { font-size: 14px; font-weight: 500; }
+
+.balance-row .amount-field__box { width: 150px; flex-shrink: 0; }
+.balance-row .amount-field__box input { font-size: 16px; }
+
+.reconcile-totals {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.outcome {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border-radius: var(--radius-card);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.outcome__title { font-size: 15px; font-weight: 600; }
+.outcome--ok { background: var(--accent-soft); color: var(--accent-strong); }
+.outcome--missing { background: var(--danger-soft); color: var(--danger-strong); }
+.outcome--extra, .outcome--info { background: var(--surface-muted); color: var(--text); }
+
+.outcome__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+
+.outcome__button {
+  min-height: var(--touch);
+  padding: 0 14px;
+  border-radius: var(--radius-row);
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.outcome__button--dark { background: var(--surface-dark); color: var(--text-on-dark); }
+.outcome__button--accent { background: var(--accent); color: var(--text-on-dark); }
+.outcome__button--danger { background: var(--danger); color: var(--text-on-dark); }
+.outcome__button--secondary { background: var(--surface); color: var(--text); border-color: var(--line); }
+.outcome__button--danger-secondary { background: var(--surface); color: var(--danger-strong); border-color: #C9764B; }
+
+/* Pillola Confronta nella card scura */
+.hero__row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+
+.hero__pill {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--touch);
+  padding: 0 14px;
+  border-radius: 22px;
+  border: 1px solid #4A4943;
+  background: #2A2926;
+  color: var(--text-on-dark);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hero__pill:active { background: #3A3935; }

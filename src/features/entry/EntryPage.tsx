@@ -157,7 +157,8 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
         await updateTransaction(db, editing.id, fields);
       } else {
         await addTransaction(db, {
-          ...fields, card, source: 'manual', recurringId: null, personId: null, loanAllocations: null,
+          ...fields, card, source: params.get('fonte') === 'confronta' ? 'reconcile' : 'manual',
+          recurringId: null, personId: null, loanAllocations: null,
         });
       }
       close();

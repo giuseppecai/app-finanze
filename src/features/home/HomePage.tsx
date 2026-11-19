@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useCurrentPeriod, useEnvelopes, useLastReconciliation, useLoans, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { EnvelopeRow } from '../../components/EnvelopeRow';
-import { IconSliders } from '../../components/icons';
+import { IconCompare, IconSliders } from '../../components/icons';
 import { PotsCard } from '../../components/PotsCard';
 import { today } from '../../domain/clock';
 import { formatShortRange } from '../../domain/dates';
@@ -13,6 +14,7 @@ import { daysAgo } from '../../domain/movements';
 import { daysUntilSalary, isTimeToClose } from '../../domain/periods';
 import type { Envelope, Period } from '../../domain/types';
 import { it } from '../../i18n/it';
+import { ReconcileSheet } from './ReconcileSheet';
 
 /** Rate & Abbonamenti (la busta degli abbonamenti) apre Abbonamenti, le altre i Movimenti filtrati. */
 function envelopeLink(envelope: Envelope, recurringEnvelopes: ReadonlySet<string>): string {
@@ -32,7 +34,7 @@ export function HomePage() {
 
   return (
     <>
-      {period ? <CurrentPeriod period={period} envelopes={envelopes} /> : <NoPeriod />}
+      {period ? <CurrentPeriod period={period} envelopes={envelopes} cardReserve={settings.cardReserve} /> : <NoPeriod />}
       <PotsCard pots={pots} loansOwed={totalOwed(loans)} />
     </>
   );
@@ -62,7 +64,8 @@ function NoPeriod() {
   );
 }
 
-function CurrentPeriod({ period, envelopes }: { period: Period; envelopes: Envelope[] }) {
+function CurrentPeriod({ period, envelopes, cardReserve }: { period: Period; envelopes: Envelope[]; cardReserve: number | null }) {
+  const [reconcileOpen, setReconcileOpen] = useState(false);
   const txs = usePeriodTransactions(period.id);
   const lastReconciliation = useLastReconciliation();
   const recurring = useRecurring();
@@ -89,7 +92,13 @@ function CurrentPeriod({ period, envelopes }: { period: Period; envelopes: Envel
 
       <section className="hero" aria-label={it.home.canSpend}>
         <p className="hero__label">{it.home.canSpend}</p>
-        <p className={summary.spendable < 0 ? 'hero__amount is-over' : 'hero__amount'}>{formatEuro(summary.spendable)}</p>
+        <div className="hero__row">
+          <p className={summary.spendable < 0 ? 'hero__amount is-over' : 'hero__amount'}>{formatEuro(summary.spendable)}</p>
+          <button type="button" className="hero__pill" onClick={() => setReconcileOpen(true)}>
+            <IconCompare />
+            {it.reconcile.open}
+          </button>
+        </div>
         {timeToClose ? (
           <Link to={routes.closing} className="hero__link">{it.home.closeMonth}</Link>
         ) : (
@@ -120,6 +129,16 @@ function CurrentPeriod({ period, envelopes }: { period: Period; envelopes: Envel
           </ul>
         </>
       ) : null}
+
+      <ReconcileSheet
+        open={reconcileOpen}
+        onClose={() => setReconcileOpen(false)}
+        period={period}
+        envelopesTotal={summary.envelopesTotal}
+        unassigned={summary.unassigned}
+        cardReserve={cardReserve}
+        last={lastReconciliation}
+      />
     </>
   );
 }

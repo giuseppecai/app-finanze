@@ -1,12 +1,12 @@
 // Funzioni che leggono e scrivono il database. Ogni scrittura su più tabelle è in una transazione.
-// Le scritture di confronto e prestiti arrivano con le rispettive schermate (M4, M6).
+// Le scritture dei prestiti arrivano con la loro schermata (M6).
 import { nowISO } from '../domain/clock';
 import { planClosing, type ClosingOption, type ClosingPlan } from '../domain/closing';
 import { closingPreview } from '../domain/monthEnd';
 import { buildNewPeriod } from '../domain/opening';
 import { currentPeriod, nextPeriodToStart } from '../domain/periods';
 import { chargeToTransaction, dueCharges } from '../domain/recurring';
-import type { Cents, ISODate, Period, PotId, Recurring, Settings, Transaction } from '../domain/types';
+import type { Cents, ISODate, Period, PotId, Reconciliation, Recurring, Settings, Transaction } from '../domain/types';
 import type { FinanzeDB } from './schema';
 
 export function newId(): string {
@@ -211,6 +211,46 @@ export async function setPotBalances(db: FinanzeDB, balances: Partial<Record<Pot
     for (const [id, balance] of Object.entries(balances)) {
       if (!Number.isInteger(balance)) throw new Error('Saldo non valido');
       await db.pots.update(id as PotId, { balance });
+    }
+  });
+}
+
+// ── Confronta con Revolut ─────────────────────────────────────────────────────
+
+export interface SaveReconciliationInput {
+  reconciliation: Omit<Reconciliation, 'id'>;
+  /** primo confronto: la riserva delle carte da registrare in Impostazioni */
+  calibrateReserve?: Cents;
+  /** "Registra come entrata": crea il movimento income nel periodo corrente */
+  income?: { amount: Cents; date: ISODate; note: string };
+}
+
+/** Salva un confronto (e, se serve, la riserva carte o l'entrata) in un'unica transazione. */
+export async function saveReconciliation(db: FinanzeDB, input: SaveReconciliationInput): Promise<void> {
+  await db.transaction('rw', [db.reconciliations, db.settings, db.periods, db.transactions], async () => {
+    await db.reconciliations.add({ ...input.reconciliation, id: newId() });
+    if (input.calibrateReserve !== undefined) {
+      await db.settings.update('settings', { cardReserve: input.calibrateReserve });
+    }
+    if (input.income) {
+      if (!Number.isInteger(input.income.amount) || input.income.amount <= 0) throw new Error('Entrata non valida');
+      const period = await getCurrentPeriod(db);
+      if (!period) throw new Error('Nessun periodo aperto');
+      await db.transactions.add({
+        id: newId(),
+        periodId: period.id,
+        date: input.income.date,
+        type: 'income',
+        amount: input.income.amount,
+        envelopeId: null,
+        note: input.income.note,
+        card: null,
+        source: 'reconcile',
+        recurringId: null,
+        personId: null,
+        loanAllocations: null,
+        createdAt: nowISO(),
+      });
     }
   });
 }
