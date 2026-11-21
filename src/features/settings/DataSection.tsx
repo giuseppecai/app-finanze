@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { usePots } from '../../app/data';
 import { AmountField } from '../../components/AmountField';
-import { InfoBox } from '../../components/InfoBox';
+import { BottomSheet } from '../../components/BottomSheet';
+import { IconChevronRight, IconShare } from '../../components/icons';
 import { BackupError, backupFileName, buildBackup, parseBackup } from '../../db/backup';
 import { db } from '../../db/database';
 import { readAll, replaceAll } from '../../db/dataset';
@@ -11,71 +12,96 @@ import { nowISO, today } from '../../domain/clock';
 import { formatShortDate, localISODate } from '../../domain/dates';
 import { formatEuro, parseEuro } from '../../domain/money';
 import { daysAgo } from '../../domain/movements';
-import type { Pot, PotId, Settings } from '../../domain/types';
+import { potLines } from '../../domain/pots';
+import type { Cents, Settings } from '../../domain/types';
 import { it } from '../../i18n/it';
 
-const POT_ORDER: PotId[] = ['savings', 'travel', 'gifts', 'bills'];
 const text = (c: number) => formatEuro(c, { decimals: 'always' }).replace('€ ', '').replace('− ', '-');
 
-/** Sezione Dati: riserva carte, saldi dei salvadanai (correggibili), esporta / importa backup. */
-export function DataSection({ settings }: { settings: Settings }) {
+/** Quello che si corregge: il saldo di un salvadanaio o la riserva delle carte. */
+type Editing = { kind: 'pot'; id: string; name: string; value: Cents } | { kind: 'reserve'; value: Cents | null };
+
+/** Salvadanai e carte: righe in sola lettura, un tocco apre il pannello per correggere il saldo. */
+export function PotsGroup({ settings }: { settings: Settings }) {
   const pots = usePots();
+  const [editing, setEditing] = useState<Editing | null>(null);
   if (!pots) return null;
+  const lines = potLines(pots, settings.monthlyItems);
   return (
-    <>
-      <section className="settings-section">
-        <h2 className="section-head--muted">{it.settings.data}</h2>
-        <BalancesForm key={pots.map((p) => `${p.id}:${p.balance}`).join('|') + String(settings.cardReserve)} settings={settings} pots={pots} />
-      </section>
-      <BackupCard settings={settings} />
-    </>
+    <section className="group" aria-labelledby="pots-group-title">
+      <h2 id="pots-group-title" className="group__title">{it.settings.potsTitle}</h2>
+      <ul className="card list-card list">
+        {lines.map((p) => (
+          <li key={p.id}>
+            <button type="button" className="list-row list-row--button" onClick={() => setEditing({ kind: 'pot', id: p.id, name: p.name, value: p.balance })}>
+              <span className="list-row__text"><span className="list-row__title">{p.name}</span></span>
+              <span className={p.balance < 0 ? 'list-row__value is-over' : 'list-row__value'}>{formatEuro(p.balance)}</span>
+              <IconChevronRight className="list-row__chevron" />
+            </button>
+          </li>
+        ))}
+        <li>
+          <button type="button" className="list-row list-row--button" onClick={() => setEditing({ kind: 'reserve', value: settings.cardReserve })}>
+            <span className="list-row__text">
+              <span className="list-row__title">{it.settings.reserve}</span>
+              <span className="list-row__detail">{it.settings.reserveDetail}</span>
+            </span>
+            <span className="list-row__value">{settings.cardReserve === null ? it.settings.reserveNotSet : formatEuro(settings.cardReserve)}</span>
+            <IconChevronRight className="list-row__chevron" />
+          </button>
+        </li>
+      </ul>
+      <p className="group__footer">{it.settings.potsHint}</p>
+      <BottomSheet
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+        title={editing?.kind === 'pot' ? it.settings.editBalance(editing.name) : it.settings.reserve}
+        subtitle={editing?.kind === 'pot' ? it.settings.balanceHint : it.settings.reserveHint}
+      >
+        {editing ? <BalanceForm key={editing.kind === 'pot' ? editing.id : 'reserve'} editing={editing} onDone={() => setEditing(null)} /> : null}
+      </BottomSheet>
+    </section>
   );
 }
 
-function BalancesForm({ settings, pots }: { settings: Settings; pots: Pot[] }) {
-  const [reserve, setReserve] = useState(settings.cardReserve === null ? '' : text(settings.cardReserve));
-  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(pots.map((p) => [p.id, text(p.balance)])));
-  const [message, setMessage] = useState<string | null>(null);
-  const parse = (v: string) => {
-    const neg = v.trim().startsWith('-');
-    const c = parseEuro(v.replace('-', ''));
-    return c === null ? null : neg ? -c : c;
-  };
+function BalanceForm({ editing, onDone }: { editing: Editing; onDone: () => void }) {
+  const [value, setValue] = useState(editing.value === null ? '' : text(editing.value));
+  const [error, setError] = useState<string | null>(null);
+  const neg = value.trim().startsWith('-');
+  const abs = parseEuro(value.replace('-', ''));
+  const cents = abs === null ? null : neg ? -abs : abs;
+  const empty = value.trim() === '';
+  const valid = editing.kind === 'reserve' ? empty || cents !== null : cents !== null;
 
   async function save() {
-    const r = reserve.trim() === '' ? null : parse(reserve);
-    const parsed = Object.fromEntries(Object.entries(values).map(([id, v]) => [id, parse(v)]));
-    if ((reserve.trim() !== '' && r === null) || Object.values(parsed).some((v) => v === null)) {
-      setMessage(it.settings.invalid);
+    if (!valid) {
+      setError(it.settings.invalid);
       return;
     }
-    await setCardReserve(db, r);
-    await setPotBalances(db, parsed as Partial<Record<PotId, number>>);
-    setMessage(it.settings.dataSaved);
+    if (editing.kind === 'pot') await setPotBalances(db, { [editing.id]: cents! });
+    else await setCardReserve(db, empty ? null : cents);
+    onDone();
   }
 
   return (
-    <div className="card data-card">
-      <AmountField id="card-reserve" label={it.settings.reserve} value={reserve} placeholder={it.settings.reserveNotSet} onChange={setReserve} />
-      <p className="muted-note">{it.settings.reserveHint}</p>
-      <span className="entry__label">{it.settings.pots}</span>
-      {POT_ORDER.filter((id) => pots.some((p) => p.id === id)).map((id) => (
-        <AmountField
-          key={id}
-          id={`pot-balance-${id}`}
-          label={it.accounts[id]}
-          value={values[id] ?? ''}
-          onChange={(v) => setValues((s) => ({ ...s, [id]: v }))}
-        />
-      ))}
-      <p className="muted-note">{it.settings.potsHint}</p>
-      {message ? <p className="muted-note" role="status">{message}</p> : null}
-      <button type="button" className="outcome__button outcome__button--secondary" onClick={() => void save()}>{it.settings.saveData}</button>
-    </div>
+    <form className="recurring-form" onSubmit={(e) => { e.preventDefault(); void save(); }}>
+      <AmountField
+        id="balance-value"
+        large
+        label={editing.kind === 'pot' ? editing.name : it.settings.reserve}
+        value={value}
+        placeholder={editing.kind === 'reserve' ? it.settings.reserveNotSet : undefined}
+        onChange={setValue}
+        invalid={!empty && cents === null}
+      />
+      {error ? <p className="outcome outcome--info" role="alert">{error}</p> : null}
+      <button type="submit" className="primary-button" disabled={!valid}>{it.settings.saveBalance}</button>
+    </form>
   );
 }
 
-function BackupCard({ settings }: { settings: Settings }) {
+/** Backup: esporta (condivisione iOS) e importa. */
+export function BackupGroup({ settings }: { settings: Settings }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const [params] = useSearchParams();
@@ -132,16 +158,24 @@ function BackupCard({ settings }: { settings: Settings }) {
   }
 
   return (
-    <section ref={sectionRef} id="backup" className="settings-section">
-      <h2 className="section-head--muted">{it.settings.backup}</h2>
-      <div className="card data-card">
-        <p className="muted-note">
-          {it.settings.backupHint} {last ? it.settings.lastBackup(it.relativeDays(daysAgo(localISODate(new Date(last)), today()))) : it.settings.neverBackup}
-        </p>
-        <div className="data-card__actions">
-          <button type="button" className="outcome__button outcome__button--accent" onClick={() => void exportBackup()}>{it.settings.export}</button>
-          <label className="outcome__button outcome__button--secondary file-label">
-            {it.settings.import}
+    <section ref={sectionRef} id="backup" className="group" aria-labelledby="backup-title">
+      <h2 id="backup-title" className="group__title">{it.settings.backup}</h2>
+      <ul className="card list-card list">
+        <li>
+          <button type="button" className="list-row list-row--button" onClick={() => void exportBackup()}>
+            <span className="list-row__text">
+              <span className="list-row__title list-row__title--accent">{it.settings.export}</span>
+              <span className="list-row__detail">
+                {last ? it.settings.lastBackup(it.relativeDays(daysAgo(localISODate(new Date(last)), today()))) : it.settings.neverBackup}
+              </span>
+            </span>
+            <IconShare className="list-row__chevron list-row__chevron--accent" />
+          </button>
+        </li>
+        <li>
+          <label className="list-row list-row--button">
+            <span className="list-row__text"><span className="list-row__title">{it.settings.import}</span></span>
+            <IconChevronRight className="list-row__chevron" />
             <input
               ref={fileRef}
               className="file-input"
@@ -150,9 +184,10 @@ function BackupCard({ settings }: { settings: Settings }) {
               onChange={(e) => { const f = e.target.files?.[0]; if (f) void importBackup(f); }}
             />
           </label>
-        </div>
-        {message ? <InfoBox>{message}</InfoBox> : null}
-      </div>
+        </li>
+      </ul>
+      <p className="group__footer">{it.settings.backupHint}</p>
+      {message ? <p className="group__message" role="status">{message}</p> : null}
     </section>
   );
 }

@@ -43,7 +43,7 @@ describe('Imposta · tetti a metà mese', () => {
 describe('Backup', () => {
   it('esporta e reimporta gli stessi dati', () => {
     const file = buildBackup(data, '2026-11-19T10:00:00.000Z');
-    expect(file.schemaVersion).toBe(2);
+    expect(file.schemaVersion).toBe(3);
     expect(backupFileName(file.exportedAt)).toBe('finanze-backup-2026-11-19.json');
     const back = parseBackup(JSON.stringify(file));
     expect(back.data).toEqual(data);
@@ -61,6 +61,20 @@ describe('Backup', () => {
     expect(back.data.transactions.every((t) => t.billId === null)).toBe(true);
     expect(back.data.pots.map((p) => p.id)).toContain('bills');
     expect(back.data.bills).toEqual([]);
+  });
+
+  it('un backup v2 riceve le voci fisse e le quote per voce della v3', () => {
+    const v2 = JSON.parse(JSON.stringify(buildBackup(data, 'x'))) as { schemaVersion: number; data: Record<string, unknown> };
+    v2.schemaVersion = 2;
+    const { monthlyItems: _m, ...settings } = v2.data.settings as Record<string, unknown>;
+    v2.data.settings = { ...settings, giftsQuota: 2500, lastTravelQuota: 7000 };
+    v2.data.periods = (v2.data.periods as Record<string, unknown>[]).map(({ quotas: _q, ...p }) => ({ ...p, travelQuota: 5000, giftsQuota: 2500 }));
+    v2.data.bills = (v2.data.bills as Record<string, unknown>[]).map((b) => ({ ...b, envelopeId: 'env-casa' }));
+    const back = parseBackup(JSON.stringify(v2));
+    expect(back.data.settings.monthlyItems.map((i) => [i.id, i.kind, i.amount])).toEqual([['travel', 'pot', 7000], ['gifts', 'pot', 2500]]);
+    expect('giftsQuota' in back.data.settings).toBe(false);
+    expect(back.data.periods.every((p) => p.quotas.travel === 5000 && p.quotas.gifts === 2500 && !('travelQuota' in p))).toBe(true);
+    expect(back.data.bills.every((b) => !('envelopeId' in b))).toBe(true);
   });
 
   it.each([

@@ -3,6 +3,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useBills, useCurrentPeriod, useEnvelopes, usePeriods, usePeriodTransactions, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { AmountField } from '../../components/AmountField';
+import { BottomSheet } from '../../components/BottomSheet';
 import { CheckRow } from '../../components/CheckRow';
 import { InfoBox } from '../../components/InfoBox';
 import { MonthHeader } from '../../components/MonthHeader';
@@ -14,12 +15,13 @@ import { planClosing, type ClosingOption, type ClosingPlan } from '../../domain/
 import { formatLongRange } from '../../domain/dates';
 import { formatEuro, parseEuro } from '../../domain/money';
 import { closingPreview, transferChecklist, type ChecklistItem } from '../../domain/monthEnd';
-import { activeEnvelopes, planOpening } from '../../domain/opening';
+import { activeEnvelopes, itemQuotas, planOpening, type ItemQuota } from '../../domain/opening';
 import { nextPeriodToStart } from '../../domain/periods';
 import { billsQuotaTotal } from '../../domain/bills';
-import type { Bill, Envelope, Period, Recurring, Settings, Transaction } from '../../domain/types';
+import type { Bill, Cents, Envelope, Period, Recurring, Settings, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { CapsEditor } from '../settings/CapsEditor';
+import { MonthlyItemSheet } from '../settings/MonthlyItemSheet';
 
 const OPTIONS: ClosingOption[] = ['toSavings', 'carryOver', 'half'];
 
@@ -68,7 +70,10 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   const navigate = useNavigate();
   const now = today();
   const [salaryText, setSalaryText] = useState('');
-  const [travelText, setTravelText] = useState(() => formatEuro(settings.lastTravelQuota, { decimals: 'always' }).replace('€ ', ''));
+  /** importi cambiati solo per questo mese (id voce → importo) */
+  const [overrides, setOverrides] = useState<Record<string, Cents>>({});
+  const [editing, setEditing] = useState<ItemQuota | null>(null);
+  const [newItem, setNewItem] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [editCaps, setEditCaps] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -84,16 +89,16 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
     : null;
 
   const salary = parseEuro(salaryText);
-  const travel = parseEuro(travelText);
   const salaryOk = salary !== null && salary > 0;
-  const travelOk = travel !== null;
-  const opening = planOpening(salary ?? 0, envelopes, travel ?? 0, settings.giftsQuota, billsQuotaTotal(bills));
+  const quotas = itemQuotas(settings.monthlyItems, overrides);
+  const activeBills = bills.filter((b) => b.active);
+  const opening = planOpening(salary ?? 0, envelopes, quotas, billsQuotaTotal(bills));
   const items = transferChecklist(opening, closing);
   // La spunta vale per quell'importo: se l'importo cambia, la riga torna da fare.
-  const keyOf = (i: ChecklistItem) => `${i.id}:${i.amount}`;
+  const keyOf = (i: ChecklistItem) => `${i.key}:${i.amount}`;
   const done = items.filter((i) => checked.has(keyOf(i))).length;
   const allDone = done === items.length;
-  const canStart = allDone && salaryOk && travelOk && !saving;
+  const canStart = allDone && salaryOk && !saving;
   const closingMonth = current?.name.toLowerCase() ?? '';
   const names = activeEnvelopes(envelopes).map((e) => e.shortName).join(', ');
 
@@ -107,38 +112,42 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   }
 
   function titleOf(item: ChecklistItem): string {
-    if (item.id === 'closing') return `${it.accounts[item.from]} → ${it.accounts[item.to]}`;
+    if (item.kind === 'closing') return `${it.accounts[item.from]} → ${it.accounts[item.to]}`;
+    if (item.item) return item.item.kind === 'payment' ? it.opening.payTitle(item.item.name) : `→ ${item.item.name}`;
     return `→ ${it.accounts[item.to]}`;
   }
 
   function noteOf(item: ChecklistItem): string {
-    switch (item.id) {
+    switch (item.kind) {
       case 'closing':
         return item.to === 'savings' ? it.opening.notes.closingSurplus(closingMonth) : it.opening.notes.closingDeficit(closingMonth);
       case 'budget':
         return it.opening.notes.budget(names);
-      case 'travel':
-        return it.opening.notes.travel;
-      case 'gifts':
-        return it.opening.notes.gifts;
+      case 'item':
+        return item.item?.kind === 'payment' ? it.opening.notes.payment : it.opening.notes.pot;
       case 'bills':
-        return it.opening.notes.bills;
+        return it.opening.notes.bills(activeBills.length);
       case 'savings':
         return item.warn && salaryOk ? it.opening.notes.short : it.opening.notes.savings;
     }
   }
 
   function amountOf(item: ChecklistItem): string {
-    if (item.id === 'savings' && !salaryOk) return it.opening.rest;
+    if (item.kind === 'savings' && !salaryOk) return it.opening.rest;
     return formatEuro(item.amount);
   }
 
+  function quotaOf(item: ChecklistItem): ItemQuota | undefined {
+    return item.item ? quotas.find((q) => q.item.id === item.item?.id) : undefined;
+  }
+
   async function start() {
-    if (!canStart || salary === null || travel === null) return;
+    if (!canStart || salary === null) return;
     setSaving(true);
     setError(null);
     try {
-      await startPeriod(db, { salary, travel, closingOption: option, today: now });
+      const used = Object.fromEntries(quotas.map((q) => [q.item.id, q.amount]));
+      await startPeriod(db, { salary, quotas: used, closingOption: option, today: now });
       navigate(routes.home, { replace: true });
     } catch (e) {
       console.error(e);
@@ -162,22 +171,30 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
           onChange={setSalaryText}
           invalid={salaryText !== '' && !salaryOk}
         />
-        <AmountField id="travel" label={it.opening.travel} value={travelText} onChange={setTravelText} invalid={!travelOk} />
       </section>
 
       <section className="check-list" aria-labelledby="transfers-title">
-        <h2 id="transfers-title" className="section-title">{it.opening.transfers}</h2>
-        {items.map((item) => (
-          <CheckRow
-            key={item.id}
-            checked={checked.has(keyOf(item))}
-            onChange={(on) => toggle(item, on)}
-            title={titleOf(item)}
-            note={noteOf(item)}
-            amount={amountOf(item)}
-            warn={item.warn && salaryOk}
-          />
-        ))}
+        <div className="check-list__head">
+          <h2 id="transfers-title" className="section-title">{it.opening.transfers}</h2>
+          <p className="muted-note">{it.opening.transfersHint}</p>
+        </div>
+        {items.map((item) => {
+          const q = quotaOf(item);
+          return (
+            <CheckRow
+              key={item.key}
+              checked={checked.has(keyOf(item))}
+              onChange={(on) => toggle(item, on)}
+              title={titleOf(item)}
+              note={noteOf(item)}
+              amount={amountOf(item)}
+              warn={item.warn && salaryOk}
+              onEditAmount={q ? () => setEditing(q) : undefined}
+              editLabel={q ? it.items.editAmount(q.item.name, formatEuro(q.amount)) : undefined}
+            />
+          );
+        })}
+        <button type="button" className="link-button" onClick={() => setNewItem(true)}>{it.opening.addItem}</button>
       </section>
 
       <p className="muted-note">{it.opening.cardsNote}</p>
@@ -188,10 +205,36 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
       {editCaps ? <CapsEditor envelopes={envelopes} /> : null}
 
       {error ? <InfoBox>{error}</InfoBox> : null}
+      <QuotaSheet
+        quota={editing}
+        onClose={() => setEditing(null)}
+        onApply={(id, amount) => { setOverrides((o) => ({ ...o, [id]: amount })); setEditing(null); }}
+      />
+      <MonthlyItemSheet target={newItem ? 'new' : null} onClose={() => setNewItem(false)} />
       <div className="flow__spacer" />
       <button type="button" className="primary-button" disabled={!canStart} onClick={() => void start()}>
         {!salaryOk ? it.opening.needSalary : allDone ? it.opening.start : it.opening.progress(done, items.length)}
       </button>
     </div>
+  );
+}
+
+/** Cambia l'importo di una voce fissa solo per questo mese. */
+function QuotaSheet({ quota, onClose, onApply }: { quota: ItemQuota | null; onClose: () => void; onApply: (id: string, amount: Cents) => void }) {
+  return (
+    <BottomSheet open={quota !== null} onClose={onClose} title={quota ? it.items.thisMonth(quota.item.name) : ''} subtitle={it.items.thisMonthHint}>
+      {quota ? <QuotaForm key={quota.item.id} quota={quota} onApply={onApply} /> : null}
+    </BottomSheet>
+  );
+}
+
+function QuotaForm({ quota, onApply }: { quota: ItemQuota; onApply: (id: string, amount: Cents) => void }) {
+  const [value, setValue] = useState(formatEuro(quota.amount, { decimals: 'always' }).replace('€ ', ''));
+  const cents = parseEuro(value);
+  return (
+    <form className="recurring-form" onSubmit={(e) => { e.preventDefault(); if (cents !== null) onApply(quota.item.id, cents); }}>
+      <AmountField id="quota-amount" large label={quota.item.name} value={value} onChange={setValue} invalid={value !== '' && cents === null} />
+      <button type="submit" className="primary-button" disabled={cents === null}>{it.items.apply}</button>
+    </form>
   );
 }

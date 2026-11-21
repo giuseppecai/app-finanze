@@ -1,4 +1,4 @@
-/* Casa & Servizi */
+/* Bollette */
 
 .link-row {
   display: flex;
@@ -44,5 +44,3 @@
 .bill-preview__soft { color: var(--text-muted); }
 .bill-preview .is-over { color: var(--danger); font-weight: 500; }
 
-/* Salvadanaio Bollette nella card "Messi da parte" */
-.pots__segment--bills, .pots__dot--bills { background: var(--accent-strong); }

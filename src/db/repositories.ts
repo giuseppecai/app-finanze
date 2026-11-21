@@ -4,7 +4,7 @@ import { planClosing, type ClosingOption, type ClosingPlan } from '../domain/clo
 import { closingPreview } from '../domain/monthEnd';
 import { billsQuotaTotal, monthlyQuota, planBillPayment, type BillPaymentPlan } from '../domain/bills';
 import { it } from '../i18n/it';
-import { buildNewPeriod } from '../domain/opening';
+import { buildNewPeriod, itemQuotas } from '../domain/opening';
 import { defaultShortName, planCapsChange, type CapsChange } from '../domain/settings';
 import { currentPeriod, nextPeriodToStart } from '../domain/periods';
 import { chargeToTransaction, dueCharges } from '../domain/recurring';
@@ -12,7 +12,7 @@ import {
   applyRepayment, canDeleteLoan, createLoanEntry, deleteLoanEntry, savingsEffect, undoRepayment as undoLoanAllocations,
 } from '../domain/loans';
 import type {
-  Bill, Card, Cents, Envelope, ISODate, Loan, LoanDirection, Period, Person, PotId, Reconciliation, Recurring, Settings, Transaction,
+  Bill, Card, Cents, Envelope, ISODate, Loan, LoanDirection, MonthlyItem, Period, Person, PotId, Reconciliation, Recurring, Settings, Transaction,
 } from '../domain/types';
 import type { FinanzeDB } from './schema';
 
@@ -110,7 +110,8 @@ export async function runRecurringCharges(db: FinanzeDB, today: ISODate): Promis
 
 export interface StartPeriodInput {
   salary: Cents;
-  travel: Cents;
+  /** importi delle voci fisse scelti per questo mese (id voce → importo); le voci assenti usano l'importo proposto */
+  quotas: Record<string, Cents>;
   /** scelta per l'avanzo del periodo aperto; ignorata se non c'è un periodo da chiudere */
   closingOption: ClosingOption;
   today: ISODate;
@@ -126,12 +127,14 @@ export interface StartPeriodResult {
  * 1. se c'è un periodo aperto lo chiude (genera gli abbonamenti mancanti fino alla fine del periodo,
  *    salva avanzi, scelta e data di chiusura);
  * 2. crea il periodo nuovo fotografando i tetti e applicando riporti / da assegnare;
- * 3. aggiorna i salvadanai (Bollette compresa), il fondo di ogni bolletta e la quota Viaggi usata.
+ * 3. aggiorna i salvadanai (Bollette compresa), il fondo di ogni bolletta e gli importi proposti delle voci fisse.
  * Così non resta mai un momento senza periodo aperto.
  */
 export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promise<StartPeriodResult> {
   if (!Number.isInteger(input.salary) || input.salary <= 0) throw new Error('Stipendio non valido');
-  if (!Number.isInteger(input.travel) || input.travel < 0) throw new Error('Quota Viaggi non valida');
+  for (const v of Object.values(input.quotas)) {
+    if (!Number.isInteger(v) || v < 0) throw new Error('Importo di una voce non valido');
+  }
   return db.transaction(
     'rw',
     [db.settings, db.envelopes, db.periods, db.transactions, db.recurring, db.pots, db.bills],
@@ -168,23 +171,29 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
         today: input.today,
         salary: input.salary,
         envelopes,
-        travel: input.travel,
-        gifts: settings.giftsQuota,
+        items: itemQuotas(settings.monthlyItems, input.quotas),
         billsQuota: billsQuotaTotal(bills),
         closing,
       });
       await db.periods.add(period);
 
-      // Ogni bolletta periodica attiva accantona la sua quota (R13).
+      // Ogni bolletta attiva accantona la sua quota (R13).
       for (const bill of bills) {
         const quota = bill.active ? monthlyQuota(bill) : 0;
         if (quota > 0) await db.bills.update(bill.id, { fund: bill.fund + quota });
       }
 
-      for (const pot of pots) {
-        await db.pots.update(pot.id, { balance: pot.balance + potDeltas[pot.id] });
+      for (const [id, delta] of Object.entries(potDeltas)) {
+        const pot = pots.find((p) => p.id === id);
+        if (pot) await db.pots.update(id, { balance: pot.balance + delta });
+        else {
+          const item = settings.monthlyItems.find((i) => i.id === id);
+          await db.pots.add({ id, name: item?.name ?? id, balance: delta });
+        }
       }
-      await db.settings.update('settings', { lastTravelQuota: input.travel });
+      // L'importo usato diventa quello proposto il mese prossimo.
+      const monthlyItems = settings.monthlyItems.map((i) => (input.quotas[i.id] !== undefined ? { ...i, amount: input.quotas[i.id]! } : i));
+      await db.settings.update('settings', { monthlyItems });
 
       // Abbonamenti già maturati nel periodo nuovo (es. un addebito il 27).
       const due = dueCharges(recurrings, period, [], input.today);
@@ -228,6 +237,40 @@ export async function setPotBalances(db: FinanzeDB, balances: Partial<Record<Pot
       await db.pots.update(id as PotId, { balance });
     }
   });
+}
+
+/**
+ * Crea o aggiorna una voce fissa dell'inizio del mese. Una voce-salvadanaio ha il suo salvadanaio
+ * (stesso id, stesso nome); archiviare una voce non tocca i soldi già messi da parte.
+ */
+export async function saveMonthlyItem(db: FinanzeDB, item: MonthlyItem): Promise<void> {
+  const name = item.name.trim();
+  if (name === '') throw new Error('Nome mancante');
+  if (!Number.isInteger(item.amount) || item.amount < 0) throw new Error('Importo non valido');
+  if (item.id === 'savings' || item.id === 'bills') throw new Error('Id riservato');
+  await db.transaction('rw', [db.settings, db.pots], async () => {
+    const settings = await getSettings(db);
+    const exists = settings.monthlyItems.some((i) => i.id === item.id);
+    const next = { ...item, name };
+    const monthlyItems = exists ? settings.monthlyItems.map((i) => (i.id === item.id ? next : i)) : [...settings.monthlyItems, next];
+    await db.settings.update('settings', { monthlyItems });
+    if (item.kind === 'pot') {
+      const pot = await db.pots.get(item.id);
+      if (pot) await db.pots.update(item.id, { name });
+      else await db.pots.add({ id: item.id, name, balance: 0 });
+    }
+  });
+}
+
+/** Sposta una voce fissa su o giù nell'elenco. */
+export async function moveMonthlyItem(db: FinanzeDB, id: string, delta: -1 | 1): Promise<void> {
+  const settings = await getSettings(db);
+  const list = [...settings.monthlyItems];
+  const i = list.findIndex((x) => x.id === id);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j]!, list[i]!];
+  await db.settings.update('settings', { monthlyItems: list });
 }
 
 // ── Confronta con Revolut ─────────────────────────────────────────────────────

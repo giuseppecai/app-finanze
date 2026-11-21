@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { closingNet, planClosing } from '../closing';
-import { buildNewPeriod, planOpening } from '../opening';
+import { buildNewPeriod, itemQuotas, planOpening } from '../opening';
+import { DEFAULT_MONTHLY_ITEMS } from '../pots';
+
+const items = itemQuotas(DEFAULT_MONTHLY_ITEMS);
+const rent = { item: { id: 'rent', name: 'Affitto', kind: 'payment' as const }, amount: 40000 };
 import { calendarPeriodById } from '../periods';
 import { reconcile } from '../reconcile';
 import { buildDemoData, ENV } from '../../db/fixtures';
@@ -74,16 +78,26 @@ describe('R6 · Chiusura del mese (esempio Ottobre)', () => {
 
 describe('R7 · Inizio del mese', () => {
   it('S = 1.500 → Budget 700, Viaggi 50, Regali 25, Risparmi 725', () => {
-    const plan = planOpening(150000, data.envelopes, 5000, 2500);
-    expect(plan).toMatchObject({ budget: 70000, travel: 5000, gifts: 2500, savings: 72500, short: false });
-    expect(plan.transfers.map((t) => t.id)).toEqual(['budget', 'travel', 'gifts', 'savings']);
+    const plan = planOpening(150000, data.envelopes, items);
+    expect(plan).toMatchObject({ budget: 70000, savings: 72500, short: false });
+    expect(plan.items.map((q) => [q.item.id, q.amount])).toEqual([['travel', 5000], ['gifts', 2500]]);
+  });
+  it('affitto € 400 come uscita fissa → Risparmi 325', () => {
+    expect(planOpening(150000, data.envelopes, [...items, rent])).toMatchObject({ savings: 32500 });
+  });
+  it('importo cambiato solo per questo mese: Viaggi 80 → Risparmi 695', () => {
+    expect(planOpening(150000, data.envelopes, itemQuotas(DEFAULT_MONTHLY_ITEMS, { travel: 8000 }))).toMatchObject({ savings: 69500 });
+  });
+  it('le voci archiviate non compaiono', () => {
+    const list = itemQuotas([...DEFAULT_MONTHLY_ITEMS, { id: 'gym', name: 'Palestra', kind: 'payment', amount: 3000, archived: true }]);
+    expect(list.map((q) => q.item.id)).toEqual(['travel', 'gifts']);
   });
   it('stipendio che non copre le buste → Risparmi negativo', () => {
-    expect(planOpening(70000, data.envelopes, 5000, 2500)).toMatchObject({ savings: -7500, short: true });
+    expect(planOpening(70000, data.envelopes, items)).toMatchObject({ savings: -7500, short: true });
   });
   it('le buste archiviate non entrano nel budget', () => {
     const envs = data.envelopes.map((e) => (e.id === ENV.shopping ? { ...e, archived: true } : e));
-    expect(planOpening(150000, envs, 5000, 2500).budget).toBe(58000);
+    expect(planOpening(150000, envs, items).budget).toBe(58000);
   });
   it('crea il periodo: fotografa i tetti, applica la chiusura, aggiorna i salvadanai', () => {
     const ott = data.periods.find((p) => p.id === '2026-10')!;
@@ -93,8 +107,7 @@ describe('R7 · Inizio del mese', () => {
       today: '2026-10-26',
       salary: 150000,
       envelopes: data.envelopes,
-      travel: 5000,
-      gifts: 2500,
+      items: [...items, rent],
       closing,
     });
     expect(period).toMatchObject({
@@ -102,13 +115,15 @@ describe('R7 · Inizio del mese', () => {
       salary: 150000, unassigned: 4800, carryIn: {}, closedAt: null,
     });
     expect(period.allocations[ENV.vita]).toBe(20000);
-    expect(potDeltas).toEqual({ savings: 72500 + 4800, travel: 5000, gifts: 2500, bills: 0 });
+    expect(period.quotas).toEqual({ travel: 5000, gifts: 2500, rent: 40000 });
+    // l'affitto esce: nessun salvadanaio
+    expect(potDeltas).toEqual({ savings: 32500 + 4800, travel: 5000, gifts: 2500, bills: 0 });
   });
   it('opzione B: i riporti passano al periodo nuovo', () => {
     const ott = data.periods.find((p) => p.id === '2026-10')!;
     const { period } = buildNewPeriod({
       target: calendarPeriodById('2026-11', 27), today: '2026-10-27', salary: 150000,
-      envelopes: data.envelopes, travel: 5000, gifts: 2500,
+      envelopes: data.envelopes, items,
       closing: planClosing(ott.leftovers!, 0, 'carryOver'),
     });
     expect(period.carryIn[ENV.spesa]).toBe(-1200);

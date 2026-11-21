@@ -89,3 +89,11 @@ export const IconShare = (p: IconProps) => (
 export const IconCompare = (p: IconProps) => (
   <Svg size={16} strokeWidth={2} {...p}><path d="M7 4L3 8l4 4" /><path d="M3 8h13" /><path d="M17 20l4-4-4-4" /><path d="M21 16H8" /></Svg>
 );
+
+export const IconPencil = (p: IconProps) => (
+  <Svg {...p}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></Svg>
+);
+
+export const IconArrowUp = (p: IconProps) => (
+  <Svg {...p}><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></Svg>
+);

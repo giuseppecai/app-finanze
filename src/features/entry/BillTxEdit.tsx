@@ -35,7 +35,7 @@ export function BillTxEdit({ tx, billName }: { tx: Transaction; billName: string
         <p className="entry__feedback entry__feedback--muted">{tx.note}</p>
       </div>
       <InfoBox>
-        {it.casa.billTxInfo(billName)} <Link to={routes.casa} className="text-link">{it.casa.title} →</Link>
+        {it.casa.billTxInfo(billName)} <Link to={routes.bills} className="text-link">{it.casa.title} →</Link>
       </InfoBox>
       {error ? <p className="outcome outcome--info" role="alert">{error}</p> : null}
       <div className="flow__spacer" />

@@ -10,6 +10,8 @@ export const routes = {
   loans: '/prestiti',
   recurring: '/abbonamenti',
   onboarding: '/benvenuto',
+  bills: '/bollette',
+  /** vecchio indirizzo di Bollette (prima stava dentro Casa & Servizi) */
   casa: '/casa',
 } as const;
 

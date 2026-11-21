@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
-  billsQuotaTotal, expectedShare, fundStatus, monthlyBillsShare, monthlyQuota, myShare, otherShare, planBillPayment,
+  billsQuotaTotal, expectedShare, fundStatus, monthlyQuota, myShare, otherShare, planBillPayment,
 } from '../bills';
-import { planOpening } from '../opening';
+import { planOpening, type ItemQuota } from '../opening';
+import { DEFAULT_MONTHLY_ITEMS } from '../pots';
 import type { Bill } from '../types';
 import { buildDemoData } from '../../db/fixtures';
 
-const CASA = 'env-casa';
 const bill = (over: Partial<Bill>): Bill => ({
   id: 'b', name: 'B', frequency: 1, estimate: 0, split: 'half', payer: 'me', personId: 'person-elisa',
-  envelopeId: CASA, fund: 0, active: true, order: 1, createdAt: '2026-11-01T00:00:00.000Z', ...over,
+  fund: 0, active: true, order: 1, createdAt: '2026-11-01T00:00:00.000Z', ...over,
 });
 
 const luce = bill({ id: 'luce', name: 'Luce', estimate: 8000 });
@@ -30,44 +30,49 @@ describe('R13 · quote', () => {
     expect(all.map(expectedShare)).toEqual([4000, 1400, 3000, 12000]);
   });
 
-  it('quote mensili: gas 15, acqua 10; le mensili non accantonano', () => {
-    expect(all.map(monthlyQuota)).toEqual([0, 0, 1500, 1000]);
-    expect(billsQuotaTotal(all)).toBe(2500);
-  });
-
-  it('bollette mensili nella busta Casa: € 54', () => {
-    expect(monthlyBillsShare(all, CASA)).toBe(5400);
+  it('quote mensili: luce 40, internet 14 (mensili, tutta la quota), gas 15, acqua 10 → € 79', () => {
+    expect(all.map(monthlyQuota)).toEqual([4000, 1400, 1500, 1000]);
+    expect(billsQuotaTotal(all)).toBe(7900);
   });
 
   it('le bollette in pausa non contano', () => {
     expect(billsQuotaTotal([gas, { ...acqua, active: false }])).toBe(1500);
   });
 
-  it('Inizio del mese: S 1.500, buste 700, Viaggi 50, Regali 25, Bollette 25 → Risparmi 700', () => {
-    const plan = planOpening(150000, buildDemoData().envelopes, 5000, 2500, billsQuotaTotal(all));
-    expect(plan).toMatchObject({ budget: 70000, bills: 2500, savings: 70000 });
-    expect(plan.transfers.map((t) => t.id)).toEqual(['budget', 'travel', 'gifts', 'bills', 'savings']);
+  const items: ItemQuota[] = DEFAULT_MONTHLY_ITEMS.map((item) => ({ item, amount: item.amount }));
+
+  it('Inizio del mese: S 1.500, buste 700, Viaggi 50, Regali 25, Bollette 79 → Risparmi 646', () => {
+    const plan = planOpening(150000, buildDemoData().envelopes, items, billsQuotaTotal(all));
+    expect(plan).toMatchObject({ budget: 70000, bills: 7900, savings: 64600 });
+  });
+
+  it('con Casa & Servizi abbassata a 66 (le bollette mensili non passano più da lì) → Risparmi 700', () => {
+    const envs = buildDemoData().envelopes.map((e) => (e.name === 'Casa & Servizi' ? { ...e, cap: 6600 } : e));
+    expect(planOpening(150000, envs, items, billsQuotaTotal(all))).toMatchObject({ budget: 64600, savings: 70000 });
   });
 });
 
 describe('R13 · registrare una bolletta', () => {
-  it('luce € 80,01 pagata da te → 40,01 in Casa, prestito 40 a Elisa', () => {
-    const p = planBillPayment(luce, 8001, 'me');
+  it('luce € 80,01 pagata da te, fondo 40 → 40,01 dal fondo (Mancano 0,01), prestito 40 a Elisa', () => {
+    const l = { ...luce, fund: 4000 };
+    const p = planBillPayment(l, 8001, 'me');
     expect(p).toMatchObject({
       myShare: 4001, otherShare: 4000,
-      expense: { amount: 4001, envelopeId: CASA },
+      expense: { amount: 4001, envelopeId: null },
       loan: { direction: 'lent', amount: 4000 },
-      fundDelta: 0, potDeltas: {},
-      transfers: [{ from: 'savings', to: 'card', amount: 4000 }],
+      fundDelta: -4001, potDeltas: { bills: -4001 },
+      transfers: [{ from: 'bills', to: 'card', amount: 4001 }, { from: 'savings', to: 'card', amount: 4000 }],
     });
+    expect(fundStatus({ ...l, fund: l.fund + p.fundDelta })).toEqual({ fund: -1, target: 4000, missing: 1 });
   });
 
-  it('mensile pagata da lei → spesa in Casa + debito, Budget del mese → Risparmi', () => {
-    const p = planBillPayment(internet, 2800, 'roommate');
+  it('mensile pagata da lei → spesa dal fondo + debito, Bollette → Risparmi', () => {
+    const p = planBillPayment({ ...internet, fund: 1400 }, 2800, 'roommate');
     expect(p).toMatchObject({
-      expense: { amount: 1400, envelopeId: CASA },
+      expense: { amount: 1400, envelopeId: null },
       loan: { direction: 'borrowed', amount: 1400 },
-      transfers: [{ from: 'budget', to: 'savings', amount: 1400 }],
+      fundDelta: -1400,
+      transfers: [{ from: 'bills', to: 'savings', amount: 1400 }],
     });
   });
 

@@ -141,8 +141,6 @@ function RecurringStep({ initial, envelopes, onBack, onNext }: { initial: Recurr
   );
 }
 
-type StartPot = Exclude<PotId, 'bills'>;
-const POTS: StartPot[] = ['savings', 'travel', 'gifts'];
 
 function isStandalone(): boolean {
   const nav = navigator as Navigator & { standalone?: boolean };
@@ -151,16 +149,14 @@ function isStandalone(): boolean {
 
 function PotsStep({ pots, onBack }: { pots: Pot[]; onBack: () => void }) {
   const navigate = useNavigate();
-  const [values, setValues] = useState<Record<StartPot, string>>(() => {
-    const byId = new Map(pots.map((p) => [p.id, p.balance]));
-    const text = (id: StartPot) => {
-      const b = byId.get(id) ?? 0;
-      return b === 0 ? '' : formatEuro(b, { decimals: 'always' }).replace('€ ', '');
-    };
-    return { savings: text('savings'), travel: text('travel'), gifts: text('gifts') };
-  });
+  // Le Pocket da chiedere: tutte tranne Bollette (si riempie con le quote delle bollette).
+  const list = pots.filter((p) => p.id !== 'bills').sort((a, b) => (a.id === 'savings' ? -1 : b.id === 'savings' ? 1 : 0));
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(list.map((p) => [p.id, p.balance === 0 ? '' : formatEuro(p.balance, { decimals: 'always' }).replace('€ ', '')])),
+  );
   const [error, setError] = useState<string | null>(null);
-  const parsed = POTS.map((id) => [id, values[id].trim() === '' ? 0 : parseEuro(values[id])] as const);
+  const valueOf = (id: string) => values[id] ?? '';
+  const parsed = list.map((p) => [p.id, valueOf(p.id).trim() === '' ? 0 : parseEuro(valueOf(p.id))] as const);
   const valid = parsed.every(([, v]) => v !== null);
 
   async function finish() {
@@ -177,15 +173,15 @@ function PotsStep({ pots, onBack }: { pots: Pot[]; onBack: () => void }) {
     <>
       <ScreenHeader title={it.onboarding.potsTitle} subtitle={it.onboarding.potsText} />
       <section className="card summary-card">
-        {POTS.map((id) => (
+        {list.map((p) => (
           <AmountField
-            key={id}
-            id={`pot-${id}`}
-            label={it.accounts[id]}
+            key={p.id}
+            id={`pot-${p.id}`}
+            label={p.name}
             placeholder="0"
-            value={values[id]}
-            onChange={(v) => setValues((s) => ({ ...s, [id]: v }))}
-            invalid={values[id].trim() !== '' && parseEuro(values[id]) === null}
+            value={valueOf(p.id)}
+            onChange={(v) => setValues((s) => ({ ...s, [p.id]: v }))}
+            invalid={valueOf(p.id).trim() !== '' && parseEuro(valueOf(p.id)) === null}
           />
         ))}
       </section>

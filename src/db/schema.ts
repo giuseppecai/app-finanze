@@ -1,11 +1,12 @@
 // Schema IndexedDB (docs/03-modello-dati.md). Ogni modifica futura = nuova version(n) con upgrade():
 // non modificare mai una versione già rilasciata.
 import Dexie, { type EntityTable } from 'dexie';
+import { DEFAULT_MONTHLY_ITEMS } from '../domain/pots';
 import type {
   Bill, Envelope, Loan, Period, Person, Pot, Reconciliation, Recurring, Settings, Transaction,
 } from '../domain/types';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export type FinanzeDB = Dexie & {
   settings: EntityTable<Settings, 'id'>;
@@ -54,7 +55,47 @@ export function openDatabase(name: string): FinanzeDB {
       const pots = tx.table('pots');
       if (!(await pots.get('bills'))) await pots.add({ id: 'bills', name: 'Bollette', balance: 0 });
     });
+  // v3: voci fisse dell'inizio del mese (Viaggi, Regali, Affitto…) al posto delle quote Viaggi/Regali;
+  // tutte le bollette, anche le mensili, si accantonano nella Pocket Bollette. Nessun indice nuovo.
+  db.version(3)
+    .stores({})
+    .upgrade(async (tx) => {
+      await tx.table('settings').toCollection().modify((s: Record<string, unknown>) => {
+        Object.assign(s, migrateSettingsV3(s));
+        delete s.giftsQuota;
+        delete s.lastTravelQuota;
+      });
+      await tx.table('periods').toCollection().modify((p: Record<string, unknown>) => Object.assign(p, migratePeriodV3(p)));
+      await tx.table('periods').toCollection().modify((p: Record<string, unknown>) => {
+        delete p.travelQuota;
+        delete p.giftsQuota;
+      });
+      await tx.table('bills').toCollection().modify((b: Record<string, unknown>) => {
+        delete b.envelopeId;
+      });
+    });
   return db;
+}
+
+/** v2 → v3: le quote Viaggi e Regali diventano voci fisse (usato anche dall'import dei backup). */
+export function migrateSettingsV3(s: Record<string, unknown>): Record<string, unknown> {
+  if (Array.isArray(s.monthlyItems)) return s;
+  const amount = (v: unknown, d: number) => (typeof v === 'number' && Number.isInteger(v) ? v : d);
+  const [travel, gifts] = DEFAULT_MONTHLY_ITEMS;
+  const { giftsQuota, lastTravelQuota, ...rest } = s;
+  return {
+    ...rest,
+    monthlyItems: [
+      { ...travel!, amount: amount(lastTravelQuota, travel!.amount) },
+      { ...gifts!, amount: amount(giftsQuota, gifts!.amount) },
+    ],
+  };
+}
+
+export function migratePeriodV3(p: Record<string, unknown>): Record<string, unknown> {
+  if (p.quotas && typeof p.quotas === 'object') return p;
+  const { travelQuota, giftsQuota, ...rest } = p;
+  return { ...rest, quotas: { travel: Number(travelQuota ?? 0), gifts: Number(giftsQuota ?? 0) } };
 }
 
 /** Tutte le tabelle, per transazioni che le toccano tutte (seed, demo, backup). */

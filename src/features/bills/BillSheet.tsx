@@ -6,7 +6,7 @@ import { Switch } from '../../components/Switch';
 import { db } from '../../db/database';
 import { deleteBill, newId, registerBill, saveBill } from '../../db/repositories';
 import { nowISO, today } from '../../domain/clock';
-import { isPeriodic, planBillPayment, type BillTransfer } from '../../domain/bills';
+import { planBillPayment, type BillTransfer } from '../../domain/bills';
 import { balanceWith } from '../../domain/loans';
 import { formatEuro, parseEuro } from '../../domain/money';
 import type { Bill, BillFrequency, Loan, Person } from '../../domain/types';
@@ -18,13 +18,12 @@ type Props = {
   people: Person[];
   loans: Loan[];
   hasPeriod: boolean;
-  defaultEnvelopeId: string;
   defaultPersonId: string | null;
   onClose: () => void;
 };
 
 /** Pannello di una bolletta: Registra (bolletta arrivata) o Modifica. Per una bolletta nuova solo Modifica. */
-export function BillSheet({ target, people, loans, hasPeriod, defaultEnvelopeId, defaultPersonId, onClose }: Props) {
+export function BillSheet({ target, people, loans, hasPeriod, defaultPersonId, onClose }: Props) {
   return (
     <BottomSheet open={target !== null} onClose={onClose} title={target === 'new' ? it.casa.sheetNew : target?.name ?? ''}>
       {target !== null ? (
@@ -34,7 +33,6 @@ export function BillSheet({ target, people, loans, hasPeriod, defaultEnvelopeId,
           people={people}
           loans={loans}
           hasPeriod={hasPeriod}
-          defaultEnvelopeId={defaultEnvelopeId}
           defaultPersonId={defaultPersonId}
           onDone={onClose}
         />
@@ -43,10 +41,10 @@ export function BillSheet({ target, people, loans, hasPeriod, defaultEnvelopeId,
   );
 }
 
-function BillSheetBody({ target, people, loans, hasPeriod, defaultEnvelopeId, defaultPersonId, onDone }: Omit<Props, 'onClose'> & { target: Bill | 'new'; onDone: () => void }) {
+function BillSheetBody({ target, people, loans, hasPeriod, defaultPersonId, onDone }: Omit<Props, 'onClose'> & { target: Bill | 'new'; onDone: () => void }) {
   const [tab, setTab] = useState<'register' | 'edit'>(target === 'new' || !target.active ? 'edit' : 'register');
   if (target === 'new') {
-    return <BillForm bill={null} people={people} loans={loans} defaultEnvelopeId={defaultEnvelopeId} defaultPersonId={defaultPersonId} onDone={onDone} />;
+    return <BillForm bill={null} people={people} loans={loans} defaultPersonId={defaultPersonId} onDone={onDone} />;
   }
   return (
     <>
@@ -62,7 +60,7 @@ function BillSheetBody({ target, people, loans, hasPeriod, defaultEnvelopeId, de
       {tab === 'register' ? (
         <RegisterForm bill={target} people={people} loans={loans} hasPeriod={hasPeriod} onDone={onDone} />
       ) : (
-        <BillForm bill={target} people={people} loans={loans} defaultEnvelopeId={defaultEnvelopeId} defaultPersonId={defaultPersonId} onDone={onDone} />
+        <BillForm bill={target} people={people} loans={loans} defaultPersonId={defaultPersonId} onDone={onDone} />
       )}
     </>
   );
@@ -150,9 +148,7 @@ function RegisterForm({ bill, people, loans, hasPeriod, onDone }: { bill: Bill; 
           <h3 className="entry__label">{it.casa.preview}</h3>
           <ul className="bill-preview">
             <li>
-              {plan.expense.envelopeId
-                ? it.casa.previewExpenseEnvelope(money(plan.myShare), it.casa.title)
-                : it.casa.previewExpenseFund(money(plan.myShare))}
+              {it.casa.previewExpenseFund(money(plan.myShare))}
             </li>
             {plan.loan ? (
               <li>{plan.loan.direction === 'lent' ? it.casa.previewLent(name, money(plan.loan.amount)) : it.casa.previewBorrowed(name, money(plan.loan.amount))}</li>
@@ -162,9 +158,7 @@ function RegisterForm({ bill, people, loans, hasPeriod, onDone }: { bill: Bill; 
                 {balanceAfter > 0 ? it.casa.owesYou(name, money(balanceAfter)) : balanceAfter < 0 ? it.casa.youOwe(name, money(-balanceAfter)) : `${name}: ${it.casa.even}`}
               </li>
             ) : null}
-            {isPeriodic(bill) ? (
-              <li className={bill.fund + plan.fundDelta < 0 ? 'is-over' : ''}>{it.casa.previewFundAfter(formatEuro(bill.fund + plan.fundDelta, { decimals: 'always' }))}</li>
-            ) : null}
+            <li className={bill.fund + plan.fundDelta < 0 ? 'is-over' : ''}>{it.casa.previewFundAfter(formatEuro(bill.fund + plan.fundDelta, { decimals: 'always' }))}</li>
           </ul>
           {plan.transfers.length > 0 ? (
             <>
@@ -186,12 +180,11 @@ type FormProps = {
   bill: Bill | null;
   people: Person[];
   loans: Loan[];
-  defaultEnvelopeId: string;
   defaultPersonId: string | null;
   onDone: () => void;
 };
 
-function BillForm({ bill, people, loans, defaultEnvelopeId, defaultPersonId, onDone }: FormProps) {
+function BillForm({ bill, people, loans, defaultPersonId, onDone }: FormProps) {
   const [name, setName] = useState(bill?.name ?? '');
   const [frequency, setFrequency] = useState<BillFrequency>(bill?.frequency ?? 1);
   const [estimate, setEstimate] = useState(bill ? formatEuro(bill.estimate, { decimals: 'always' }).replace('€ ', '') : '');
@@ -218,7 +211,6 @@ function BillForm({ bill, people, loans, defaultEnvelopeId, defaultPersonId, onD
         split,
         payer: split === 'mine' ? 'me' : payer,
         personId: needsPerson ? personId : null,
-        envelopeId: bill?.envelopeId ?? defaultEnvelopeId,
         fund: bill?.fund ?? 0,
         active,
         order: bill?.order ?? Date.now(),

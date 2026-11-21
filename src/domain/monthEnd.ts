@@ -1,7 +1,7 @@
 // Chiusura e inizio del mese: anteprima della chiusura, checklist dei giroconti, suggerimenti di tetto.
 import { leftoversOf, type ClosingPlan } from './closing';
 import { summarizePeriod, type PeriodSummary } from './envelopes';
-import type { OpeningPlan } from './opening';
+import type { ItemQuota, OpeningPlan } from './opening';
 import { chargeToTransaction, dueCharges, type DueCharge } from './recurring';
 import { capSuggestion, type CapSuggestion } from './stats';
 import type { Cents, Envelope, Period, Recurring, Transaction } from './types';
@@ -34,34 +34,38 @@ export function closingPreview(
   return { pending, txs, summary, leftovers: leftoversOf(summary.balances), unassigned: summary.unassigned };
 }
 
-export type ChecklistAccount = 'salary' | 'budget' | 'savings' | 'travel' | 'gifts' | 'bills';
+/** Conti dei giroconti: quelli fissi più gli id delle voci (salvadanai o uscite). */
+export type ChecklistAccount = 'salary' | 'budget' | 'savings' | 'bills' | (string & {});
 
 export interface ChecklistItem {
-  id: 'closing' | 'budget' | 'travel' | 'gifts' | 'bills' | 'savings';
+  /** chiave stabile della riga: 'closing' | 'budget' | 'bills' | 'savings' | 'item:<id>' */
+  key: string;
+  kind: 'closing' | 'budget' | 'item' | 'bills' | 'savings';
   from: ChecklistAccount;
   to: ChecklistAccount;
   /** importo da spostare; per "savings" può essere negativo (lo stipendio non copre le buste) */
   amount: Cents;
   warn: boolean;
+  /** solo per le voci fisse */
+  item?: ItemQuota['item'];
 }
 
 /**
- * Giroconti da fare su Revolut, in ordine: prima quello della chiusura (se c'è), poi i 4 dell'inizio
- * del mese (R7), più quello delle Bollette se ci sono bollette periodiche (R13).
+ * Giroconti da fare su Revolut, in ordine: prima quello della chiusura (se c'è), poi Budget del mese,
+ * le voci fisse (salvadanai e uscite come l'affitto), Bollette (se ci sono bollette) e Risparmi (R7).
  * L'app non li esegue: sono una lista da spuntare.
  */
 export function transferChecklist(opening: OpeningPlan, closing: Pick<ClosingPlan, 'transfer'> | null): ChecklistItem[] {
   const items: ChecklistItem[] = [];
   if (closing?.transfer) {
-    items.push({ id: 'closing', from: closing.transfer.from, to: closing.transfer.to, amount: closing.transfer.amount, warn: false });
+    items.push({ key: 'closing', kind: 'closing', from: closing.transfer.from, to: closing.transfer.to, amount: closing.transfer.amount, warn: false });
   }
-  items.push(
-    { id: 'budget', from: 'salary', to: 'budget', amount: opening.budget, warn: false },
-    { id: 'travel', from: 'salary', to: 'travel', amount: opening.travel, warn: false },
-    { id: 'gifts', from: 'salary', to: 'gifts', amount: opening.gifts, warn: false },
-    ...(opening.bills > 0 ? [{ id: 'bills' as const, from: 'salary' as const, to: 'bills' as const, amount: opening.bills, warn: false }] : []),
-    { id: 'savings', from: 'salary', to: 'savings', amount: opening.savings, warn: opening.short },
-  );
+  items.push({ key: 'budget', kind: 'budget', from: 'salary', to: 'budget', amount: opening.budget, warn: false });
+  for (const q of opening.items) {
+    items.push({ key: `item:${q.item.id}`, kind: 'item', from: 'salary', to: q.item.id, amount: q.amount, warn: false, item: q.item });
+  }
+  if (opening.bills > 0) items.push({ key: 'bills', kind: 'bills', from: 'salary', to: 'bills', amount: opening.bills, warn: false });
+  items.push({ key: 'savings', kind: 'savings', from: 'salary', to: 'savings', amount: opening.savings, warn: opening.short });
   return items;
 }
 

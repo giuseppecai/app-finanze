@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { planClosing } from '../closing';
 import { closingPreview, suggestionsAtClosing, transferChecklist } from '../monthEnd';
-import { planOpening } from '../opening';
+import { planOpening, type ItemQuota } from '../opening';
+import { DEFAULT_MONTHLY_ITEMS } from '../pots';
 import { buildDemoData, ENV } from '../../db/fixtures';
 
 const data = buildDemoData();
@@ -37,22 +38,32 @@ describe('Chiusura di Novembre (fixture)', () => {
 });
 
 describe('Checklist dei giroconti', () => {
-  const opening = planOpening(150000, data.envelopes, 5000, 2500);
+  const items: ItemQuota[] = DEFAULT_MONTHLY_ITEMS.map((item) => ({ item, amount: item.amount }));
+  const opening = planOpening(150000, data.envelopes, items);
 
   it('primo mese: i 4 giroconti di R7', () => {
-    expect(transferChecklist(opening, null).map((i) => [i.id, i.to, i.amount])).toEqual([
+    expect(transferChecklist(opening, null).map((i) => [i.key, i.to, i.amount])).toEqual([
       ['budget', 'budget', 70000],
-      ['travel', 'travel', 5000],
-      ['gifts', 'gifts', 2500],
+      ['item:travel', 'travel', 5000],
+      ['item:gifts', 'gifts', 2500],
       ['savings', 'savings', 72500],
     ]);
   });
 
+  it('con l’affitto (uscita) e le bollette: Budget, voci, Bollette, Risparmi', () => {
+    const rent = { item: { id: 'rent', name: 'Affitto', kind: 'payment' as const }, amount: 40000 };
+    const list = transferChecklist(planOpening(150000, data.envelopes, [...items, rent], 7900), null);
+    expect(list.map((i) => [i.key, i.amount])).toEqual([
+      ['budget', 70000], ['item:travel', 5000], ['item:gifts', 2500], ['item:rent', 40000], ['bills', 7900], ['savings', 24600],
+    ]);
+    expect(list[3]?.item?.kind).toBe('payment');
+  });
+
   it('dopo una chiusura con avanzo: prima il giroconto Budget → Risparmi', () => {
     const closing = planClosing(data.periods.find((p) => p.id === '2026-10')!.leftovers!, 0, 'toSavings');
-    const items = transferChecklist(opening, closing);
-    expect(items[0]).toEqual({ id: 'closing', from: 'budget', to: 'savings', amount: 9600, warn: false });
-    expect(items).toHaveLength(5);
+    const list = transferChecklist(opening, closing);
+    expect(list[0]).toEqual({ key: 'closing', kind: 'closing', from: 'budget', to: 'savings', amount: 9600, warn: false });
+    expect(list).toHaveLength(5);
   });
 
   it('opzione B: nessun giroconto di chiusura', () => {
@@ -66,7 +77,7 @@ describe('Checklist dei giroconti', () => {
   });
 
   it('stipendio che non copre le buste: riga Risparmi in avviso', () => {
-    const short = transferChecklist(planOpening(70000, data.envelopes, 5000, 2500), null);
-    expect(short[3]).toMatchObject({ id: 'savings', amount: -7500, warn: true });
+    const short = transferChecklist(planOpening(70000, data.envelopes, items), null);
+    expect(short[3]).toMatchObject({ key: 'savings', amount: -7500, warn: true });
   });
 });

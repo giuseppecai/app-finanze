@@ -183,11 +183,41 @@ db.version(2).stores({
 });
 ```
 
+## Versione 3 (voci fisse dell'inizio del mese, bollette tutte accantonate)
+
+```ts
+interface MonthlyItem {            // R7
+  id: string;                      // 'travel', 'gifts' o un uuid
+  name: string;                    // 'Viaggi', 'Affitto'
+  kind: 'pot' | 'payment';         // salvadanaio (stesso id del Pot) o uscita fissa
+  amount: Cents;                   // importo proposto (l'ultimo usato)
+  archived: boolean;
+}
+
+interface Settings {
+  // …senza giftsQuota e lastTravelQuota, sostituiti da:
+  monthlyItems: MonthlyItem[];
+}
+
+interface Period {
+  // …senza travelQuota e giftsQuota, sostituiti da:
+  quotas: Record<string, Cents>;   // id voce → importo usato a inizio periodo
+}
+
+type PotId = string;               // 'savings', 'bills' e gli id delle voci-salvadanaio
+
+interface Bill {
+  // …senza envelopeId: le bollette non passano più dalle buste (R13)
+}
+```
+
+`db.version(3).stores({})` con `upgrade()`: `giftsQuota`/`lastTravelQuota` → `monthlyItems` (Viaggi e Regali come salvadanai), `travelQuota`/`giftsQuota` dei periodi → `quotas`, `envelopeId` tolto dalle bollette. Lo stesso passaggio vale per l'import dei backup v1/v2. Il fondo delle bollette mensili parte da 0: il primo mese dopo l'aggiornamento la bolletta mostra "Mancano € X" finché la quota non arriva.
+
 Nessuna bolletta nel seed: si creano dalla schermata Casa & Servizi (o in un passo dell'onboarding, se non ancora fatto). Le transazioni che toccano bolletta, movimenti, prestiti e salvadanai sono un'unica transazione Dexie.
 
 ## Dati iniziali (seed al primo avvio)
 
-- `Settings`: periodStartDay 27, cardReserve null, giftsQuota 2500, lastTravelQuota 5000.
+- `Settings`: periodStartDay 27, cardReserve null, monthlyItems Viaggi (pot, 5000) e Regali & Imprevisti (pot, 2500).
 - `Envelope` (ordine):
   1. Trasporti / Trasporti — spendable — 10000
   2. Vita / Vita — spendable — 20000

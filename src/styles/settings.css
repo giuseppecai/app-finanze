@@ -1,0 +1,192 @@
+/* ── Imposta: elenco raggruppato (stile Impostazioni di iOS) ─ */
+
+.settings { display: flex; flex-direction: column; gap: 22px; }
+
+.group { display: flex; flex-direction: column; gap: 6px; }
+
+.group__title {
+  margin: 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.group__footer {
+  margin: 0 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.group__message {
+  margin: 2px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-row);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.list-card { overflow: hidden; }
+.list { list-style: none; margin: 0; padding: 0; }
+
+/* separatore rientrato tra righe, come iOS */
+.list > li + li,
+.list > .list-row + .list-row,
+.list-card__block + .list-card__block,
+.list-card > .list-row,
+.list-card__block + .list-row {
+  border-top: 1px solid var(--line-soft);
+}
+.list > li + li > .list-row,
+.list > .list-row + .list-row { border-top: none; }
+
+.list-card__label {
+  margin: 0;
+  padding: 12px 16px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 16px;
+  color: var(--text);
+  text-decoration: none;
+  text-align: left;
+}
+
+.list-row--button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+}
+.list-row--button:hover, .list-row--button:focus-visible { background: var(--surface-sunk); color: var(--text); }
+.list-row--button:has(.file-input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.list-row--action {
+  min-height: 52px;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.list-row--action:hover, .list-row--action:focus-visible { background: var(--accent-soft); }
+
+.list-row--total { background: var(--surface-sunk); min-height: 64px; }
+.list-row--flat { padding: 0; min-height: var(--touch); justify-content: space-between; }
+
+.list-row__text { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; flex-grow: 1; min-width: 0; }
+.list-row__title { font-size: 15px; font-weight: 500; line-height: 1.3; }
+.list-row__title--accent { color: var(--accent); font-weight: 600; }
+.list-row__detail { font-size: 12px; color: var(--text-muted); line-height: 1.35; }
+.list-row__detail.is-over { color: var(--danger); font-weight: 500; }
+
+.list-row__value {
+  flex-shrink: 0;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.list-row__value.is-over { color: var(--danger); }
+.is-muted { color: var(--text-muted); }
+
+.list-row__total {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.list-row__chevron { flex-shrink: 0; margin-right: -6px; color: var(--neutral-bar); }
+.list-row__chevron--accent { color: var(--accent); }
+
+/* collegamento piccolo sotto il nome (es. "5 abbonamenti ›"): area di tocco 44 px senza alzare la riga */
+.list-row__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: var(--touch);
+  margin: -12px 0 -12px -6px;
+  padding: 0 6px;
+  border-radius: var(--radius-row);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+.list-row__chip:hover, .list-row__chip:focus-visible { background: var(--accent-soft); color: var(--accent-strong); }
+
+/* selettore del giorno: sembra un valore, si comporta come <select> nativo */
+.list-row__select { position: relative; flex-shrink: 0; }
+.list-row__select select {
+  appearance: none;
+  min-height: var(--touch);
+  padding: 0 28px 0 12px;
+  border: none;
+  border-radius: var(--radius-row);
+  background: var(--surface-sunk);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.list-row__select::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+
+/* Barra di salvataggio: compare solo con modifiche alle buste, sopra la tab bar */
+.save-bar {
+  position: sticky;
+  bottom: calc(max(var(--safe-bottom), 14px) + 72px);
+  z-index: 5;
+  margin-top: 6px;
+  padding: 12px 12px 12px 16px;
+  border-radius: var(--radius-card);
+  background: var(--surface-dark);
+  color: var(--text-on-dark);
+  box-shadow: 0 8px 24px rgba(26, 26, 24, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.save-bar__text { margin: 0; font-size: 13px; color: var(--text-on-dark-muted); line-height: 1.4; }
+.save-bar__actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+.save-bar__discard,
+.save-bar__save {
+  min-height: var(--touch);
+  padding: 0 16px;
+  border-radius: var(--radius-row);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.save-bar__discard { border: 1px solid rgba(255, 255, 255, 0.24); background: transparent; color: var(--text-on-dark); }
+.save-bar__save { flex-grow: 1; border: none; background: var(--accent); color: var(--text-on-dark); }
+.save-bar__save:disabled { opacity: 0.6; cursor: default; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .save-bar { animation: save-bar-in 180ms ease-out; }
+  @keyframes save-bar-in { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+}

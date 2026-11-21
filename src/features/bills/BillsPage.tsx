@@ -1,41 +1,32 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useBills, useCurrentPeriod, useEnvelopes, useLoans, usePeople, usePeriodTransactions, usePots, useRecurring } from '../../app/data';
+import { useBills, useCurrentPeriod, useLoans, usePeople, usePeriodTransactions, usePots } from '../../app/data';
 import { routes } from '../../app/routes';
 import { IconChevronRight } from '../../components/icons';
 import { InfoBox } from '../../components/InfoBox';
 import { TopBar } from '../../components/TopBar';
-import { expectedShare, fundStatus, isPeriodic, monthlyBillsShare, monthlyQuota, billsQuotaTotal } from '../../domain/bills';
+import { billsQuotaTotal, fundStatus, isPeriodic, monthlyQuota } from '../../domain/bills';
 import { formatShortDate } from '../../domain/dates';
 import { balanceWith } from '../../domain/loans';
 import { formatEuro } from '../../domain/money';
-import { mainRecurringEnvelope } from '../../domain/recurring';
-import type { Bill, Envelope, Person, Transaction } from '../../domain/types';
+import type { Bill, Person, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { BillSheet } from './BillSheet';
 
-/** La busta della casa: quella delle bollette, oppure l'impegnata che non è degli abbonamenti. */
-export function casaEnvelope(envelopes: readonly Envelope[], bills: readonly Bill[], recurringEnvelopeId: string | null): Envelope | undefined {
-  const fromBills = bills[0]?.envelopeId;
-  return envelopes.find((e) => e.id === fromBills)
-    ?? envelopes.find((e) => e.kind === 'committed' && !e.archived && e.id !== recurringEnvelopeId);
-}
-
-export function CasaPage() {
+/**
+ * Bollette (R13): tutte, mensili comprese, si accantonano nella Pocket Bollette con un giroconto
+ * a inizio mese e si pagano da lì. Si apre da "Messi da parte" in Home e da Imposta.
+ */
+export function BillsPage() {
   const bills = useBills();
-  const envelopes = useEnvelopes();
   const people = usePeople();
   const loans = useLoans();
   const pots = usePots();
-  const recurring = useRecurring();
   const period = useCurrentPeriod();
   const txs = usePeriodTransactions(period?.id ?? null);
   const [target, setTarget] = useState<Bill | 'new' | null>(null);
-  if (!bills || !envelopes || !people || !loans || !pots || !recurring || period === undefined || !txs) return null;
+  if (!bills || !people || !loans || !pots || period === undefined || !txs) return null;
 
-  const envelope = casaEnvelope(envelopes, bills, mainRecurringEnvelope(recurring));
-  const cap = envelope ? (period?.allocations[envelope.id] ?? envelope.cap) : 0;
-  const monthlyShare = monthlyBillsShare(bills, envelope?.id);
   const billsPot = pots.find((p) => p.id === 'bills')?.balance ?? 0;
   const quota = billsQuotaTotal(bills);
   const monthly = bills.filter((b) => !isPeriodic(b));
@@ -47,26 +38,14 @@ export function CasaPage() {
     <div className="flow">
       <TopBar right={<button type="button" className="pill-button" onClick={() => setTarget('new')}>{it.casa.add}</button>} />
       <header className="screen-header">
-        <h1 className="screen-title">{envelope?.name ?? it.casa.title}</h1>
+        <h1 className="screen-title">{it.casa.title}</h1>
         <p className="screen-subtitle">{it.casa.subtitle}</p>
       </header>
 
-      <section className="hero">
-        <div className="hero__row">
-          <div>
-            <p className="hero__label">{it.casa.monthlyBills}</p>
-            <p className="hero__amount hero__amount--medium">{formatEuro(monthlyShare)}</p>
-          </div>
-          {envelope ? <span className="hero__status">{it.casa.envelopeCap(formatEuro(cap))}</span> : null}
-        </div>
-        {envelope ? (
-          <span className="hero__bar" aria-hidden="true">
-            <span className={monthlyShare > cap ? 'hero__bar-fill is-over' : 'hero__bar-fill'} style={{ width: `${cap > 0 ? Math.min(100, (monthlyShare / cap) * 100) : 100}%` }} />
-          </span>
-        ) : null}
-        <p className="hero__status">
-          {it.casa.setAside(formatEuro(billsPot))}{quota > 0 ? ` · ${it.casa.perMonth(formatEuro(quota))}` : ''}
-        </p>
+      <section className="hero" aria-label={it.casa.potLabel}>
+        <p className="hero__label">{it.casa.potLabel}</p>
+        <p className={billsPot < 0 ? 'hero__amount hero__amount--medium is-over' : 'hero__amount hero__amount--medium'}>{formatEuro(billsPot)}</p>
+        <p className="hero__status">{quota > 0 ? it.casa.perMonth(formatEuro(quota)) : it.casa.noQuota}</p>
       </section>
 
       {roommates.map((id) => {
@@ -90,9 +69,6 @@ export function CasaPage() {
         <BillList title={it.casa.periodicTitle} bills={periodic} names={names} txs={txs} onOpen={setTarget} />
       ) : null}
 
-      {envelope ? (
-        <Link to={`${routes.movements}?busta=${encodeURIComponent(envelope.id)}`} className="text-link">{it.casa.movementsLink}</Link>
-      ) : null}
       <div className="flow__spacer" />
       <InfoBox>{it.casa.note}</InfoBox>
 
@@ -101,7 +77,6 @@ export function CasaPage() {
         people={people}
         loans={loans}
         hasPeriod={!!period}
-        defaultEnvelopeId={envelope?.id ?? envelopes[0]?.id ?? ''}
         defaultPersonId={roommates[0] ?? null}
         onClose={() => setTarget(null)}
       />
@@ -136,11 +111,11 @@ function BillList({ title, bills, names, txs, onOpen }: ListProps) {
                 <span className="movement__text">
                   <span className={b.active ? 'movement__title' : 'movement__title is-muted'}>{b.name}</span>
                   <span className="movement__detail">{detail}</span>
-                  {isPeriodic(b) ? <FundBar bill={b} /> : null}
+                  <FundBar bill={b} />
                 </span>
                 <span className="recurring-row__right">
                   <span className={b.active ? 'movement__amount' : 'movement__amount is-paused'}>
-                    {isPeriodic(b) ? it.casa.quotaPerMonth(formatEuro(monthlyQuota(b))) : formatEuro(expectedShare(b))}
+                    {it.casa.quotaPerMonth(formatEuro(monthlyQuota(b)))}
                   </span>
                   {!b.active ? (
                     <span className="chip chip--paused">{it.casa.paused}</span>

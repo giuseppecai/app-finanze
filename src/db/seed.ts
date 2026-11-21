@@ -1,4 +1,5 @@
 // Dati iniziali al primo avvio (docs/03-modello-dati.md § Dati iniziali). Solo dati.
+import { DEFAULT_MONTHLY_ITEMS } from '../domain/pots';
 import type { DataSet } from './fixtures';
 
 /**
@@ -29,8 +30,7 @@ export function buildSeed(newId: () => string, now: string): DataSet {
       id: 'settings',
       periodStartDay: 27,
       cardReserve: null,
-      giftsQuota: 2500,
-      lastTravelQuota: 5000,
+      monthlyItems: DEFAULT_MONTHLY_ITEMS.map((i) => ({ ...i })),
       lastEnvelopeId: null,
       onboardingDone: false,
     },

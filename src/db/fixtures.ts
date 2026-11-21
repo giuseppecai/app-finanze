@@ -82,8 +82,7 @@ function period(id: string, closed: number[] | null): Period {
     allocations: caps(),
     carryIn: {},
     unassigned: 0,
-    travelQuota: eur(50),
-    giftsQuota: eur(25),
+    quotas: { travel: eur(50), gifts: eur(25) },
     closedAt: closed ? `${cal.calendarEnd}T19:00:00.000Z` : null,
     leftoverChoice: closed ? 'toSavings' : null,
     leftovers: closed ? Object.fromEntries(CLOSED_ORDER.map((envId, i) => [envId, eur(closed[i] ?? 0)])) : null,
@@ -109,7 +108,7 @@ const NOVEMBER: Row[] = [
   [14, 'Zalando', ENV.shopping, 'quotidiano', -45],
   [12, 'Cena fuori', ENV.vita, 'quotidiano', -42],
   [12, 'Disney+', ENV.rate, 'extra', -6, REC.disney],
-  [10, 'Bolletta luce', ENV.casa, 'extra', -38],
+  [10, 'Lampadine e prese', ENV.casa, 'extra', -38],
   [8, 'Carrefour', ENV.spesa, 'quotidiano', -34],
   [6, 'Detersivi e casa', ENV.casa, 'quotidiano', -25],
   [5, 'Caffè della settimana', ENV.vita, 'quotidiano', -25],
@@ -195,8 +194,11 @@ export function buildDemoData(): DataSet {
       id: 'settings',
       periodStartDay: START_DAY,
       cardReserve: eur(200),
-      giftsQuota: eur(25),
-      lastTravelQuota: eur(50),
+      monthlyItems: [
+        { id: 'travel', name: 'Viaggi', kind: 'pot', amount: eur(50), archived: false },
+        { id: 'gifts', name: 'Regali & Imprevisti', kind: 'pot', amount: eur(25), archived: false },
+        { id: 'rent', name: 'Affitto', kind: 'payment', amount: eur(400), archived: false },
+      ],
       lastEnvelopeId: ENV.vita,
       onboardingDone: true,
       lastBackupAt: '2026-11-10T20:00:00.000Z',
@@ -216,7 +218,7 @@ export function buildDemoData(): DataSet {
       { id: 'savings', name: 'Risparmi', balance: eur(1240) },
       { id: 'travel', name: 'Viaggi', balance: eur(180) },
       { id: 'gifts', name: 'Regali & Imprevisti', balance: eur(75) },
-      { id: 'bills', name: 'Bollette', balance: eur(80) },
+      { id: 'bills', name: 'Bollette', balance: eur(134) },
     ],
     reconciliations: [
       {
@@ -229,15 +231,15 @@ export function buildDemoData(): DataSet {
   };
 }
 
-/** Le bollette di esempio di R13: gas accantonato per 2 mesi (30), acqua per 5 (50). */
+/** Le bollette di esempio di R13: luce e internet accantonate per questo mese, gas per 2 mesi (30), acqua per 5 (50). */
 function demoBills(): Bill[] {
   const b = (id: string, name: string, frequency: Bill['frequency'], estimate: number, split: Bill['split'], payer: Bill['payer'], fund: number, order: number): Bill => ({
     id, name, frequency, estimate: eur(estimate), split, payer, personId: split === 'half' ? PEOPLE.elisa : null,
-    envelopeId: ENV.casa, fund: eur(fund), active: true, order, createdAt: '2026-06-01T09:00:00.000Z',
+    fund: eur(fund), active: true, order, createdAt: '2026-06-01T09:00:00.000Z',
   });
   return [
-    b('bill-luce', 'Luce', 1, 80, 'half', 'me', 0, 1),
-    b('bill-internet', 'Internet', 1, 28, 'half', 'me', 0, 2),
+    b('bill-luce', 'Luce', 1, 80, 'half', 'me', 40, 1),
+    b('bill-internet', 'Internet', 1, 28, 'half', 'me', 14, 2),
     b('bill-gas', 'Gas', 2, 60, 'half', 'roommate', 30, 3),
     b('bill-acqua', 'Acqua', 12, 120, 'mine', 'me', 50, 4),
   ];

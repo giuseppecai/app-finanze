@@ -16,7 +16,7 @@ Barra in basso (solo su Home, Movimenti, Storico, Imposta), alta 84 px con area 
 
 Le altre schermate (Inserimento, Chiusura, Inizio, Prestiti, Abbonamenti) si aprono a tutto schermo con un pulsante indietro/chiudi in alto a sinistra.
 
-Rotte (`HashRouter`): `/`, `/nuovo`, `/movimenti`, `/storico`, `/imposta`, `/chiudi`, `/inizio`, `/prestiti`, `/abbonamenti`, `/casa`, `/benvenuto` (onboarding). `/nuovo` accetta parametri `?tipo=spesa|rimborso|prestito&importo=1240&nota=...&carta=quotidiano|extra` (usati da Confronta e, in futuro, dall'inbox).
+Rotte (`HashRouter`): `/`, `/nuovo`, `/movimenti`, `/storico`, `/imposta`, `/chiudi`, `/inizio`, `/prestiti`, `/abbonamenti`, `/bollette` (il vecchio `/casa` rimanda qui), `/benvenuto` (onboarding). `/nuovo` accetta parametri `?tipo=spesa|rimborso|prestito&importo=1240&nota=...&carta=quotidiano|extra` (usati da Confronta e, in futuro, dall'inbox).
 
 ---
 
@@ -29,8 +29,8 @@ Dall'alto:
    - a destra, sulla stessa riga, pulsante pillola **Confronta** (apre il pannello del Confronta);
    - riga in basso: se è ora di chiudere (R2) il link "Stipendio arrivato? Chiudi il mese →", altrimenti "Ultimo confronto con Revolut: 3 giorni fa" (o "Mai confrontato").
 3. **Buste** (titolo + link "Modifica" → Imposta): righe delle buste *da spendere*. Ogni riga: nome, residuo, "di € tetto" (o "oltre il tetto"), barra. Tocco → Movimenti filtrati per quella busta.
-4. **Impegnate · si scalano da sole** con a destra "€ 77,50 rimasti": Casa & Servizi (→ Casa & Servizi, `/casa`), Rate & Abbonamenti (→ Abbonamenti).
-5. **Messi da parte**: totale dei salvadanai, barra divisa in tonalità (Risparmi, Viaggi, Regali & Imprevisti e, se ci sono bollette periodiche, Bollette), legenda con importi; ultima riga "Prestiti da riavere · € 55 ›" → Prestiti (nascosta se 0; con debiti aperti aggiunge "· devi € Y").
+4. **Impegnate · si scalano da sole** con a destra "€ 77,50 rimasti": Casa & Servizi (→ Movimenti filtrati), Rate & Abbonamenti (→ Abbonamenti).
+5. **Messi da parte**: totale dei salvadanai, barra divisa in tonalità (Risparmi in accento, i salvadanai delle voci fisse in viola chiaro, **Bollette sempre presente** in grigio), legenda con importi; Bollette è un link → `/bollette`; ultima riga "Prestiti da riavere · € 55 ›" → Prestiti (nascosta se 0; con debiti aperti aggiunge "· devi € Y").
 
 **Pannello Confronta** (bottom sheet): sottotitolo con la data dell'ultimo confronto, 3 campi importo (Budget del mese, Carta Quotidiano, Carta Extra), riga "Su Revolut € X · Nell'app € Y", riquadro esito secondo R5 con le azioni. Al primo confronto: calibrazione della riserva.
 
@@ -56,7 +56,7 @@ Dall'alto:
 - Lista **raggruppata per giorno** (Oggi, Ieri, "Lunedì 16 novembre"), con il totale del giorno. Riga: iniziale della busta in un quadratino, nome/nota, "‹Busta completa› · ‹Carta›" (+ "· auto" per gli abbonamenti), importo ("− € 24,00"; entrate "+ € 1,12" in colore accento). Prestiti e restituzioni compaiono con l'iniziale della persona e "Prestito · ‹Persona›".
 - Tocco su una riga → Inserimento rapido in modalità modifica.
 
-Movimenti di esempio (periodo Novembre): 19 Pranzo con colleghi (Vita, 22) · 19 Conad (Spesa, 24) · 18 Aperitivo (Vita, 24) · 17 Interessi conto risparmio (entrata +1,12) · 16 Cinema (Vita, 18) · 15 Prime (Rate, 5, auto) · 15 Treno Roma – Capaccio (Trasporti, 46) · 14 Zalando (Shopping, 45) · 12 Cena fuori (Vita, 42) · 12 Disney+ (Rate, 6, auto) · 10 Bolletta luce (Casa, 38) · 8 Carrefour (Spesa, 34) · 6 Detersivi e casa (Casa, 25) · 5 Caffè della settimana (Vita, 25) · 5 Spotify (Rate, 8,50, auto) · 3 ATAC (Trasporti, 16) · 1 Rata iPhone (Rate, 70, auto).
+Movimenti di esempio (periodo Novembre): 19 Pranzo con colleghi (Vita, 22) · 19 Conad (Spesa, 24) · 18 Aperitivo (Vita, 24) · 17 Interessi conto risparmio (entrata +1,12) · 16 Cinema (Vita, 18) · 15 Prime (Rate, 5, auto) · 15 Treno Roma – Capaccio (Trasporti, 46) · 14 Zalando (Shopping, 45) · 12 Cena fuori (Vita, 42) · 12 Disney+ (Rate, 6, auto) · 10 Lampadine e prese (Casa, 38) · 8 Carrefour (Spesa, 34) · 6 Detersivi e casa (Casa, 25) · 5 Caffè della settimana (Vita, 25) · 5 Spotify (Rate, 8,50, auto) · 3 ATAC (Trasporti, 16) · 1 Rata iPhone (Rate, 70, auto).
 
 ## 4 · Storico (`Storico.dc.html`)
 
@@ -78,21 +78,20 @@ Movimenti di esempio (periodo Novembre): 19 Pranzo con colleghi (Vita, 22) · 19
 
 - Titolo "Inizia novembre" + intervallo. Passo 3 dell'indicatore.
 - Campo "Stipendio arrivato il 27" (importo).
-- "Giroconti da fare su Revolut": 4 righe spuntabili (R7) con destinazione, nota e importo.
+- "Giroconti da fare su Revolut": righe spuntabili (R7) con destinazione, nota e importo. Le voci fisse hanno l'importo con una matita: tocco → pannello per cambiarlo per questo mese. Sotto: "+ Aggiungi una voce fissa (es. affitto)".
 - Nota: "Le due carte restano a € 100: quando scendono le ricarichi da Budget del mese, senza registrare niente."
 - Link "Vuoi cambiare le buste di questo mese? Modifica →".
-- Pulsante: "Giroconti fatti: N di 4" → con 4/4 "Fatto: inizia il mese" (crea il periodo, R7) → Home.
+- Pulsante: "Giroconti fatti: N di M" → con tutto spuntato "Fatto: inizia il mese" (crea il periodo, R7) → Home.
 
-## 7 · Imposta / Modifica buste (`ModificaBuste.dc.html`)
+## 7 · Imposta (`ModificaBuste.dc.html`, rivista)
 
-- "Buste" · "Le modifiche valgono da questo mese" (aggiornano `cap`; il periodo corrente aggiorna anche `allocations`).
-- **Da spendere**: riga con nome, sotto "Spendi in media € X" (R10, arancione se sopra il tetto), stepper − € tetto + (passo 5 €).
-- **Impegnate · si scalano da sole**: stesse righe; sotto Rate & Abbonamenti "5 voci · si scalano da sole" (tocco → Abbonamenti).
-- **Il mese inizia**: "Quando arriva lo stipendio" + selettore giorno (default 27).
-- "+ Nuova busta".
-- Card riepilogo: "Totale buste € 700" + "€ X in più/in meno rispetto a prima" oppure "Va nel Budget del mese a inizio mese".
-- Pulsante "Salva le buste".
-- In fondo (fuori dal mockup, da aggiungere): sezione **Dati** con riserva carte, saldi dei salvadanai (correggibili), Esporta / Importa backup.
+Elenco raggruppato come le Impostazioni di iOS: titoletti di gruppo grigi, card bianche con righe separate da filetti, nota sotto ogni gruppo.
+
+- **Buste**: un'unica card con le sottosezioni "Da spendere" e "Impegnate". Riga: nome, sotto "In media € X" (R10, arancione "In media € X: tetto basso" se sopra il tetto), stepper − € tetto + (passo 5 €). Sotto Rate & Abbonamenti il link "5 abbonamenti ›". Poi "+ Nuova busta" (pannello dal basso) e la riga di riepilogo "Totale buste € 700" ("+ € X rispetto a prima"). Nota: "Le modifiche valgono da questo mese."
+- **Barra di salvataggio**: compare solo con modifiche alle buste, fissa sopra la tab bar: anteprima del giroconto ("Dopo il salvataggio sposta € X da Risparmi a Budget del mese"), **Annulla** e **Salva le buste**.
+- **Inizio del mese**: "Il mese inizia · il 27" (selettore, salva subito), una riga per voce fissa (nome, "Salvadanaio"/"Uscita fissa", importo ›: tocco → pannello per nome, importo, togli/rimetti), riga "Bollette · € 79/mese ›" → `/bollette`, "+ Nuova voce fissa".
+- **Salvadanai e carte**: una riga per salvadanaio e la riserva carte, in sola lettura; tocco → pannello per correggere il saldo.
+- **Backup**: "Esporta backup" (con data dell'ultimo) e "Importa backup".
 
 ## 8 · Prestiti (`Prestiti.dc.html`)
 
@@ -116,23 +115,22 @@ Movimenti di esempio (periodo Novembre): 19 Pranzo con colleghi (Vita, 22) · 19
 - Tocco → pannello: importo, giorno del mese, carta, interruttore **Attivo**, Elimina, Salva (R8).
 - Nota in fondo: "Il giorno dell'addebito l'app scala l'importo dalla busta… Se un prezzo aumenta, te ne accorgi al Confronta con Revolut e lo aggiorni qui."
 
-## 9-bis · Casa & Servizi (non c'è mockup — stesso stile di Abbonamenti)
+## 9-bis · Bollette (non c'è mockup — stesso stile di Abbonamenti)
 
-Si apre toccando la busta Casa & Servizi in Home (rotta `/casa`). Schermo intero con chiudi.
+Si apre da "Messi da parte" in Home e da Imposta (rotta `/bollette`). Schermo intero con chiudi.
 
-- "Casa & Servizi" · "Bollette e spese di casa" · "+ Bolletta".
-- **Card scura**: "Bollette mensili € 54 · busta € 120" con barra, e sotto "Accantonati per le bollette € X" (= salvadanaio Bollette) con "+ € 25 al mese".
+- "Bollette" · "Si pagano dalla Pocket Bollette" · "+ Bolletta".
+- **Card scura**: "Nella Pocket Bollette € X" (= salvadanaio Bollette) e sotto "+ € 79 ogni mese, a inizio mese".
 - **Con Elisa**: riga con il saldo unico ("Elisa ti deve € 24" / "Devi € 6 a Elisa") → Prestiti, card della persona aperta.
-- **Bollette mensili**: righe con nome, "metà con Elisa · la paghi tu", tua quota prevista, stato del mese ("registrata il 1 nov" / "da registrare").
-- **Bollette periodiche**: righe con nome, "ogni 2 mesi · la paga Elisa", barra `fund` / tua quota prevista, "Accantonati € 30 di € 30" (arancione solo se `fund < 0`: "Mancano € 1").
+- **Bollette mensili**: righe con nome, "metà con Elisa · la paghi tu", barra `fund` / tua quota prevista, "+ € 40/mese", stato del mese ("registrata il 1 nov" / "da registrare").
+- **Bollette periodiche**: righe con nome, "ogni 2 mesi · la paga Elisa", barra `fund` / tua quota prevista, "Accantonati € 30 di € 30" (arancione solo se `fund < 0`: "Mancano € 1"), "+ € 15/mese".
 - Tocco su una bolletta → pannello con **Registra bolletta** (importo, data, chi l'ha pagata; anteprima live dei movimenti e dei giroconti, R13) e **Modifica** (nome, frequenza, previsto, divisione, chi paga, attiva / in pausa, elimina).
-- **Altre spese di casa**: link "Vedi i movimenti di Casa & Servizi →" (Movimenti filtrati).
-- Nota in fondo: "Le bollette ogni 2 o più mesi si pagano dalla Pocket Bollette: ogni mese ci metti la quota, così quando arrivano i soldi ci sono già."
+- Nota in fondo: "Ogni mese metti nella Pocket Bollette la quota di tutte le bollette, mensili comprese… Le altre spese di casa restano nella busta Casa & Servizi."
 
 ## 10 · Onboarding (non c'è mockup — stesso stile)
 
 Al primo avvio, 3 passi brevi:
 1. "Le tue buste": conferma tetti (riusa la schermata Imposta).
 2. "Abbonamenti": conferma giorni e importi (riusa Abbonamenti).
-3. "I tuoi salvadanai": saldi attuali di Risparmi, Viaggi, Regali & Imprevisti.
+3. "I tuoi salvadanai": saldi attuali di Risparmi e dei salvadanai delle voci fisse (Viaggi, Regali & Imprevisti).
 Poi "Inizio del mese" per creare il primo periodo, e suggerimento di aggiungere l'app alla schermata Home se non è in modalità standalone.

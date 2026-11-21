@@ -123,23 +123,30 @@ Chiudere il periodo salva `closedAt`, `leftoverChoice` e gli avanzi per busta (s
 
 ## R7 · Inizio del mese
 
-Input: stipendio `S`. Quota Viaggi `V` (default dall'ultima usata, 50 €), Regali & Imprevisti `R = 25 €` (fissa, da Settings).
+Input: stipendio `S`. **Voci fisse** (`Settings.monthlyItems`, personalizzabili in Imposta): ognuna ha nome, importo proposto e tipo:
+- **salvadanaio** (`pot`): i soldi vanno in una Pocket e compaiono in "Messi da parte" (Viaggi 50 €, Regali & Imprevisti 25 € di default);
+- **uscita fissa** (`payment`): i soldi escono e non tornano in nessun salvadanaio (es. **Affitto**).
+
+A inizio mese l'importo di ogni voce si può cambiare per quel mese (tocco sull'importo con la matita); l'importo usato diventa quello proposto il mese dopo. Le voci tolte (archiviate) non compaiono.
 
 ```
 budgetDelMese = Σ tetti attuali delle buste
-risparmi      = S − budgetDelMese − V − R
+voci          = Σ importi delle voci fisse attive (salvadanai e uscite)
+risparmi      = S − budgetDelMese − voci − bollette
 ```
-Checklist di 4 giroconti su Revolut (spuntabili, l'app non li esegue):
-1. → Budget del mese: € budgetDelMese
-2. → Viaggi: € V
-3. → Regali & Imprevisti: € R
-4. → Risparmi: € risparmi (se negativo, riga arancione "Lo stipendio non copre le buste: − € X")
+Checklist dei giroconti su Revolut (spuntabili, l'app non li esegue), in quest'ordine:
+1. (se c'è) il giroconto di chiusura (R6);
+2. → Budget del mese: € budgetDelMese;
+3. una riga per voce fissa: "→ Viaggi: € V" per i salvadanai, "Paga Affitto: € A" per le uscite;
+4. (se ci sono bollette attive) → Bollette: € Σ quote (R13);
+5. → Risparmi: € risparmi (se negativo, riga arancione "Lo stipendio non copre le buste: − € X").
 
-Con tutte e 4 spuntate il pulsante diventa "Fatto: inizia il mese" → crea il `Period` con `startedAt = today()`, fotografa i tetti in `allocations`, applica i riporti dell'opzione B o il `daAssegnare` dell'opzione C, aggiorna i salvadanai (Viaggi + V, Regali + R, Risparmi + risparmi).
+Con tutto spuntato il pulsante diventa "Fatto: inizia il mese" → crea il `Period` con `startedAt = today()`, fotografa i tetti in `allocations` e gli importi delle voci in `quotas`, applica i riporti dell'opzione B o il `daAssegnare` dell'opzione C, aggiorna i salvadanai (ogni voce-salvadanaio + il suo importo, Bollette + quote, Risparmi + risparmi). Le uscite non toccano nessun salvadanaio.
 
-Esempio (stipendio di esempio): S = 1.500 → Budget 700, Viaggi 50, Regali 25, Risparmi **725**.
-
-Con bollette periodiche (R13) si aggiunge un quinto giroconto "→ Bollette: € Σ quote mensili", sottratto da Risparmi (esempio: Bollette 25 → Risparmi **700**). Se c'è un giroconto di chiusura (R6), compare in testa alla checklist.
+Esempi (S = 1.500, buste 700):
+- Viaggi 50, Regali 25 → Risparmi **725**.
+- Più Affitto 400 (uscita) → Risparmi **325**; Viaggi + 50, Regali + 25, nessun salvadanaio per l'affitto.
+- Viaggi cambiato a 80 solo per questo mese → Risparmi **695**; il mese dopo Viaggi propone 80.
 
 ## R8 · Abbonamenti (ricorrenze)
 
@@ -189,23 +196,22 @@ Esempio Elisa (coinquilina), novembre:
 4. Elisa ti dà € 24 → chiusi luce e internet, saldo **0**, Risparmi + 24.
 Annullando il punto 4 il saldo torna +24; eliminando il gas (punto 3) la luce torna a 40 e il saldo a +54.
 
-## R13 · Bollette (Casa & Servizi)
+## R13 · Bollette (Pocket Bollette)
 
 Una bolletta è `Bill { name, frequency (mesi: 1, 2, 3, 6, 12), estimate (importo previsto della bolletta intera), split: 'half' | 'mine', payer: 'me' | 'roommate', personId (la coinquilina), fund }`.
 
-- **Tua quota** di una bolletta di importo B: `mine` → B; `half` → `B − floor(B / 2)` (il centesimo dispari è tuo). Parte dell'altra persona = B − tua quota.
-- **Bollette mensili** (frequenza 1): la tua quota si paga dalla busta **Casa & Servizi**, come una spesa. In Casa & Servizi la riga "Le bollette mensili valgono € X della busta" mostra la somma delle tue quote previste.
-- **Bollette periodiche** (frequenza > 1): ogni mese si accantona `quota mensile = ceil(tua quota prevista / frequenza)` (al centesimo) nella Pocket **Bollette** di Revolut. Il salvadanaio `Bollette` dell'app ne è lo specchio; ogni bolletta ha il suo `fund` (quanto accantonato per lei). Non toccano le buste.
-- **Inizio del mese (R7)**: si aggiunge il giroconto "→ Bollette: € Σ quote mensili" e `risparmi = S − budgetDelMese − V − R − bollette`. Alla conferma: Bollette + Σ quote, `fund` di ogni bolletta periodica + la sua quota.
+Le bollette **non passano dalle buste**: tutte, mensili comprese, sono soldi da mettere da parte. La busta Casa & Servizi resta per le altre spese di casa (detersivi, piccole cose).
 
-**Registrare una bolletta** (importo reale B, data, chi l'ha pagata — default quello della bolletta):
+- **Tua quota** di una bolletta di importo B: `mine` → B; `half` → `B − floor(B / 2)` (il centesimo dispari è tuo). Parte dell'altra persona = B − tua quota.
+- **Quota mensile** di ogni bolletta: `ceil(tua quota prevista / frequenza)` (al centesimo). Per le mensili è tutta la tua quota prevista. Ogni mese si accantona nella Pocket **Bollette** di Revolut; il salvadanaio `Bollette` dell'app ne è lo specchio e compare sempre in "Messi da parte". Ogni bolletta ha il suo `fund` (quanto accantonato per lei).
+- **Inizio del mese (R7)**: giroconto "→ Bollette: € Σ quote mensili delle bollette attive". Alla conferma: Bollette + Σ quote, `fund` di ogni bolletta + la sua quota.
+
+**Registrare una bolletta** (importo reale B, data, chi l'ha pagata — default quello della bolletta). La tua quota è sempre una spesa senza busta pagata dal fondo:
 
 | Caso | Tua quota (q) | Parte dell'altra persona (o) |
 |---|---|---|
-| Mensile, paghi tu | spesa `q` in Casa & Servizi | prestito `o` a lei (R9-bis): "Sposta € o da Risparmi alla carta" |
-| Mensile, paga lei | spesa `q` in Casa & Servizi + debito `q` verso di lei: "Sposta € q da Budget del mese a Risparmi" | — |
-| Periodica, paghi tu | spesa `q` dal fondo (nessuna busta): `fund − q`, Bollette − q, "Sposta € q da Bollette alla carta" | prestito `o` a lei, come sopra |
-| Periodica, paga lei | spesa `q` dal fondo + debito `q`: `fund − q`, Bollette − q, Risparmi + q, "Sposta € q da Bollette a Risparmi" | — |
+| Paghi tu | spesa `q` dal fondo: `fund − q`, Bollette − q, "Sposta € q da Bollette alla carta" | prestito `o` a lei (R9-bis): "Sposta € o da Risparmi alla carta" |
+| Paga lei | spesa `q` dal fondo + debito `q` verso di lei: `fund − q`, Bollette − q, Risparmi + q, "Sposta € q da Bollette a Risparmi" | — |
 
 Le spese dal fondo sono movimenti `expense` senza busta (`envelopeId: null`, `billId` valorizzato): compaiono in Movimenti e nello "Speso", ma non cambiano i residui né "Puoi ancora spendere". Se dopo il pagamento `fund < 0`, la bolletta mostra in arancione "Mancano € X: si recuperano con le prossime quote". Se `fund > 0`, il resto resta accantonato per la volta dopo.
 
@@ -218,11 +224,12 @@ Esempio (coinquilina Elisa):
 | Gas | 2 | € 60 | metà | Elisa | € 30 | **€ 15** |
 | Acqua | 12 | € 120 | tua | tu | € 120 | **€ 10** |
 
-- Bollette mensili nella busta Casa: 40 + 14 = **€ 54**. Giroconto mensile → Bollette: 15 + 10 = **€ 25**.
-- Inizio del mese con S = 1.500, buste 700, Viaggi 50, Regali 25, Bollette 25 → Risparmi **€ 700**.
+- Quote mensili: luce 40, internet 14, gas 15, acqua 10 → giroconto mensile → Bollette **€ 79**.
+- Inizio del mese con S = 1.500, buste 700, Viaggi 50, Regali 25, Bollette 79 → Risparmi **€ 646**. Abbassando Casa & Servizi a 66 (le bollette mensili non passano più da lì) → buste 646, Risparmi **€ 700**.
 - Gas: dopo 2 mesi `fund` = 30. Arriva la bolletta da € 62, pagata da Elisa → tua quota **€ 31**, debito 31 verso Elisa, `fund` = **− 1** ("Mancano € 1"), Bollette − 31, Risparmi + 31.
 - Acqua: dopo 12 mesi `fund` = 120. Bolletta da € 114 → `fund` = **€ 6**, resta per l'anno dopo.
-- Luce da € 80,01 pagata da te → tua quota **€ 40,01** in Casa & Servizi, prestito **€ 40** a Elisa.
+- Luce da € 80,01 pagata da te con `fund` 40 → tua quota **€ 40,01** dal fondo (`fund` − 0,01: "Mancano € 0,01"), prestito **€ 40** a Elisa.
+- Internet da € 28 pagata da Elisa → spesa 14 dal fondo, debito 14, "Sposta € 14 da Bollette a Risparmi".
 
 ## R14 · Promemoria backup
 

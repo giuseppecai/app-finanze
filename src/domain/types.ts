@@ -10,8 +10,8 @@ export interface Settings {
   periodStartDay: number;
   /** null finché non calibrata al primo confronto (R5) */
   cardReserve: Cents | null;
-  giftsQuota: Cents;
-  lastTravelQuota: Cents;
+  /** voci fisse dell'inizio del mese: salvadanai (Viaggi, Regali…) e uscite (Affitto), R7 · v3 */
+  monthlyItems: MonthlyItem[];
   lastEnvelopeId: string | null;
   onboardingDone: boolean;
   /** data dell'ultimo backup esportato (promemoria dopo 30 giorni, M8) */
@@ -44,8 +44,8 @@ export interface Period {
   allocations: Record<string, Cents>;
   carryIn: Record<string, Cents>;
   unassigned: Cents;
-  travelQuota: Cents;
-  giftsQuota: Cents;
+  /** importi delle voci fisse usati a inizio periodo (id voce → importo), R7 · v3 */
+  quotas: Record<string, Cents>;
   closedAt: string | null;
   leftoverChoice: LeftoverChoice | null;
   leftovers: Record<string, Cents> | null;
@@ -116,7 +116,19 @@ export interface Loan {
   createdAt: string;
 }
 
-export type PotId = 'savings' | 'travel' | 'gifts' | 'bills';
+/** 'savings' e 'bills' fissi; gli altri sono gli id delle voci fisse di tipo salvadanaio ('travel', 'gifts', …) */
+export type PotId = string;
+
+/** Voce fissa dell'inizio del mese (R7): un salvadanaio da alimentare o un'uscita da pagare (es. affitto). */
+export interface MonthlyItem {
+  id: string;
+  name: string;
+  /** 'pot': va nel salvadanaio con lo stesso id (compare in Messi da parte); 'payment': esce (affitto) */
+  kind: 'pot' | 'payment';
+  /** importo proposto a inizio mese (l'ultimo usato) */
+  amount: Cents;
+  archived: boolean;
+}
 
 export interface Pot {
   id: PotId;
@@ -150,7 +162,6 @@ export interface Bill {
   split: 'half' | 'mine';
   payer: 'me' | 'roommate';
   personId: string | null;
-  envelopeId: string;
   /** accantonato finora (solo periodiche), può andare sotto zero */
   fund: Cents;
   active: boolean;

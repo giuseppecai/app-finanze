@@ -1,26 +1,23 @@
 // R7 · Inizio del mese.
 import type { ClosingPlan } from './closing';
 import type { CalendarPeriod } from './periods';
-import type { Cents, Envelope, ISODate, Period, PotId } from './types';
+import type { Cents, Envelope, ISODate, MonthlyItem, Period, PotId } from './types';
 
-export type OpeningTransferId = 'budget' | 'travel' | 'gifts' | 'bills' | 'savings';
-
-export interface OpeningTransfer {
-  id: OpeningTransferId;
+/** Una voce fissa con l'importo scelto per questo mese. */
+export interface ItemQuota {
+  item: Pick<MonthlyItem, 'id' | 'name' | 'kind'>;
   amount: Cents;
 }
 
 export interface OpeningPlan {
   budget: Cents;
-  travel: Cents;
-  gifts: Cents;
-  /** giroconto mensile → Bollette (R13), 0 se non ci sono bollette periodiche */
+  /** voci fisse (salvadanai e uscite) nell'ordine di Imposta */
+  items: ItemQuota[];
+  /** giroconto mensile → Bollette (R13), 0 se non ci sono bollette */
   bills: Cents;
-  /** S − budget − Viaggi − Regali − Bollette; negativo se lo stipendio non copre */
+  /** S − budget − Σ voci − Bollette; negativo se lo stipendio non copre */
   savings: Cents;
   short: boolean;
-  /** Checklist dei 4 giroconti su Revolut, in ordine */
-  transfers: OpeningTransfer[];
 }
 
 /** Buste attive (non archiviate) che ricevono un tetto nel periodo nuovo. */
@@ -32,24 +29,16 @@ export function capsTotal(envelopes: readonly Envelope[]): Cents {
   return activeEnvelopes(envelopes).reduce((s, e) => s + e.cap, 0);
 }
 
-export function planOpening(salary: Cents, envelopes: readonly Envelope[], travel: Cents, gifts: Cents, bills: Cents = 0): OpeningPlan {
+/** Voci attive con l'importo di questo mese (`amounts` sovrascrive l'importo proposto). */
+export function itemQuotas(items: readonly MonthlyItem[], amounts: Readonly<Record<string, Cents>> = {}): ItemQuota[] {
+  return items.filter((i) => !i.archived).map((item) => ({ item, amount: amounts[item.id] ?? item.amount }));
+}
+
+export function planOpening(salary: Cents, envelopes: readonly Envelope[], items: readonly ItemQuota[], bills: Cents = 0): OpeningPlan {
   const budget = capsTotal(envelopes);
-  const savings = salary - budget - travel - gifts - bills;
-  return {
-    budget,
-    travel,
-    gifts,
-    bills,
-    savings,
-    short: savings < 0,
-    transfers: [
-      { id: 'budget', amount: budget },
-      { id: 'travel', amount: travel },
-      { id: 'gifts', amount: gifts },
-      ...(bills > 0 ? [{ id: 'bills' as const, amount: bills }] : []),
-      { id: 'savings', amount: savings },
-    ],
-  };
+  const fixed = items.reduce((s, q) => s + q.amount, 0);
+  const savings = salary - budget - fixed - bills;
+  return { budget, items: [...items], bills, savings, short: savings < 0 };
 }
 
 export interface NewPeriodInput {
@@ -57,8 +46,7 @@ export interface NewPeriodInput {
   today: ISODate;
   salary: Cents;
   envelopes: readonly Envelope[];
-  travel: Cents;
-  gifts: Cents;
+  items: readonly ItemQuota[];
   /** giroconto mensile → Bollette (R13) */
   billsQuota?: Cents;
   /** piano di chiusura del periodo precedente (null per il primo periodo) */
@@ -67,14 +55,14 @@ export interface NewPeriodInput {
 
 export interface NewPeriodResult {
   period: Period;
-  /** variazioni dei salvadanai: Viaggi + V, Regali + R, Risparmi + resto (+ effetto della chiusura) */
+  /** variazioni dei salvadanai: ogni voce-salvadanaio + la sua quota, Bollette, Risparmi + resto (+ chiusura) */
   potDeltas: Record<PotId, Cents>;
 }
 
 /** Crea il periodo: fotografa i tetti, applica riporti / da assegnare della chiusura. */
 export function buildNewPeriod(input: NewPeriodInput): NewPeriodResult {
   const billsQuota = input.billsQuota ?? 0;
-  const plan = planOpening(input.salary, input.envelopes, input.travel, input.gifts, billsQuota);
+  const plan = planOpening(input.salary, input.envelopes, input.items, billsQuota);
   const allocations = Object.fromEntries(activeEnvelopes(input.envelopes).map((e) => [e.id, e.cap]));
   const period: Period = {
     ...input.target,
@@ -83,20 +71,18 @@ export function buildNewPeriod(input: NewPeriodInput): NewPeriodResult {
     allocations,
     carryIn: { ...(input.closing?.nextCarryIn ?? {}) },
     unassigned: input.closing?.nextUnassigned ?? 0,
-    travelQuota: input.travel,
-    giftsQuota: input.gifts,
+    quotas: Object.fromEntries(input.items.map((q) => [q.item.id, q.amount])),
     closedAt: null,
     leftoverChoice: null,
     leftovers: null,
     billsQuota,
   };
-  return {
-    period,
-    potDeltas: {
-      savings: plan.savings + (input.closing?.savingsDelta ?? 0),
-      travel: input.travel,
-      gifts: input.gifts,
-      bills: billsQuota,
-    },
+  const potDeltas: Record<PotId, Cents> = {
+    savings: plan.savings + (input.closing?.savingsDelta ?? 0),
+    bills: billsQuota,
   };
+  for (const q of input.items) {
+    if (q.item.kind === 'pot') potDeltas[q.item.id] = (potDeltas[q.item.id] ?? 0) + q.amount;
+  }
+  return { period, potDeltas };
 }

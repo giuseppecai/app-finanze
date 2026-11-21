@@ -16,7 +16,8 @@ Giuseppe usa **Revolut**. Prima teneva una Pocket per ogni categoria di spesa e,
 | Pocket **Risparmi** | Soldi da non toccare; da qui escono e rientrano i prestiti | L'app dice quanto metterci |
 | Pocket **Viaggi** | Messo da parte per i viaggi, senza obiettivo | Quota scelta ogni mese |
 | Pocket **Regali & Imprevisti** | 25 € fissi al mese | Quota fissa |
-| Pocket **Bollette** | Le quote accantonate per le bollette non mensili (gas, acqua) | L'app dice quanto metterci (R13) |
+| Pocket **Bollette** | Le quote di **tutte** le bollette, mensili comprese (luce, internet, gas, acqua): si pagano da qui | L'app dice quanto metterci (R13) |
+| Altre Pocket a scelta | Ogni "voce fissa" di tipo salvadanaio ha la sua Pocket | Quota scelta ogni mese |
 | Carta **Quotidiano** | ~100 € per le spese di tutti i giorni | Ricaricata da Budget del mese quando scende |
 | Carta **Extra & Pagamenti** | ~100 €, ci sono collegati abbonamenti e rata iPhone | Ricaricata da Budget del mese quando scende |
 
@@ -34,7 +35,7 @@ Lo stipendio arriva il **27**. Un periodo va dal 27 al 26 del mese dopo e prende
 | Vita (uscite) | da spendere | € 200 |
 | Spesa alimentare | da spendere | € 50 |
 | Shopping | da spendere | € 120 |
-| Casa & Servizi | impegnata | € 120 |
+| Casa & Servizi | impegnata | € 120 (spese di casa: detersivi, piccole cose; le bollette hanno la loro Pocket) |
 | Rate & Abbonamenti | impegnata (si scala da sola) | € 110 |
 
 Totale € 700 → è quanto va nel **Budget del mese** a inizio periodo.
@@ -59,8 +60,8 @@ I **buoni pasto** non passano da Revolut e **non si registrano**: la busta Spesa
 3. **Movimenti**: lista per giorno, filtro per busta, tocco per modificare.
 4. **Storico**: grafico degli ultimi 6 periodi + tabella Messo/Speso/Avanzo per busta + segnalazione delle buste che sforano sempre.
 5. **Chiusura del mese**: avanzi per busta e scelta di cosa farne.
-6. **Inizio del mese**: inserisci lo stipendio → checklist dei 4 giroconti su Revolut.
-7. **Modifica buste** (tab "Imposta"): tetti con −/+, spesa media di ogni busta, giorno di inizio mese.
+6. **Inizio del mese**: inserisci lo stipendio → checklist dei giroconti su Revolut (Budget del mese, voci fisse come Viaggi, Regali e Affitto, Bollette, Risparmi). Gli importi delle voci fisse si cambiano toccandoli.
+7. **Imposta**: tetti delle buste con −/+, spesa media, giorno di inizio mese, voci fisse dell'inizio del mese (salvadanai e uscite come l'affitto), saldi dei salvadanai, backup.
 8. **Prestiti**: chi ti deve quanto, restituzioni con chiusura FIFO.
 9. **Abbonamenti**: elenco con giorno di addebito, si scalano da soli, pausa/modifica.
 

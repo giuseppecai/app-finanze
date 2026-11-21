@@ -9,6 +9,7 @@ import { today } from '../../domain/clock';
 import { formatShortRange } from '../../domain/dates';
 import { summarizePeriod } from '../../domain/envelopes';
 import { totalDebt, totalOwed } from '../../domain/loans';
+import { potLines } from '../../domain/pots';
 import { formatEuro } from '../../domain/money';
 import { daysAgo } from '../../domain/movements';
 import { daysUntilSalary, isTimeToClose } from '../../domain/periods';
@@ -17,10 +18,9 @@ import { it } from '../../i18n/it';
 import { BackupReminder } from './BackupReminder';
 import { ReconcileSheet } from './ReconcileSheet';
 
-/** Rate & Abbonamenti apre Abbonamenti, Casa & Servizi apre Casa & Servizi, le altre i Movimenti filtrati. */
+/** Rate & Abbonamenti apre Abbonamenti, le altre (Casa & Servizi compresa) i Movimenti filtrati. */
 function envelopeLink(envelope: Envelope, recurringEnvelopes: ReadonlySet<string>): string {
   if (envelope.kind === 'committed' && recurringEnvelopes.has(envelope.id)) return routes.recurring;
-  if (envelope.kind === 'committed') return routes.casa;
   return `${routes.movements}?busta=${encodeURIComponent(envelope.id)}`;
 }
 
@@ -32,6 +32,7 @@ export function HomePage() {
   const settings = useSettings();
   const periods = usePeriods();
   if (period === undefined || !envelopes || !pots || !loans || !settings || !periods) return null;
+  const lines = potLines(pots, settings.monthlyItems);
   // Primo avvio: prima la configurazione in 3 passi.
   if (!settings.onboardingDone && !period) return <Navigate to={routes.onboarding} replace />;
 
@@ -39,7 +40,7 @@ export function HomePage() {
     <>
       <BackupReminder settings={settings} periods={periods} />
       {period ? <CurrentPeriod period={period} envelopes={envelopes} cardReserve={settings.cardReserve} /> : <NoPeriod />}
-      <PotsCard pots={pots} loansOwed={totalOwed(loans)} debtsOwed={totalDebt(loans)} />
+      <PotsCard lines={lines} loansOwed={totalOwed(loans)} debtsOwed={totalDebt(loans)} />
     </>
   );
 }
