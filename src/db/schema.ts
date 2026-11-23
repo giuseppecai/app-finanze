@@ -6,7 +6,7 @@ import type {
   Bill, Envelope, Loan, Period, Person, Pot, Reconciliation, Recurring, Settings, Transaction,
 } from '../domain/types';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export type FinanzeDB = Dexie & {
   settings: EntityTable<Settings, 'id'>;
@@ -74,7 +74,19 @@ export function openDatabase(name: string): FinanzeDB {
         delete b.envelopeId;
       });
     });
+  // v4: Casa & Servizi diventa una busta da spendere (le bollette passano dalla Pocket Bollette). Nessun indice nuovo.
+  db.version(4)
+    .stores({})
+    .upgrade(async (tx) => {
+      await tx.table('envelopes').toCollection().modify((e: Record<string, unknown>) => Object.assign(e, migrateEnvelopeV4(e)));
+    });
   return db;
+}
+
+/** v3 → v4: la busta Casa & Servizi, se ancora impegnata, diventa da spendere (usato anche dall'import dei backup). */
+export function migrateEnvelopeV4(e: Record<string, unknown>): Record<string, unknown> {
+  const isCasa = e.shortName === 'Casa' || e.name === 'Casa & Servizi';
+  return isCasa && e.kind === 'committed' ? { ...e, kind: 'spendable' } : e;
 }
 
 /** v2 → v3: le quote Viaggi e Regali diventano voci fisse (usato anche dall'import dei backup). */

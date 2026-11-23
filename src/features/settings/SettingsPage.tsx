@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useBills, useCurrentPeriod, useEnvelopes, usePeriods, useRecurring, useSettings } from '../../app/data';
+import { useBills, useCurrentPeriod, useEnvelopes, usePeriods, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { BottomSheet } from '../../components/BottomSheet';
 import { IconChevronRight } from '../../components/icons';
@@ -10,13 +10,20 @@ import { Stepper } from '../../components/Stepper';
 import { db } from '../../db/database';
 import { newId, saveEnvelopes, updateSettings } from '../../db/repositories';
 import { billsQuotaTotal } from '../../domain/bills';
+import { today } from '../../domain/clock';
+import { nextOpeningId } from '../../domain/periods';
 import { formatEuro } from '../../domain/money';
 import { mainRecurringEnvelope } from '../../domain/recurring';
-import { planCapsChange } from '../../domain/settings';
+import { potLines } from '../../domain/pots';
+import {
+  allocationAfterRemoval, DEFAULT_DESTINATION, fundsDestinations, planCapsChange, recurringOnEnvelope, UNASSIGNED,
+  type CapsChange, type DestinationOption, type FundsDestination,
+} from '../../domain/settings';
 import { averageSpending } from '../../domain/stats';
-import type { Bill, Cents, Envelope, EnvelopeKind, MonthlyItem, Settings } from '../../domain/types';
+import type { Bill, Cents, Envelope, EnvelopeKind, MonthlyItem, Period, Recurring, Settings, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { BackupGroup, PotsGroup } from './DataSection';
+import { EnvelopeCapSheet, type CapTarget } from './EnvelopeCapSheet';
 import { MonthlyItemSheet } from './MonthlyItemSheet';
 
 type NewEnvelope = { id: string; name: string; shortName: string; kind: EnvelopeKind; cap: Cents };
@@ -35,23 +42,28 @@ export function SettingsPage() {
   const current = useCurrentPeriod();
   const recurring = useRecurring();
   const bills = useBills();
+  const txs = usePeriodTransactions(current?.id ?? null);
+  const pots = usePots();
   // Il messaggio sta qui: dopo il salvataggio l'editor si ricrea con i tetti nuovi.
   const [message, setMessage] = useState<string | null>(null);
-  if (!envelopes || !settings || !periods || current === undefined || !recurring || !bills) return null;
+  if (!envelopes || !settings || !periods || current === undefined || !recurring || !bills || !txs || !pots) return null;
+  const lines = potLines(pots, settings.monthlyItems);
   return (
     <div className="settings">
       <ScreenHeader title={it.settings.title} subtitle={it.settings.subtitle} />
       <EnvelopesGroup
-        key={envelopes.map((e) => `${e.id}:${e.cap}`).join('|')}
+        key={envelopes.map((e) => `${e.id}:${e.cap}:${e.archived}`).join('|')}
         envelopes={envelopes}
         periods={periods}
-        hasCurrent={current}
-        recurringEnvelope={mainRecurringEnvelope(recurring)}
-        recurringCount={recurring.length}
+        current={current}
+        txs={txs}
+        recurring={recurring}
+        destinations={fundsDestinations(lines, null, current !== null, it.funds.unassignedName)}
+        balances={Object.fromEntries(lines.map((l) => [l.id, l.balance]))}
         message={message}
         setMessage={setMessage}
       />
-      <MonthGroup settings={settings} bills={bills} />
+      <MonthGroup settings={settings} bills={bills} opening={nextOpeningId(periods, today(), settings.periodStartDay)} />
       <PotsGroup settings={settings} />
       <BackupGroup settings={settings} />
     </div>
@@ -61,25 +73,44 @@ export function SettingsPage() {
 type EnvelopesProps = {
   envelopes: Envelope[];
   periods: Parameters<typeof averageSpending>[1];
-  hasCurrent: { allocations: Record<string, Cents> } | null;
-  recurringEnvelope: string | null;
-  recurringCount: number;
+  current: Period | null;
+  txs: Transaction[];
+  recurring: Recurring[];
+  destinations: DestinationOption[];
+  balances: Record<string, Cents>;
   message: string | null;
   setMessage: (m: string | null) => void;
 };
 
-function EnvelopesGroup({ envelopes, periods, hasCurrent, recurringEnvelope, recurringCount, message, setMessage }: EnvelopesProps) {
+function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinations, balances, message, setMessage }: EnvelopesProps) {
   const active = envelopes.filter((e) => !e.archived);
   const initial = () => Object.fromEntries(active.map((e) => [e.id, e.cap]));
   const [caps, setCaps] = useState<Record<string, Cents>>(initial);
   const [added, setAdded] = useState<NewEnvelope[]>([]);
+  const [removed, setRemoved] = useState<string[]>([]);
+  const [removedDest, setRemovedDest] = useState<Record<string, FundsDestination>>({});
+  const [target, setTarget] = useState<CapTarget | null>(null);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
+  const recurringEnvelope = mainRecurringEnvelope(recurring);
 
-  const changedCaps = Object.fromEntries(Object.entries(caps).filter(([id, c]) => envelopes.find((e) => e.id === id)?.cap !== c));
-  const dirty = Object.keys(changedCaps).length > 0 || added.length > 0;
-  const allCaps = { ...caps, ...Object.fromEntries(added.map((a) => [a.id, a.cap])) };
-  const preview = planCapsChange([...envelopes, ...added.map((a) => ({ ...a, order: 0, archived: false }))], allCaps, hasCurrent);
+  const changedCaps = Object.fromEntries(Object.entries(caps).filter(([id, c]) => !removed.includes(id) && envelopes.find((e) => e.id === id)?.cap !== c));
+  const dirty = Object.keys(changedCaps).length > 0 || added.length > 0 || removed.length > 0;
+  const keptCaps = Object.fromEntries(Object.entries(caps).filter(([id]) => !removed.includes(id)));
+  const allCaps = { ...keptCaps, ...Object.fromEntries(added.map((a) => [a.id, a.cap])) };
+  const removedPlan = Object.fromEntries(removed.map((id) => [id, current ? allocationAfterRemoval(id, current, txs) : null]));
+  const preview = planCapsChange([...envelopes, ...added.map((a) => ({ ...a, order: 0, archived: false }))], allCaps, current, removedPlan, removedDest);
+  const destName = (d: FundsDestination) => destinations.find((x) => x.value === d)?.name ?? '';
+  /** residuo che una busta libera se la togli adesso (0 senza mese aperto) */
+  const freedBy = (id: string) => (current ? (current.allocations[id] ?? 0) - (allocationAfterRemoval(id, current, txs) ?? 0) : 0);
+  const transferText = (c: CapsChange, done: boolean) => [
+    c.transfer
+      ? c.transfer.to === 'budget'
+        ? (done ? it.settings.transferUp : it.settings.previewUp)(formatEuro(c.transfer.amount))
+        : (done ? it.settings.transferDown : it.settings.previewDown)(formatEuro(c.transfer.amount))
+      : null,
+    ...c.moves.filter((m) => m.to !== UNASSIGNED).map((m) => it.funds.move(formatEuro(m.amount), destName(m.to))),
+  ].filter(Boolean).join(' ');
   const total = Object.values(allCaps).reduce((s, v) => s + v, 0);
   const before = active.reduce((s, e) => s + e.cap, 0);
   const diff = total - before;
@@ -94,10 +125,11 @@ function EnvelopesGroup({ envelopes, periods, hasCurrent, recurringEnvelope, rec
     setMessage(null);
     try {
       const settings = await db.settings.get('settings');
-      const change = await saveEnvelopes(db, { caps: changedCaps, added, periodStartDay: settings?.periodStartDay ?? 27 });
-      const t = change.transfer;
-      setMessage(t ? (t.to === 'budget' ? it.settings.transferUp(formatEuro(t.amount)) : it.settings.transferDown(formatEuro(t.amount))) : it.settings.saved);
+      const change = await saveEnvelopes(db, { caps: changedCaps, added, removed, destinations: removedDest, periodStartDay: settings?.periodStartDay ?? 27 });
+      setMessage(transferText(change, true) || it.settings.saved);
       setAdded([]);
+      setRemoved([]);
+      setRemovedDest({});
     } catch (e) {
       console.error(e);
       setMessage(it.settings.error);
@@ -109,22 +141,31 @@ function EnvelopesGroup({ envelopes, periods, hasCurrent, recurringEnvelope, rec
   function discard() {
     setCaps(initial());
     setAdded([]);
+    setRemoved([]);
+    setRemovedDest({});
   }
 
-  function detailFor(e: Envelope) {
-    if (e.id === recurringEnvelope) {
-      return (
-        <Link to={routes.recurring} className="list-row__chip">
-          {it.settings.recurringDetail(recurringCount)}<IconChevronRight size={14} />
-        </Link>
-      );
-    }
+  function detailFor(e: Envelope): { text: string; over: boolean } | null {
+    if (e.id === recurringEnvelope) return { text: it.settings.recurringDetail(recurring.length), over: false };
     const avg = averages[e.id];
     if (!avg) return null;
+    return avg.aboveCap
+      ? { text: it.settings.averageOver(formatEuro(avg.average)), over: true }
+      : { text: it.settings.average(formatEuro(avg.average)), over: false };
+  }
+
+  function row(id: string, name: string, cap: Cents, detail: { text: string; over: boolean } | null, open: () => void) {
     return (
-      <span className={avg.aboveCap ? 'list-row__detail is-over' : 'list-row__detail'}>
-        {avg.aboveCap ? it.settings.averageOver(formatEuro(avg.average)) : it.settings.average(formatEuro(avg.average))}
-      </span>
+      <li key={id}>
+        <button type="button" className="list-row list-row--button" aria-label={`${name}: ${formatEuro(cap)}. ${it.settings.tapToEdit}`} onClick={() => { setMessage(null); open(); }}>
+          <span className="list-row__text">
+            <span className="list-row__title">{name}</span>
+            {detail ? <span className={detail.over ? 'list-row__detail is-over' : 'list-row__detail'}>{detail.text}</span> : null}
+          </span>
+          <span className="list-row__value">{formatEuro(cap)}</span>
+          <IconChevronRight className="list-row__chevron" />
+        </button>
+      </li>
     );
   }
 
@@ -138,32 +179,53 @@ function EnvelopesGroup({ envelopes, periods, hasCurrent, recurringEnvelope, rec
       <h2 id="envelopes-title" className="group__title">{it.settings.envelopesTitle}</h2>
       <div className="card list-card">
         {groups.map((g) => {
-          const list = active.filter((e) => e.kind === g.kind);
+          const list = active.filter((e) => e.kind === g.kind && !removed.includes(e.id));
           const extra = added.filter((a) => a.kind === g.kind);
           if (list.length + extra.length === 0) return null;
           return (
             <div key={g.kind} className="list-card__block">
               <p className="list-card__label">{g.title}</p>
               <ul className="list">
-                {list.map((e) => (
-                  <li key={e.id} className="list-row">
-                    <span className="list-row__text">
-                      <span className="list-row__title">{e.name}</span>
-                      {detailFor(e)}
-                    </span>
-                    <Stepper label={it.settings.stepper(e.name)} value={caps[e.id] ?? e.cap} onChange={(c) => { setMessage(null); setCaps((s) => ({ ...s, [e.id]: c })); }} />
-                  </li>
-                ))}
-                {extra.map((a) => (
-                  <li key={a.id} className="list-row">
-                    <span className="list-row__text"><span className="list-row__title">{a.name}</span></span>
-                    <Stepper label={it.settings.stepper(a.name)} value={a.cap} onChange={(c) => setAdded((xs) => xs.map((x) => (x.id === a.id ? { ...x, cap: c } : x)))} />
-                  </li>
-                ))}
+                {list.map((e) => {
+                  const cap = caps[e.id] ?? e.cap;
+                  const detail = detailFor(e);
+                  return row(e.id, e.name, cap, detail, () => setTarget({
+                    id: e.id,
+                    name: e.name,
+                    cap,
+                    detail: detail?.text ?? null,
+                    recurringCount: recurringOnEnvelope(e.id, recurring).length,
+                    showRecurringLink: e.id === recurringEnvelope,
+                    freed: freedBy(e.id),
+                  }));
+                })}
+                {extra.map((a) => row(a.id, a.name, a.cap, { text: it.settings.newBadge, over: false }, () => setTarget({
+                  id: a.id, name: a.name, cap: a.cap, detail: it.settings.newBadge, recurringCount: 0, showRecurringLink: false, freed: 0,
+                })))}
               </ul>
             </div>
           );
         })}
+        {removed.length > 0 ? (
+          <div className="list-card__block">
+            <p className="list-card__label">{it.settings.removedTitle}</p>
+            <ul className="list">
+              {removed.map((id) => {
+                const e = envelopes.find((x) => x.id === id);
+                if (!e) return null;
+                return (
+                  <li key={id} className="list-row is-removed">
+                    <span className="list-row__text">
+                      <span className="list-row__title">{e.name}</span>
+                      <span className="list-row__detail">{it.settings.removedDetail(freedBy(id) > 0 ? destName(removedDest[id] ?? DEFAULT_DESTINATION) : null)}</span>
+                    </span>
+                    <button type="button" className="row-undo" onClick={() => { setRemoved((xs) => xs.filter((x) => x !== id)); setRemovedDest(({ [id]: _, ...rest }) => rest); }}>{it.settings.undoRemove}</button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
         <button type="button" className="list-row list-row--action" onClick={() => setAdding(true)}>{it.settings.newEnvelope}</button>
         <div className="list-row list-row--total">
           <span className="list-row__text">
@@ -181,11 +243,7 @@ function EnvelopesGroup({ envelopes, periods, hasCurrent, recurringEnvelope, rec
       {dirty ? (
         <div className="save-bar" role="region" aria-label={it.settings.unsaved}>
           <p className="save-bar__text">
-            {preview.transfer
-              ? preview.transfer.to === 'budget'
-                ? it.settings.previewUp(formatEuro(preview.transfer.amount))
-                : it.settings.previewDown(formatEuro(preview.transfer.amount))
-              : it.settings.unsaved}
+            {transferText(preview, false) || it.settings.unsaved}
           </p>
           <div className="save-bar__actions">
             <button type="button" className="save-bar__discard" onClick={discard}>{it.settings.discard}</button>
@@ -193,6 +251,25 @@ function EnvelopesGroup({ envelopes, periods, hasCurrent, recurringEnvelope, rec
           </div>
         </div>
       ) : null}
+
+      <EnvelopeCapSheet
+        target={target}
+        onClose={() => setTarget(null)}
+        onApply={(id, cap) => {
+          if (added.some((a) => a.id === id)) setAdded((xs) => xs.map((x) => (x.id === id ? { ...x, cap } : x)));
+          else setCaps((c) => ({ ...c, [id]: cap }));
+        }}
+        destinations={destinations}
+        balances={balances}
+        onRemove={(id, dest) => {
+          setMessage(null);
+          if (added.some((a) => a.id === id)) setAdded((xs) => xs.filter((x) => x.id !== id));
+          else {
+            setRemoved((xs) => [...xs, id]);
+            setRemovedDest((d) => ({ ...d, [id]: dest }));
+          }
+        }}
+      />
 
       <BottomSheet open={adding} onClose={() => setAdding(false)} title={it.settings.newEnvelope.replace('+ ', '')}>
         {adding ? (
@@ -243,7 +320,7 @@ function NewEnvelopeForm({ onAdd }: { onAdd: (e: NewEnvelope) => void }) {
   );
 }
 
-function MonthGroup({ settings, bills }: { settings: Settings; bills: Bill[] }) {
+function MonthGroup({ settings, bills, opening }: { settings: Settings; bills: Bill[]; opening: string }) {
   const [target, setTarget] = useState<MonthlyItem | 'new' | null>(null);
   const activeBills = bills.filter((b) => b.active);
   return (
@@ -285,7 +362,7 @@ function MonthGroup({ settings, bills }: { settings: Settings; bills: Bill[] }) 
               <span className="list-row__title">{it.settings.billsRow}</span>
               <span className="list-row__detail">{it.settings.billsDetail(activeBills.length)}</span>
             </span>
-            <span className="list-row__value">{it.settings.billsAmount(formatEuro(billsQuotaTotal(bills)))}</span>
+            <span className="list-row__value">{it.settings.billsAmount(formatEuro(billsQuotaTotal(bills, opening)))}</span>
             <IconChevronRight className="list-row__chevron" />
           </Link>
         </li>

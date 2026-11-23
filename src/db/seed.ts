@@ -12,7 +12,7 @@ export function buildSeed(newId: () => string, now: string): DataSet {
     { name: 'Vita', shortName: 'Vita', kind: 'spendable', cap: 20000 },
     { name: 'Spesa alimentare', shortName: 'Spesa', kind: 'spendable', cap: 5000 },
     { name: 'Shopping', shortName: 'Shopping', kind: 'spendable', cap: 12000 },
-    { name: 'Casa & Servizi', shortName: 'Casa', kind: 'committed', cap: 12000 },
+    { name: 'Casa & Servizi', shortName: 'Casa', kind: 'spendable', cap: 12000 },
     { name: 'Rate & Abbonamenti', shortName: 'Rate', kind: 'committed', cap: 11000 },
   ].map((e, i) => ({ ...e, kind: e.kind as 'spendable' | 'committed', id: newId(), order: i + 1, archived: false }));
 

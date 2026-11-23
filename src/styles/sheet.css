@@ -120,3 +120,10 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
 }
 
 .hero__pill:active { background: #3A3935; }
+
+/* Conferma dentro il pannello (Elimina, Togli, Importa) */
+.confirm-panel { display: flex; flex-direction: column; gap: 10px; }
+.confirm-panel__message { margin: 0 0 6px; font-size: 16px; line-height: 1.45; color: var(--text); }
+.primary-button--danger { background: var(--danger); }
+.primary-button--danger:active:not(:disabled) { background: var(--danger-strong); }
+.confirm-panel .sheet-actions__button { flex: none; }

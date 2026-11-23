@@ -19,11 +19,15 @@ function tone(id: string, index: number): string {
 export function PotsCard({ lines, loansOwed, debtsOwed = 0 }: Props) {
   const total = potsTotal(lines);
   return (
-    <section className="card pots" aria-labelledby="pots-title">
-      <div className="pots__head">
-        <h2 id="pots-title" className="section-title">{it.home.savedAside}</h2>
-        <span className="pots__total">{formatEuro(total)}</span>
+    <section className="home-section" aria-labelledby="pots-title">
+      <div className="home-section__head">
+        <div className="home-section__titles">
+          <h2 id="pots-title" className="home-section__title">{it.home.savedAside}</h2>
+          <p className="home-section__caption">{it.home.savedAsideCaption}</p>
+        </div>
+        <span className="home-section__meta home-section__meta--strong">{formatEuro(total)}</span>
       </div>
+      <div className="card pots">
       <div className="pots__bar" aria-hidden="true">
         {lines.map((p, i) => (
           <span key={p.id} className={`pots__segment pots__tone--${tone(p.id, i)}`} style={{ flexGrow: Math.max(p.balance, 0) || 0.0001 }} />
@@ -54,6 +58,7 @@ export function PotsCard({ lines, loansOwed, debtsOwed = 0 }: Props) {
           <span className="pots__loans-amount">{formatEuro(loansOwed)}<IconChevronRight /></span>
         </Link>
       ) : null}
+      </div>
     </section>
   );
 }

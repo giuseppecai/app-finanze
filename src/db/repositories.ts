@@ -2,17 +2,21 @@
 import { nowISO } from '../domain/clock';
 import { planClosing, type ClosingOption, type ClosingPlan } from '../domain/closing';
 import { closingPreview } from '../domain/monthEnd';
-import { billsQuotaTotal, monthlyQuota, planBillPayment, type BillPaymentPlan } from '../domain/bills';
+import { billsQuotaTotal, monthlyQuota, nextDueAfterPayment, planBillPayment, type BillPaymentPlan } from '../domain/bills';
+import { addMonthsId } from '../domain/dates';
 import { it } from '../i18n/it';
 import { buildNewPeriod, itemQuotas } from '../domain/opening';
-import { defaultShortName, planCapsChange, type CapsChange } from '../domain/settings';
+import {
+  allocationAfterRemoval, defaultShortName, envelopeInUse, planCapsChange, planPotRemoval, recurringOnEnvelope,
+  DEFAULT_DESTINATION, UNASSIGNED, type CapsChange, type FundsDestination, type PotRemoval,
+} from '../domain/settings';
 import { currentPeriod, nextPeriodToStart } from '../domain/periods';
 import { chargeToTransaction, dueCharges } from '../domain/recurring';
 import {
   applyRepayment, canDeleteLoan, createLoanEntry, deleteLoanEntry, savingsEffect, undoRepayment as undoLoanAllocations,
 } from '../domain/loans';
 import type {
-  Bill, Card, Cents, Envelope, ISODate, Loan, LoanDirection, MonthlyItem, Period, Person, PotId, Reconciliation, Recurring, Settings, Transaction,
+  Bill, Card, Cents, Envelope, ISODate, Loan, LoanDirection, MonthlyItem, Period, Person, Pot, PotId, Reconciliation, Recurring, Settings, Transaction,
 } from '../domain/types';
 import type { FinanzeDB } from './schema';
 
@@ -172,14 +176,14 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
         salary: input.salary,
         envelopes,
         items: itemQuotas(settings.monthlyItems, input.quotas),
-        billsQuota: billsQuotaTotal(bills),
+        billsQuota: billsQuotaTotal(bills, target.id),
         closing,
       });
       await db.periods.add(period);
 
       // Ogni bolletta attiva accantona la sua quota (R13).
       for (const bill of bills) {
-        const quota = bill.active ? monthlyQuota(bill) : 0;
+        const quota = bill.active ? monthlyQuota(bill, target.id) : 0;
         if (quota > 0) await db.bills.update(bill.id, { fund: bill.fund + quota });
       }
 
@@ -522,7 +526,9 @@ export async function registerBill(db: FinanzeDB, input: RegisterBillInput): Pro
       });
       ids.push(loanTx.id);
     }
-    if (plan.fundDelta !== 0) await db.bills.update(bill.id, { fund: bill.fund + plan.fundDelta });
+    // Le periodiche passano alla bolletta successiva: un ciclo dopo il periodo di questo pagamento.
+    const nextDue = nextDueAfterPayment(bill, period.id);
+    await db.bills.update(bill.id, { fund: bill.fund + plan.fundDelta, ...(nextDue ? { nextDue } : {}) });
     await adjustPot(db, 'bills', plan.potDeltas.bills ?? 0);
     return { plan, transactionIds: ids };
   });
@@ -554,7 +560,9 @@ export async function deleteBillPayment(db: FinanzeDB, txId: string): Promise<vo
       } else {
         if (t.type === 'expense' && t.envelopeId === null && t.billId) {
           const bill = await db.bills.get(t.billId);
-          if (bill) await db.bills.update(bill.id, { fund: bill.fund + t.amount });
+          // La bolletta torna "da pagare": la scadenza torna indietro di un ciclo.
+          const nextDue = bill && bill.frequency > 1 && bill.nextDue ? addMonthsId(bill.nextDue, -bill.frequency) : bill?.nextDue;
+          if (bill) await db.bills.update(bill.id, { fund: bill.fund + t.amount, nextDue: nextDue ?? null });
           await adjustPot(db, 'bills', t.amount);
         }
         await db.transactions.delete(t.id);
@@ -570,12 +578,16 @@ export interface SaveEnvelopesInput {
   caps: Record<string, Cents>;
   /** buste nuove da creare (con il loro tetto) */
   added: Omit<Envelope, 'order' | 'archived'>[];
+  /** buste da togliere: le usate si archiviano (restano nello storico), le mai usate si cancellano */
+  removed?: string[];
+  /** dove va il residuo di ogni busta tolta a mese aperto (default Risparmi) */
+  destinations?: Record<string, FundsDestination>;
   periodStartDay: number;
 }
 
 /**
- * "Salva le buste": tetti e buste nuove valgono da questo mese. Se c'è un mese aperto, aggiorna
- * le sue allocazioni e il salvadanaio Risparmi (il giroconto lo fa l'utente su Revolut).
+ * "Salva le buste": tetti, buste nuove e buste tolte valgono da questo mese. Se c'è un mese aperto,
+ * aggiorna le sue allocazioni e il salvadanaio Risparmi (il giroconto lo fa l'utente su Revolut).
  */
 export async function saveEnvelopes(db: FinanzeDB, input: SaveEnvelopesInput): Promise<CapsChange> {
   if (!Number.isInteger(input.periodStartDay) || input.periodStartDay < 1 || input.periodStartDay > 31) {
@@ -584,19 +596,104 @@ export async function saveEnvelopes(db: FinanzeDB, input: SaveEnvelopesInput): P
   for (const cap of [...Object.values(input.caps), ...input.added.map((e) => e.cap)]) {
     if (!Number.isInteger(cap) || cap < 0) throw new Error('Tetto non valido');
   }
-  return db.transaction('rw', [db.envelopes, db.periods, db.pots, db.settings], async () => {
+  const removedIds = input.removed ?? [];
+  return db.transaction('rw', [db.envelopes, db.periods, db.pots, db.settings, db.transactions, db.recurring], async () => {
     const envelopes = await db.envelopes.orderBy('order').toArray();
+    const recurring = await db.recurring.toArray();
+    for (const id of removedIds) {
+      if (recurringOnEnvelope(id, recurring).length > 0) throw new Error('La busta ha abbonamenti attivi');
+    }
     let order = envelopes.reduce((m, e) => Math.max(m, e.order), 0);
     const newEnvelopes: Envelope[] = input.added.map((e) => ({ ...e, name: e.name.trim(), shortName: e.shortName.trim() || defaultShortName(e.name), order: ++order, archived: false }));
     const current = await getCurrentPeriod(db);
+    const currentTxs = current ? await getPeriodTransactions(db, current.id) : [];
+    const removed = current
+      ? Object.fromEntries(removedIds.map((id) => [id, allocationAfterRemoval(id, current, currentTxs)]))
+      : Object.fromEntries(removedIds.map((id) => [id, null]));
     const caps = { ...input.caps, ...Object.fromEntries(newEnvelopes.map((e) => [e.id, e.cap])) };
-    const change = planCapsChange([...envelopes, ...newEnvelopes], caps, current);
-    for (const [id, cap] of Object.entries(input.caps)) await db.envelopes.update(id, { cap });
+    for (const id of removedIds) delete caps[id];
+    const change = planCapsChange([...envelopes, ...newEnvelopes], caps, current, removed, input.destinations ?? {});
+    for (const [id, cap] of Object.entries(caps)) if (id in input.caps) await db.envelopes.update(id, { cap });
     if (newEnvelopes.length > 0) await db.envelopes.bulkAdd(newEnvelopes);
+    if (removedIds.length > 0) {
+      const periods = await db.periods.toArray();
+      const allocationsNow = change.allocations;
+      for (const id of removedIds) {
+        // Il mese aperto conta con le allocazioni aggiornate: se la busta ci resta, è "usata".
+        const periodsAfter = current && allocationsNow ? periods.map((p) => (p.id === current.id ? { ...p, allocations: allocationsNow } : p)) : periods;
+        const used = envelopeInUse(id, periodsAfter, await db.transactions.where('envelopeId').equals(id).toArray(), recurring);
+        if (used) await db.envelopes.update(id, { archived: true });
+        else await db.envelopes.delete(id);
+      }
+      const settings = await getSettings(db);
+      if (settings.lastEnvelopeId && removedIds.includes(settings.lastEnvelopeId)) {
+        await db.settings.update('settings', { lastEnvelopeId: null });
+      }
+    }
     if (current && change.allocations) await db.periods.update(current.id, { allocations: change.allocations });
     await adjustPot(db, 'savings', change.savingsDelta);
+    for (const m of change.moves) await moveFunds(db, m.to, m.amount);
     await db.settings.update('settings', { periodStartDay: input.periodStartDay });
     return change;
+  });
+}
+
+/** Sposta soldi in un salvadanaio o, con UNASSIGNED, nel "da assegnare" del mese aperto. */
+async function moveFunds(db: FinanzeDB, to: FundsDestination, amount: Cents): Promise<void> {
+  if (amount === 0) return;
+  if (to !== UNASSIGNED) return adjustPot(db, to, amount);
+  const current = await getCurrentPeriod(db);
+  if (!current) throw new Error('Nessun mese aperto');
+  await db.periods.update(current.id, { unassigned: current.unassigned + amount });
+}
+
+/** Cancella una voce fissa dell'inizio del mese. Se è un salvadanaio, lo toglie e il saldo va dove sceglie l'utente. */
+export async function deleteMonthlyItem(db: FinanzeDB, id: string, to: FundsDestination = DEFAULT_DESTINATION): Promise<PotRemoval | null> {
+  return db.transaction('rw', [db.settings, db.pots, db.periods], async () => {
+    const settings = await getSettings(db);
+    const item = settings.monthlyItems.find((i) => i.id === id);
+    if (!item) return null;
+    await db.settings.update('settings', { monthlyItems: settings.monthlyItems.filter((i) => i.id !== id) });
+    if (item.kind !== 'pot') return { amount: 0, to, item };
+    const plan = planPotRemoval(id, await db.pots.toArray(), settings.monthlyItems, to);
+    await db.pots.delete(id);
+    await moveFunds(db, plan.to, plan.amount);
+    return plan;
+  });
+}
+
+/** Nuovo salvadanaio libero (una Pocket Revolut senza giroconto mensile), con il saldo che ha adesso. */
+export async function addPot(db: FinanzeDB, name: string, balance: Cents): Promise<Pot> {
+  const clean = name.trim();
+  if (clean === '') throw new Error('Nome mancante');
+  if (!Number.isInteger(balance)) throw new Error('Saldo non valido');
+  const pot: Pot = { id: newId(), name: clean, balance };
+  await db.pots.add(pot);
+  return pot;
+}
+
+/** Rinomina un salvadanaio (e la voce fissa collegata, se c'è). */
+export async function renamePot(db: FinanzeDB, id: string, name: string): Promise<void> {
+  const clean = name.trim();
+  if (clean === '') throw new Error('Nome mancante');
+  await db.transaction('rw', [db.settings, db.pots], async () => {
+    await db.pots.update(id, { name: clean });
+    const settings = await getSettings(db);
+    if (settings.monthlyItems.some((i) => i.id === id)) {
+      await db.settings.update('settings', { monthlyItems: settings.monthlyItems.map((i) => (i.id === id ? { ...i, name: clean } : i)) });
+    }
+  });
+}
+
+/** Toglie un salvadanaio: il saldo va dove sceglie l'utente (default Risparmi), l'eventuale voce fissa sparisce. */
+export async function removePot(db: FinanzeDB, id: string, to: FundsDestination = DEFAULT_DESTINATION): Promise<PotRemoval> {
+  return db.transaction('rw', [db.settings, db.pots, db.periods], async () => {
+    const settings = await getSettings(db);
+    const plan = planPotRemoval(id, await db.pots.toArray(), settings.monthlyItems, to);
+    await db.pots.delete(id);
+    await moveFunds(db, plan.to, plan.amount);
+    if (plan.item) await db.settings.update('settings', { monthlyItems: settings.monthlyItems.filter((i) => i.id !== id) });
+    return plan;
   });
 }
 

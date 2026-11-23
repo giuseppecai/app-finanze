@@ -44,3 +44,7 @@
 .bill-preview__soft { color: var(--text-muted); }
 .bill-preview .is-over { color: var(--danger); font-weight: 500; }
 
+
+/* Anteprima della quota mensile nella scheda della bolletta */
+.bill-quota-preview { margin: 4px 0 0; font-size: 15px; font-weight: 600; color: var(--accent-strong); }
+.due-field { display: flex; flex-direction: column; gap: 6px; }

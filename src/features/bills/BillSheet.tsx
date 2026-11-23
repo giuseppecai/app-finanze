@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { AmountField } from '../../components/AmountField';
 import { BottomSheet } from '../../components/BottomSheet';
+import { ConfirmPanel } from '../../components/ConfirmPanel';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { Switch } from '../../components/Switch';
 import { db } from '../../db/database';
 import { deleteBill, newId, registerBill, saveBill } from '../../db/repositories';
 import { nowISO, today } from '../../domain/clock';
-import { planBillPayment, type BillTransfer } from '../../domain/bills';
+import { isPeriodic, monthlyQuota, planBillPayment, type BillTransfer } from '../../domain/bills';
+import { addMonthsId } from '../../domain/dates';
 import { balanceWith } from '../../domain/loans';
 import { formatEuro, parseEuro } from '../../domain/money';
 import type { Bill, BillFrequency, Loan, Person } from '../../domain/types';
@@ -19,11 +21,13 @@ type Props = {
   loans: Loan[];
   hasPeriod: boolean;
   defaultPersonId: string | null;
+  /** periodo del prossimo giroconto (per la quota e per i mesi proposti) */
+  opening: string;
   onClose: () => void;
 };
 
 /** Pannello di una bolletta: Registra (bolletta arrivata) o Modifica. Per una bolletta nuova solo Modifica. */
-export function BillSheet({ target, people, loans, hasPeriod, defaultPersonId, onClose }: Props) {
+export function BillSheet({ target, people, loans, hasPeriod, defaultPersonId, opening, onClose }: Props) {
   return (
     <BottomSheet open={target !== null} onClose={onClose} title={target === 'new' ? it.casa.sheetNew : target?.name ?? ''}>
       {target !== null ? (
@@ -34,6 +38,7 @@ export function BillSheet({ target, people, loans, hasPeriod, defaultPersonId, o
           loans={loans}
           hasPeriod={hasPeriod}
           defaultPersonId={defaultPersonId}
+          opening={opening}
           onDone={onClose}
         />
       ) : null}
@@ -41,10 +46,10 @@ export function BillSheet({ target, people, loans, hasPeriod, defaultPersonId, o
   );
 }
 
-function BillSheetBody({ target, people, loans, hasPeriod, defaultPersonId, onDone }: Omit<Props, 'onClose'> & { target: Bill | 'new'; onDone: () => void }) {
+function BillSheetBody({ target, people, loans, hasPeriod, defaultPersonId, opening, onDone }: Omit<Props, 'onClose'> & { target: Bill | 'new'; onDone: () => void }) {
   const [tab, setTab] = useState<'register' | 'edit'>(target === 'new' || !target.active ? 'edit' : 'register');
   if (target === 'new') {
-    return <BillForm bill={null} people={people} loans={loans} defaultPersonId={defaultPersonId} onDone={onDone} />;
+    return <BillForm bill={null} people={people} loans={loans} defaultPersonId={defaultPersonId} opening={opening} onDone={onDone} />;
   }
   return (
     <>
@@ -60,7 +65,7 @@ function BillSheetBody({ target, people, loans, hasPeriod, defaultPersonId, onDo
       {tab === 'register' ? (
         <RegisterForm bill={target} people={people} loans={loans} hasPeriod={hasPeriod} onDone={onDone} />
       ) : (
-        <BillForm bill={target} people={people} loans={loans} defaultPersonId={defaultPersonId} onDone={onDone} />
+        <BillForm bill={target} people={people} loans={loans} defaultPersonId={defaultPersonId} opening={opening} onDone={onDone} />
       )}
     </>
   );
@@ -181,10 +186,23 @@ type FormProps = {
   people: Person[];
   loans: Loan[];
   defaultPersonId: string | null;
+  opening: string;
   onDone: () => void;
 };
 
-function BillForm({ bill, people, loans, defaultPersonId, onDone }: FormProps) {
+/** Mesi proposti per la prossima bolletta: dal prossimo giroconto per due anni (più quello salvato, se è fuori). */
+function dueOptions(opening: string, current: string | null): string[] {
+  const list = Array.from({ length: 24 }, (_, i) => addMonthsId(opening, i));
+  return current && !list.includes(current) ? [current, ...list] : list;
+}
+
+function monthLabel(id: string): string {
+  const [y, m] = id.split('-');
+  return it.casa.nextDueOption(it.months.long[Number(m) - 1] ?? id, y ?? '');
+}
+
+function BillForm({ bill, people, loans, defaultPersonId, opening, onDone }: FormProps) {
+  const [confirming, setConfirming] = useState(false);
   const [name, setName] = useState(bill?.name ?? '');
   const [frequency, setFrequency] = useState<BillFrequency>(bill?.frequency ?? 1);
   const [estimate, setEstimate] = useState(bill ? formatEuro(bill.estimate, { decimals: 'always' }).replace('€ ', '') : '');
@@ -192,8 +210,13 @@ function BillForm({ bill, people, loans, defaultPersonId, onDone }: FormProps) {
   const [personId, setPersonId] = useState<string | null>(bill?.personId ?? defaultPersonId);
   const [payer, setPayer] = useState<Bill['payer']>(bill?.payer ?? 'me');
   const [active, setActive] = useState(bill?.active ?? true);
+  const [nextDue, setNextDue] = useState<string | null>(bill?.nextDue ?? null);
   const [error, setError] = useState<string | null>(null);
   const cents = parseEuro(estimate);
+  const periodic = isPeriodic({ frequency });
+  const previewQuota = cents !== null && cents > 0
+    ? monthlyQuota({ estimate: cents, split, frequency, fund: bill?.fund ?? 0, nextDue: periodic ? nextDue : null }, opening)
+    : null;
   const needsPerson = split === 'half' || payer === 'roommate';
   const valid = name.trim() !== '' && cents !== null && cents > 0 && (!needsPerson || !!personId);
 
@@ -212,6 +235,7 @@ function BillForm({ bill, people, loans, defaultPersonId, onDone }: FormProps) {
         payer: split === 'mine' ? 'me' : payer,
         personId: needsPerson ? personId : null,
         fund: bill?.fund ?? 0,
+        nextDue: periodic ? nextDue : null,
         active,
         order: bill?.order ?? Date.now(),
         createdAt: bill?.createdAt ?? nowISO(),
@@ -224,9 +248,13 @@ function BillForm({ bill, people, loans, defaultPersonId, onDone }: FormProps) {
   }
 
   async function remove() {
-    if (!bill || !window.confirm(it.casa.confirmDelete(bill.name))) return;
+    if (!bill) return;
     await deleteBill(db, bill.id);
     onDone();
+  }
+
+  if (confirming) {
+    return <ConfirmPanel message={it.casa.confirmDelete(bill?.name ?? '')} confirmLabel={it.casa.delete} onConfirm={() => void remove()} onCancel={() => setConfirming(false)} />;
   }
 
   return (
@@ -244,6 +272,19 @@ function BillForm({ bill, people, loans, defaultPersonId, onDone }: FormProps) {
         </div>
         <AmountField id="bill-estimate" label={it.casa.estimate} value={estimate} onChange={setEstimate} invalid={estimate !== '' && (cents === null || cents <= 0)} />
       </div>
+      {periodic ? (
+        <div className="due-field">
+          <div className="select-field">
+            <label htmlFor="bill-next-due">{it.casa.nextDue}</label>
+            <select id="bill-next-due" value={nextDue ?? ''} onChange={(e) => setNextDue(e.target.value || null)}>
+              <option value="">{it.casa.nextDueUnknown}</option>
+              {dueOptions(opening, bill?.nextDue ?? null).map((id) => <option key={id} value={id}>{monthLabel(id)}</option>)}
+            </select>
+          </div>
+          {previewQuota !== null ? <p className="bill-quota-preview">{it.casa.quotaPreview(formatEuro(previewQuota))}</p> : null}
+          <p className="muted-note">{it.casa.nextDueHint}</p>
+        </div>
+      ) : null}
       <div className="recurring-form__card">
         <span className="entry__label">{it.casa.split}</span>
         <SegmentedControl
@@ -279,7 +320,7 @@ function BillForm({ bill, people, loans, defaultPersonId, onDone }: FormProps) {
       <Switch label={it.casa.active} hint={it.casa.activeHint} checked={active} onChange={setActive} />
       {error ? <p className="outcome outcome--info" role="alert">{error}</p> : null}
       <div className="recurring-form__actions">
-        {bill ? <button type="button" className="outcome__button outcome__button--secondary" onClick={() => void remove()}>{it.casa.delete}</button> : null}
+        {bill ? <button type="button" className="outcome__button outcome__button--secondary" onClick={() => setConfirming(true)}>{it.casa.delete}</button> : null}
         <button type="submit" className="primary-button recurring-form__save">{it.casa.save}</button>
       </div>
     </form>

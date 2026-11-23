@@ -23,14 +23,15 @@ Rotte (`HashRouter`): `/`, `/nuovo`, `/movimenti`, `/storico`, `/imposta`, `/chi
 ## 1 · Home (`Main.dc.html`)
 
 Dall'alto:
-1. **Intestazione**: nome del periodo ("Novembre") e sotto "Stipendio tra 8 giorni · 27 ott – 26 nov". Pulsante impostazioni rapide a destra (44 px).
+1. **Intestazione**: nome del periodo ("Novembre") e sotto "Stipendio tra 8 giorni · 27 ott – 26 nov". Nessun pulsante di modifica: si modifica solo dalla scheda **Imposta**.
 2. **Card scura**:
    - "Puoi ancora spendere", importo grande (R3: € 174);
    - a destra, sulla stessa riga, pulsante pillola **Confronta** (apre il pannello del Confronta);
    - riga in basso: se è ora di chiudere (R2) il link "Stipendio arrivato? Chiudi il mese →", altrimenti "Ultimo confronto con Revolut: 3 giorni fa" (o "Mai confrontato").
-3. **Buste** (titolo + link "Modifica" → Imposta): righe delle buste *da spendere*. Ogni riga: nome, residuo, "di € tetto" (o "oltre il tetto"), barra. Tocco → Movimenti filtrati per quella busta.
-4. **Impegnate · si scalano da sole** con a destra "€ 77,50 rimasti": Casa & Servizi (→ Movimenti filtrati), Rate & Abbonamenti (→ Abbonamenti).
-5. **Messi da parte**: totale dei salvadanai, barra divisa in tonalità (Risparmi in accento, i salvadanai delle voci fisse in viola chiaro, **Bollette sempre presente** in grigio), legenda con importi; Bollette è un link → `/bollette`; ultima riga "Prestiti da riavere · € 55 ›" → Prestiti (nascosta se 0; con debiti aperti aggiunge "· devi € Y").
+Tre sezioni con titolo grande e una riga di spiegazione, ognuna con un aspetto diverso:
+3. **Da spendere** ("Le buste per le spese di tutti i giorni"): una scheda per busta *da spendere* (Casa & Servizi compresa). Ogni riga: nome, residuo, "di € tetto" (o "oltre il tetto"), barra. Tocco → Movimenti filtrati per quella busta.
+4. **Impegnate** ("Spese fisse: abbonamenti, rate e bollette"): un unico riquadro con righe fitte e barre grigie: Rate & Abbonamenti (→ Abbonamenti) e, in fondo, **Bollette** con lo stesso aspetto (R13: saldo della Pocket "di € Σ quote previste", barra grigia) → `/bollette`.
+5. **Messi da parte** ("Le Pocket su Revolut", totale a destra): riquadro lilla, barra divisa in tonalità (Risparmi in accento, gli altri salvadanai in viola chiaro), elenco con importi; ultima riga "Prestiti da riavere · € 55 ›" → Prestiti (nascosta se 0; con debiti aperti aggiunge "· devi € Y"). Bollette qui non compare.
 
 **Pannello Confronta** (bottom sheet): sottotitolo con la data dell'ultimo confronto, 3 campi importo (Budget del mese, Carta Quotidiano, Carta Extra), riga "Su Revolut € X · Nell'app € Y", riquadro esito secondo R5 con le azioni. Al primo confronto: calibrazione della riserva.
 
@@ -117,7 +118,7 @@ Elenco raggruppato come le Impostazioni di iOS: titoletti di gruppo grigi, card 
 
 ## 9-bis · Bollette (non c'è mockup — stesso stile di Abbonamenti)
 
-Si apre da "Messi da parte" in Home e da Imposta (rotta `/bollette`). Schermo intero con chiudi.
+Si apre dalla riga Bollette tra le Impegnate in Home e da Imposta (rotta `/bollette`). Schermo intero con chiudi.
 
 - "Bollette" · "Si pagano dalla Pocket Bollette" · "+ Bolletta".
 - **Card scura**: "Nella Pocket Bollette € X" (= salvadanaio Bollette) e sotto "+ € 79 ogni mese, a inizio mese".

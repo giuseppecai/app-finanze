@@ -15,7 +15,7 @@ export interface EnvelopeBalance {
   remaining: Cents;
 }
 
-export type BarState = 'over' | 'low' | 'committed' | 'ok';
+export type BarState = 'over' | 'empty' | 'low' | 'committed' | 'ok';
 
 type PeriodAmounts = Pick<Period, 'allocations' | 'carryIn' | 'unassigned'>;
 
@@ -90,11 +90,13 @@ export function summarizePeriod(
 }
 
 /**
- * Colore della barra. Sforata → arancione; impegnata → grigio (si scala da sola, l'ambra
- * sarebbe quasi sempre accesa); sotto il 20% di quanto messo → ambra; altrimenti accento.
+ * Colore della barra. Sforata → arancione; residuo esattamente zero → grigio chiaro (busta svuotata);
+ * impegnata → grigio (si scala da sola, l'ambra sarebbe quasi sempre accesa); sotto il 20% di quanto
+ * messo → ambra; altrimenti accento.
  */
 export function barState(balance: Pick<EnvelopeBalance, 'remaining' | 'put'> & { envelope: Pick<Envelope, 'kind'> }): BarState {
   if (balance.remaining < 0) return 'over';
+  if (balance.remaining === 0 && balance.put > 0) return 'empty';
   if (balance.envelope.kind === 'committed') return 'committed';
   if (balance.put > 0 && balance.remaining * 5 < balance.put) return 'low';
   if (balance.put <= 0) return 'low';

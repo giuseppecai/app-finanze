@@ -1,5 +1,7 @@
 // R13 · Bollette: tutte accantonate nella Pocket Bollette (mensili comprese), divisione con la coinquilina.
-import type { Bill, Cents, LoanDirection, PotId } from './types';
+import { addMonthsId, monthsBetween } from './dates';
+import type { EnvelopeBalance } from './envelopes';
+import type { Bill, Cents, LoanDirection, PeriodId, PotId } from './types';
 
 export function isPeriodic(bill: Pick<Bill, 'frequency'>): boolean {
   return bill.frequency > 1;
@@ -21,16 +23,37 @@ export function expectedShare(bill: Pick<Bill, 'estimate' | 'split'>): Cents {
 }
 
 /**
- * Quota da accantonare ogni mese nella Pocket Bollette (al centesimo, per eccesso):
- * per le mensili è tutta la tua quota prevista, per le periodiche la tua quota divisa per i mesi.
+ * Giroconti mensili che restano prima della prossima bolletta, contando quello di `nextOpening`
+ * (il prossimo "Inizio del mese"). Minimo 1: se la bolletta è già in ritardo, tutto al prossimo.
  */
-export function monthlyQuota(bill: Pick<Bill, 'estimate' | 'split' | 'frequency'>): Cents {
-  return Math.ceil(expectedShare(bill) / bill.frequency);
+export function depositsLeft(nextDue: PeriodId, nextOpening: PeriodId): number {
+  return Math.max(1, monthsBetween(nextOpening, nextDue) + 1);
 }
 
-/** Giroconto mensile → Bollette: Σ quote delle bollette attive. */
-export function billsQuotaTotal(bills: readonly Bill[]): Cents {
-  return bills.reduce((s, b) => (b.active ? s + monthlyQuota(b) : s), 0);
+/**
+ * Quota da accantonare ogni mese nella Pocket Bollette (al centesimo, per eccesso).
+ * - mensili: tutta la tua quota prevista;
+ * - periodiche con la prossima bolletta nota: quello che manca (quota prevista − fondo) diviso
+ *   per i giroconti che restano prima di quel mese, così ci arrivi pronto;
+ * - periodiche senza data: la tua quota divisa per i mesi del ciclo.
+ */
+export function monthlyQuota(
+  bill: Pick<Bill, 'estimate' | 'split' | 'frequency'> & Partial<Pick<Bill, 'fund' | 'nextDue'>>,
+  nextOpening?: PeriodId,
+): Cents {
+  if (!isPeriodic(bill) || !bill.nextDue || !nextOpening) return Math.ceil(expectedShare(bill) / bill.frequency);
+  const missing = Math.max(0, expectedShare(bill) - (bill.fund ?? 0));
+  return Math.ceil(missing / depositsLeft(bill.nextDue, nextOpening));
+}
+
+/** Giroconto mensile → Bollette: Σ quote delle bollette attive (`nextOpening` = periodo del giroconto). */
+export function billsQuotaTotal(bills: readonly Bill[], nextOpening?: PeriodId): Cents {
+  return bills.reduce((s, b) => (b.active ? s + monthlyQuota(b, nextOpening) : s), 0);
+}
+
+/** Dopo aver registrato una periodica, la prossima arriva un ciclo dopo il periodo del pagamento. */
+export function nextDueAfterPayment(bill: Pick<Bill, 'frequency'>, paidInPeriod: PeriodId): PeriodId | null {
+  return isPeriodic(bill) ? addMonthsId(paidInPeriod, bill.frequency) : null;
 }
 
 export type Account = 'budget' | 'card' | 'savings' | 'bills';
@@ -96,4 +119,21 @@ export function planBillPayment(bill: Bill, amount: Cents, payer: Bill['payer'])
 export function fundStatus(bill: Pick<Bill, 'fund' | 'estimate' | 'split'>): { fund: Cents; target: Cents; missing: Cents } {
   const target = expectedShare(bill);
   return { fund: bill.fund, target, missing: bill.fund < 0 ? -bill.fund : 0 };
+}
+
+/**
+ * La Pocket Bollette letta come una busta impegnata, per la Home (stesso aspetto di Rate & Abbonamenti):
+ * "messo" = Σ tue quote previste delle bollette attive (quanto serve se arrivassero tutte adesso),
+ * "residuo" = saldo della Pocket. La barra mostra la parte che manca (come lo speso di una busta).
+ */
+export function billsAsEnvelope(bills: readonly Bill[], potBalance: Cents): EnvelopeBalance {
+  const target = bills.reduce((s, b) => (b.active ? s + expectedShare(b) : s), 0);
+  return {
+    envelope: { id: 'bills', name: 'Bollette', shortName: 'Bollette', kind: 'committed', cap: target, order: 0, archived: false },
+    allocated: target,
+    carryIn: 0,
+    put: target,
+    spent: Math.max(0, target - potBalance),
+    remaining: potBalance,
+  };
 }

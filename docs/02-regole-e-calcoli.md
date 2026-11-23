@@ -52,15 +52,18 @@ Esempio di riferimento (periodo Novembre, oggi 19 nov), da usare come fixture:
 | Vita | da spendere | 200 | 131 | **69** |
 | Spesa alimentare | da spendere | 50 | 58 | **− 8** |
 | Shopping | da spendere | 120 | 45 | **75** |
-| Casa & Servizi | impegnata | 120 | 63 | **57** |
+| Casa & Servizi | da spendere | 120 | 63 | **57** |
 | Rate & Abbonamenti | impegnata | 110 | 89,50 | **20,50** |
 
-- **Puoi ancora spendere** = Σ residui delle buste *da spendere* + `daAssegnare` = 38 + 69 − 8 + 75 + 0 = **€ 174**. I residui negativi riducono il totale.
-- **Impegnate · rimasti** = 57 + 20,50 = **€ 77,50**.
+- **Puoi ancora spendere** = Σ residui delle buste *da spendere* + `daAssegnare` = 38 + 69 − 8 + 75 + 57 + 0 = **€ 231**. I residui negativi riducono il totale.
+- **Impegnate · rimasti** = **€ 20,50** (solo Rate & Abbonamenti).
+
+(Casa & Servizi è *da spendere* dalla v4: le bollette hanno la loro Pocket, la busta resta per detersivi e piccole spese di casa.)
 - Totale buste = **€ 251,50**.
 
 Colore della barra (larghezza = speso / tetto, massimo 100%):
 - residuo < 0 → arancione `--danger`, testo importo arancione, etichetta "oltre il tetto";
+- residuo esattamente 0 (con qualcosa messo) → grigio chiaro, importo grigio: la busta è svuotata (vale anche per le impegnate);
 - residuo / tetto < 20% → ambra `--warning`;
 - busta impegnata → grigio `--neutral-bar`;
 - altrimenti → `--accent`.
@@ -203,8 +206,15 @@ Una bolletta è `Bill { name, frequency (mesi: 1, 2, 3, 6, 12), estimate (import
 Le bollette **non passano dalle buste**: tutte, mensili comprese, sono soldi da mettere da parte. La busta Casa & Servizi resta per le altre spese di casa (detersivi, piccole cose).
 
 - **Tua quota** di una bolletta di importo B: `mine` → B; `half` → `B − floor(B / 2)` (il centesimo dispari è tuo). Parte dell'altra persona = B − tua quota.
-- **Quota mensile** di ogni bolletta: `ceil(tua quota prevista / frequenza)` (al centesimo). Per le mensili è tutta la tua quota prevista. Ogni mese si accantona nella Pocket **Bollette** di Revolut; il salvadanaio `Bollette` dell'app ne è lo specchio e compare sempre in "Messi da parte". Ogni bolletta ha il suo `fund` (quanto accantonato per lei).
+- **Quota mensile** di ogni bolletta: `ceil(tua quota prevista / frequenza)` (al centesimo). Per le mensili è tutta la tua quota prevista. Ogni mese si accantona nella Pocket **Bollette** di Revolut; il salvadanaio `Bollette` dell'app ne è lo specchio: in Home compare tra le **Impegnate** (è per spese fisse), non in "Messi da parte", con lo stesso aspetto di una busta impegnata: importo = saldo della Pocket, "di € X" con X = Σ tue quote previste delle bollette attive (quanto serve se arrivassero tutte adesso), barra = la parte che manca. Esempio: Pocket € 134, quote 40 + 14 + 30 + 120 = 204 → "€ 134 di € 204". Più piena del necessario → barra vuota; sotto zero → arancione. Ogni bolletta ha il suo `fund` (quanto accantonato per lei).
 - **Inizio del mese (R7)**: giroconto "→ Bollette: € Σ quote mensili delle bollette attive". Alla conferma: Bollette + Σ quote, `fund` di ogni bolletta + la sua quota.
+- **Prossima bolletta** (`nextDue`, solo periodiche, facoltativa): il periodo `'YYYY-MM'` in cui arriva la prossima. Se c'è, la quota non è più fissa ma serve ad arrivarci pronti:
+  ```
+  giroconti che restano = max(1, mesi da prossimo "Inizio del mese" a nextDue + 1)
+  quota = ceil(max(0, tua quota prevista − fund) / giroconti che restano)
+  ```
+  Registrando la bolletta, `nextDue` = periodo del pagamento + frequenza (si torna alla quota normale); eliminando la registrazione torna indietro di un ciclo. Se la data è passata senza registrarla, tutto quello che manca va al prossimo giroconto. Senza data vale la quota fissa qui sopra.
+  Esempio acqua € 300 tutta tua, `fund` 0, oggi novembre (prossimo giroconto = periodo Dicembre), arriva a febbraio: giroconti dicembre, gennaio, febbraio (il periodo Febbraio inizia il 27 gennaio) → **€ 100 al mese**. Dopo il pagamento la prossima è febbraio dell'anno dopo: 300 / 12 → **€ 25 al mese**. Divisa a metà: 150 / 3 → **€ 50**.
 
 **Registrare una bolletta** (importo reale B, data, chi l'ha pagata — default quello della bolletta). La tua quota è sempre una spesa senza busta pagata dal fondo:
 

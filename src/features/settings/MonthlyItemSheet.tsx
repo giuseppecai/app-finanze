@@ -1,9 +1,14 @@
 import { useState } from 'react';
+import { useCurrentPeriod, usePots, useSettings } from '../../app/data';
+import { DestinationPicker } from '../../components/DestinationPicker';
+import { potLines } from '../../domain/pots';
+import { DEFAULT_DESTINATION, fundsDestinations, type FundsDestination } from '../../domain/settings';
 import { AmountField } from '../../components/AmountField';
 import { BottomSheet } from '../../components/BottomSheet';
+import { ConfirmPanel } from '../../components/ConfirmPanel';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { db } from '../../db/database';
-import { newId, saveMonthlyItem } from '../../db/repositories';
+import { deleteMonthlyItem, newId, saveMonthlyItem } from '../../db/repositories';
 import { formatEuro, parseEuro } from '../../domain/money';
 import type { MonthlyItem } from '../../domain/types';
 import { it } from '../../i18n/it';
@@ -30,8 +35,32 @@ function ItemForm({ item, onDone }: { item: MonthlyItem | null; onDone: () => vo
   const [kind, setKind] = useState<MonthlyItem['kind']>(item?.kind ?? 'payment');
   const [amount, setAmount] = useState(item ? text(item.amount) : '');
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<{ message: string; balance: number } | null>(null);
+  const [dest, setDest] = useState<FundsDestination>(DEFAULT_DESTINATION);
+  const pots = usePots();
+  const settings = useSettings();
+  const current = useCurrentPeriod();
+  const lines = pots && settings ? potLines(pots, settings.monthlyItems) : [];
+  const balances = Object.fromEntries(lines.map((l) => [l.id, l.balance]));
   const cents = parseEuro(amount);
   const valid = name.trim() !== '' && cents !== null;
+
+  async function askRemove() {
+    if (!item) return;
+    const balance = item.kind === 'pot' ? (await db.pots.get(item.id))?.balance ?? 0 : 0;
+    setConfirming({ message: it.items.deleteConfirm(item.name, balance !== 0), balance });
+  }
+
+  async function remove() {
+    if (!item) return;
+    try {
+      await deleteMonthlyItem(db, item.id, dest);
+      onDone();
+    } catch (e) {
+      console.error(e);
+      setError(it.items.error);
+    }
+  }
 
   async function save(archived = item?.archived ?? false) {
     if (!valid || cents === null) {
@@ -45,6 +74,22 @@ function ItemForm({ item, onDone }: { item: MonthlyItem | null; onDone: () => vo
       console.error(e);
       setError(it.items.error);
     }
+  }
+
+  if (confirming) {
+    return (
+      <ConfirmPanel message={confirming.message} confirmLabel={it.items.delete} onConfirm={() => void remove()} onCancel={() => setConfirming(null)}>
+        {confirming.balance !== 0 && item ? (
+          <DestinationPicker
+            amount={confirming.balance}
+            options={fundsDestinations(lines, item.id, !!current, it.funds.unassignedName)}
+            balances={balances}
+            value={dest}
+            onChange={setDest}
+          />
+        ) : null}
+      </ConfirmPanel>
+    );
   }
 
   return (
@@ -73,14 +118,20 @@ function ItemForm({ item, onDone }: { item: MonthlyItem | null; onDone: () => vo
       <p className="muted-note">{it.items.amountHint}</p>
       {item?.archived ? <p className="muted-note">{it.items.archivedNote}</p> : null}
       {error ? <p className="outcome outcome--info" role="alert">{error}</p> : null}
-      <div className="recurring-form__actions">
-        {item ? (
-          <button type="button" className="outcome__button outcome__button--secondary" onClick={() => void save(!item.archived)}>
-            {item.archived ? it.items.restore : it.items.archive}
-          </button>
-        ) : null}
-        <button type="submit" className="primary-button recurring-form__save" disabled={!valid}>{it.items.save}</button>
-      </div>
+      <button type="submit" className="primary-button" disabled={!valid}>{it.items.save}</button>
+      {item ? (
+        <>
+          <div className="sheet-actions">
+            <button type="button" className="sheet-actions__button" onClick={() => void save(!item.archived)}>
+              {item.archived ? it.items.restore : it.items.archive}
+            </button>
+            <button type="button" className="sheet-actions__button sheet-actions__button--danger" onClick={() => void askRemove()}>
+              {it.items.delete}
+            </button>
+          </div>
+          <p className="muted-note">{it.items.actionsHint}</p>
+        </>
+      ) : null}
     </form>
   );
 }

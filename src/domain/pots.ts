@@ -15,7 +15,8 @@ export interface PotLine {
 
 /**
  * "Messi da parte": Risparmi, poi i salvadanai delle voci fisse (nell'ordine di Imposta), poi Bollette.
- * Bollette compare sempre; il salvadanaio di una voce archiviata resta finché non è vuoto.
+ * Bollette compare sempre; il salvadanaio di una voce archiviata resta finché non è vuoto;
+ * i salvadanai liberi (senza voce fissa) compaiono sempre.
  */
 export function potLines(pots: readonly Pot[], items: readonly MonthlyItem[]): PotLine[] {
   const byId = new Map(pots.map((p) => [p.id, p]));
@@ -24,7 +25,10 @@ export function potLines(pots: readonly Pot[], items: readonly MonthlyItem[]): P
     .filter((i) => i.kind === 'pot' && (!i.archived || (byId.get(i.id)?.balance ?? 0) !== 0))
     .map((i) => ({ ...line(i.id, i.name), name: i.name }));
   const known = new Set(['savings', 'bills', ...fromItems.map((l) => l.id)]);
-  const others = pots.filter((p) => !known.has(p.id) && p.balance !== 0).map((p) => line(p.id, p.name));
+  // Salvadanai aggiunti da Imposta senza giroconto mensile: compaiono sempre. Quelli delle voci
+  // archiviate (già in `items`) restano nascosti quando sono vuoti.
+  const itemIds = new Set(items.map((i) => i.id));
+  const others = pots.filter((p) => !known.has(p.id) && (!itemIds.has(p.id) || p.balance !== 0)).map((p) => line(p.id, p.name));
   return [line('savings', 'Risparmi'), ...fromItems, ...others, line('bills', 'Bollette')];
 }
 

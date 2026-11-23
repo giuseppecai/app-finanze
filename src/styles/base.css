@@ -57,3 +57,15 @@ input, select, textarea { font: inherit; font-size: 16px; }
     scroll-behavior: auto !important;
   }
 }
+
+/* Riscontro al tocco: su iPhone :hover non esiste e l'evidenziazione di Safari è spenta,
+   quindi ogni elemento toccabile risponde subito (lieve rimpicciolimento, righe di elenco scurite). */
+button, a, label, summary { transition: background-color 120ms ease-out, opacity 120ms ease-out; }
+.list-row--button:active,
+.list-row--action:active { background: var(--surface-sunk); }
+
+@media (prefers-reduced-motion: no-preference) {
+  button, a, summary { transition: transform 120ms ease-out, background-color 120ms ease-out, opacity 120ms ease-out; }
+  button:not(:disabled):not(.list-row):active,
+  a:not(.list-row):active { transform: scale(0.97); }
+}

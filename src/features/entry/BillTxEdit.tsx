@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { routes } from '../../app/routes';
 import { InfoBox } from '../../components/InfoBox';
 import { TopBar, useCloseScreen } from '../../components/TopBar';
+import { useConfirmSheet } from '../../components/ConfirmPanel';
 import { db } from '../../db/database';
 import { deleteBillPayment } from '../../db/repositories';
 import { formatDayHeading } from '../../domain/dates';
@@ -13,10 +14,11 @@ import { it } from '../../i18n/it';
 /** Movimento nato da una bolletta: si elimina tutta la registrazione (spesa, parte della coinquilina, fondo). */
 export function BillTxEdit({ tx, billName }: { tx: Transaction; billName: string }) {
   const close = useCloseScreen();
+  const [ask, confirmSheet] = useConfirmSheet();
   const [error, setError] = useState<string | null>(null);
 
   async function remove() {
-    if (!window.confirm(it.entry.confirmDelete)) return;
+    if (!(await ask({ title: it.casa.deleteRegistration, message: it.entry.confirmDelete, confirmLabel: it.casa.deleteRegistration }))) return;
     try {
       await deleteBillPayment(db, tx.id);
       close();
@@ -40,6 +42,7 @@ export function BillTxEdit({ tx, billName }: { tx: Transaction; billName: string
       {error ? <p className="outcome outcome--info" role="alert">{error}</p> : null}
       <div className="flow__spacer" />
       <button type="button" className="quiet-button" onClick={() => void remove()}>{it.casa.deleteRegistration}</button>
+      {confirmSheet}
     </div>
   );
 }

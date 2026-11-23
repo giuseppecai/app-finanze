@@ -1,32 +1,41 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { usePots } from '../../app/data';
+import { useCurrentPeriod, usePots } from '../../app/data';
+import { DestinationPicker } from '../../components/DestinationPicker';
 import { AmountField } from '../../components/AmountField';
 import { BottomSheet } from '../../components/BottomSheet';
+import { ConfirmPanel } from '../../components/ConfirmPanel';
 import { IconChevronRight, IconShare } from '../../components/icons';
 import { BackupError, backupFileName, buildBackup, parseBackup } from '../../db/backup';
 import { db } from '../../db/database';
 import { readAll, replaceAll } from '../../db/dataset';
-import { setCardReserve, setPotBalances, updateSettings } from '../../db/repositories';
+import { addPot, newId, removePot, renamePot, saveMonthlyItem, setCardReserve, setPotBalances, updateSettings } from '../../db/repositories';
 import { nowISO, today } from '../../domain/clock';
 import { formatShortDate, localISODate } from '../../domain/dates';
 import { formatEuro, parseEuro } from '../../domain/money';
 import { daysAgo } from '../../domain/movements';
 import { potLines } from '../../domain/pots';
+import { DEFAULT_DESTINATION, FIXED_POTS, fundsDestinations, UNASSIGNED, type DestinationOption, type FundsDestination } from '../../domain/settings';
 import type { Cents, Settings } from '../../domain/types';
 import { it } from '../../i18n/it';
 
 const text = (c: number) => formatEuro(c, { decimals: 'always' }).replace('€ ', '').replace('− ', '-');
 
-/** Quello che si corregge: il saldo di un salvadanaio o la riserva delle carte. */
-type Editing = { kind: 'pot'; id: string; name: string; value: Cents } | { kind: 'reserve'; value: Cents | null };
+/** Quello che si corregge: un salvadanaio (nome, saldo), uno nuovo, o la riserva delle carte. */
+type Editing =
+  | { kind: 'pot'; id: string; name: string; value: Cents }
+  | { kind: 'newPot' }
+  | { kind: 'reserve'; value: Cents | null };
 
-/** Salvadanai e carte: righe in sola lettura, un tocco apre il pannello per correggere il saldo. */
+/** Salvadanai e carte: un tocco apre il pannello per correggere il saldo, rinominare o togliere. */
 export function PotsGroup({ settings }: { settings: Settings }) {
   const pots = usePots();
+  const current = useCurrentPeriod();
   const [editing, setEditing] = useState<Editing | null>(null);
-  if (!pots) return null;
+  const [message, setMessage] = useState<string | null>(null);
+  if (!pots || current === undefined) return null;
   const lines = potLines(pots, settings.monthlyItems);
+  const balances = Object.fromEntries(lines.map((l) => [l.id, l.balance]));
   return (
     <section className="group" aria-labelledby="pots-group-title">
       <h2 id="pots-group-title" className="group__title">{it.settings.potsTitle}</h2>
@@ -41,6 +50,9 @@ export function PotsGroup({ settings }: { settings: Settings }) {
           </li>
         ))}
         <li>
+          <button type="button" className="list-row list-row--action" onClick={() => { setMessage(null); setEditing({ kind: 'newPot' }); }}>{it.settings.newPot}</button>
+        </li>
+        <li>
           <button type="button" className="list-row list-row--button" onClick={() => setEditing({ kind: 'reserve', value: settings.cardReserve })}>
             <span className="list-row__text">
               <span className="list-row__title">{it.settings.reserve}</span>
@@ -52,21 +64,89 @@ export function PotsGroup({ settings }: { settings: Settings }) {
         </li>
       </ul>
       <p className="group__footer">{it.settings.potsHint}</p>
+      {message ? <p className="group__message" role="status">{message}</p> : null}
       <BottomSheet
         open={editing !== null}
         onClose={() => setEditing(null)}
-        title={editing?.kind === 'pot' ? it.settings.editBalance(editing.name) : it.settings.reserve}
-        subtitle={editing?.kind === 'pot' ? it.settings.balanceHint : it.settings.reserveHint}
+        title={editing?.kind === 'pot' ? editing.name : editing?.kind === 'newPot' ? it.settings.newPotTitle : it.settings.reserve}
+        subtitle={editing?.kind === 'pot' ? it.settings.balanceHint : editing?.kind === 'newPot' ? undefined : it.settings.reserveHint}
       >
-        {editing ? <BalanceForm key={editing.kind === 'pot' ? editing.id : 'reserve'} editing={editing} onDone={() => setEditing(null)} /> : null}
+        {editing?.kind === 'newPot' ? <NewPotForm onDone={() => setEditing(null)} /> : null}
+        {editing && editing.kind !== 'newPot' ? (
+          <BalanceForm
+            key={editing.kind === 'pot' ? editing.id : 'reserve'}
+            editing={editing}
+            destinations={fundsDestinations(lines, editing.kind === 'pot' ? editing.id : null, current !== null, it.funds.unassignedName)}
+            balances={balances}
+            onDone={(m) => { setEditing(null); setMessage(m ?? null); }}
+          />
+        ) : null}
       </BottomSheet>
     </section>
   );
 }
 
-function BalanceForm({ editing, onDone }: { editing: Editing; onDone: () => void }) {
+function NewPotForm({ onDone }: { onDone: () => void }) {
+  const [name, setName] = useState('');
+  const [value, setValue] = useState('0');
+  const [monthly, setMonthly] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const cents = parseEuro(value);
+  const monthlyCents = monthly.trim() === '' ? 0 : parseEuro(monthly);
+  const valid = name.trim() !== '' && cents !== null && monthlyCents !== null;
+
+  async function save() {
+    if (!valid || cents === null || monthlyCents === null) {
+      setError(it.settings.invalid);
+      return;
+    }
+    try {
+      if (monthlyCents > 0) {
+        // Con un giroconto mensile diventa anche una voce fissa dell'inizio del mese (stesso id).
+        const id = newId();
+        await saveMonthlyItem(db, { id, name, kind: 'pot', amount: monthlyCents, archived: false });
+        if (cents !== 0) await setPotBalances(db, { [id]: cents });
+      } else {
+        await addPot(db, name, cents);
+      }
+      onDone();
+    } catch (e) {
+      console.error(e);
+      setError(it.settings.error);
+    }
+  }
+
+  return (
+    <form className="recurring-form" onSubmit={(e) => { e.preventDefault(); void save(); }}>
+      <div className="entry__section">
+        <label htmlFor="pot-name" className="entry__label">{it.settings.potName}</label>
+        <input id="pot-name" className="text-input" value={name} placeholder={it.settings.potNamePlaceholder} onChange={(e) => setName(e.target.value)} />
+      </div>
+      <AmountField id="pot-balance" label={it.settings.potBalance} value={value} onChange={setValue} invalid={value !== '' && cents === null} />
+      <AmountField id="pot-monthly" label={it.settings.potMonthly} value={monthly} placeholder="0" onChange={setMonthly} invalid={monthlyCents === null} />
+      <p className="muted-note">{it.settings.potBalanceHint}</p>
+      {error ? <p className="outcome outcome--info" role="alert">{error}</p> : null}
+      <button type="submit" className="primary-button" disabled={!valid}>{it.settings.addPot}</button>
+    </form>
+  );
+}
+
+type BalanceEditing = Exclude<Editing, { kind: 'newPot' }>;
+
+type BalanceFormProps = {
+  editing: BalanceEditing;
+  destinations: DestinationOption[];
+  balances: Record<string, Cents>;
+  onDone: (message?: string) => void;
+};
+
+function BalanceForm({ editing, destinations, balances, onDone }: BalanceFormProps) {
+  const [dest, setDest] = useState<FundsDestination>(DEFAULT_DESTINATION);
+  const removable = editing.kind === 'pot' && !FIXED_POTS.includes(editing.id);
+  const [name, setName] = useState(editing.kind === 'pot' ? editing.name : '');
   const [value, setValue] = useState(editing.value === null ? '' : text(editing.value));
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const neg = value.trim().startsWith('-');
   const abs = parseEuro(value.replace('-', ''));
   const cents = abs === null ? null : neg ? -abs : abs;
@@ -74,21 +154,57 @@ function BalanceForm({ editing, onDone }: { editing: Editing; onDone: () => void
   const valid = editing.kind === 'reserve' ? empty || cents !== null : cents !== null;
 
   async function save() {
-    if (!valid) {
+    if (!valid || (removable && name.trim() === '')) {
       setError(it.settings.invalid);
       return;
     }
-    if (editing.kind === 'pot') await setPotBalances(db, { [editing.id]: cents! });
-    else await setCardReserve(db, empty ? null : cents);
+    if (editing.kind === 'pot') {
+      await setPotBalances(db, { [editing.id]: cents! });
+      if (removable && name.trim() !== editing.name) await renamePot(db, editing.id, name);
+    } else await setCardReserve(db, empty ? null : cents);
     onDone();
+  }
+
+  async function remove() {
+    if (editing.kind !== 'pot') return;
+    const amount = editing.value !== 0 ? formatEuro(editing.value) : null;
+    const destName = destinations.find((d) => d.value === dest)?.name ?? '';
+    try {
+      await removePot(db, editing.id, dest);
+      onDone(it.settings.potRemoved(editing.name, amount, dest === UNASSIGNED ? it.funds.unassignedName : destName));
+    } catch (e) {
+      console.error(e);
+      setError(it.settings.error);
+    }
+  }
+
+  if (confirming && editing.kind === 'pot') {
+    return (
+      <ConfirmPanel
+        message={it.settings.removePotConfirm(editing.name)}
+        confirmLabel={it.settings.removePot}
+        onConfirm={() => void remove()}
+        onCancel={() => setConfirming(false)}
+      >
+        {editing.value !== 0 ? (
+          <DestinationPicker amount={editing.value} options={destinations} balances={balances} value={dest} onChange={setDest} />
+        ) : null}
+      </ConfirmPanel>
+    );
   }
 
   return (
     <form className="recurring-form" onSubmit={(e) => { e.preventDefault(); void save(); }}>
+      {removable ? (
+        <div className="entry__section">
+          <label htmlFor="pot-rename" className="entry__label">{it.settings.potName}</label>
+          <input id="pot-rename" className="text-input" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+      ) : null}
       <AmountField
         id="balance-value"
         large
-        label={editing.kind === 'pot' ? editing.name : it.settings.reserve}
+        label={editing.kind === 'pot' ? it.settings.potBalance : it.settings.reserve}
         value={value}
         placeholder={editing.kind === 'reserve' ? it.settings.reserveNotSet : undefined}
         onChange={setValue}
@@ -96,6 +212,13 @@ function BalanceForm({ editing, onDone }: { editing: Editing; onDone: () => void
       />
       {error ? <p className="outcome outcome--info" role="alert">{error}</p> : null}
       <button type="submit" className="primary-button" disabled={!valid}>{it.settings.saveBalance}</button>
+      {removable ? (
+        <div className="sheet-actions">
+          <button type="button" className="sheet-actions__button sheet-actions__button--danger" onClick={() => setConfirming(true)}>
+            {it.settings.removePot}
+          </button>
+        </div>
+      ) : null}
     </form>
   );
 }
@@ -106,6 +229,7 @@ export function BackupGroup({ settings }: { settings: Settings }) {
   const sectionRef = useRef<HTMLElement>(null);
   const [params] = useSearchParams();
   const [message, setMessage] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ backup: ReturnType<typeof parseBackup>; date: string } | null>(null);
   const last = settings.lastBackupAt ?? null;
 
   // Dal promemoria in Home: porta direttamente qui.
@@ -146,14 +270,25 @@ export function BackupGroup({ settings }: { settings: Settings }) {
     try {
       const backup = parseBackup(await file.text());
       const date = backup.exportedAt ? formatShortDate(localISODate(new Date(backup.exportedAt))) : '?';
-      if (!window.confirm(it.settings.importConfirm(date))) return;
-      await replaceAll(db, backup.data);
-      setMessage(it.settings.imported);
+      setPending({ backup, date });
     } catch (e) {
       console.error(e);
       setMessage(e instanceof BackupError ? e.message : it.settings.invalid);
     } finally {
       if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  async function confirmImport() {
+    if (!pending) return;
+    try {
+      await replaceAll(db, pending.backup.data);
+      setMessage(it.settings.imported);
+    } catch (e) {
+      console.error(e);
+      setMessage(it.settings.invalid);
+    } finally {
+      setPending(null);
     }
   }
 
@@ -188,6 +323,16 @@ export function BackupGroup({ settings }: { settings: Settings }) {
       </ul>
       <p className="group__footer">{it.settings.backupHint}</p>
       {message ? <p className="group__message" role="status">{message}</p> : null}
+      <BottomSheet open={pending !== null} onClose={() => setPending(null)} title={it.settings.import}>
+        {pending ? (
+          <ConfirmPanel
+            message={it.settings.importConfirm(pending.date)}
+            confirmLabel={it.settings.importAction}
+            onConfirm={() => void confirmImport()}
+            onCancel={() => setPending(null)}
+          />
+        ) : null}
+      </BottomSheet>
     </section>
   );
 }

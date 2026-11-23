@@ -43,7 +43,7 @@ describe('Imposta · tetti a metà mese', () => {
 describe('Backup', () => {
   it('esporta e reimporta gli stessi dati', () => {
     const file = buildBackup(data, '2026-11-19T10:00:00.000Z');
-    expect(file.schemaVersion).toBe(3);
+    expect(file.schemaVersion).toBe(4);
     expect(backupFileName(file.exportedAt)).toBe('finanze-backup-2026-11-19.json');
     const back = parseBackup(JSON.stringify(file));
     expect(back.data).toEqual(data);

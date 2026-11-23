@@ -134,8 +134,8 @@ describe('R12 · Inserimento rapido', () => {
 
   it('buste ordinate per uso negli ultimi 60 giorni, le impegnate in fondo', () => {
     const sorted = sortEnvelopesForPicker(data.envelopes, novTxs, DEMO_TODAY).map((e) => e.shortName);
-    // Vita 5 · Spesa 2 · Trasporti 2 · Shopping 1 | Rate 4 · Casa 2
-    expect(sorted).toEqual(['Vita', 'Trasporti', 'Spesa', 'Shopping', 'Rate', 'Casa']);
+    // Vita 5 · Trasporti 2 · Spesa 2 · Casa 2 · Shopping 1 | Rate 4 (Casa & Servizi ora è da spendere)
+    expect(sorted).toEqual(['Vita', 'Trasporti', 'Spesa', 'Casa', 'Shopping', 'Rate']);
   });
   it('a parità di uso vale l\'ordine di Imposta', () => {
     expect(sortEnvelopesForPicker(data.envelopes, [], DEMO_TODAY).map((e) => e.shortName))

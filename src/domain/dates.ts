@@ -56,6 +56,19 @@ export function nextMonthId(id: string): string {
   return toISODate(y, m + 1, 1).slice(0, 7);
 }
 
+/** 'YYYY-MM' spostato di n mesi (anche negativi) */
+export function addMonthsId(id: string, n: number): string {
+  const [y, m] = id.split('-').map(Number) as [number, number];
+  return toISODate(y, m + n, 1).slice(0, 7);
+}
+
+/** Mesi da `from` a `to` ('YYYY-MM'): positivo se `to` viene dopo */
+export function monthsBetween(from: string, to: string): number {
+  const [fy, fm] = from.split('-').map(Number) as [number, number];
+  const [ty, tm] = to.split('-').map(Number) as [number, number];
+  return (ty - fy) * 12 + (tm - fm);
+}
+
 /** 0 = domenica … 6 = sabato */
 export function weekday(date: ISODate): number {
   return new Date(toUTC(date)).getUTCDay();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatEuro, keypadBackspace, keypadPress, parseEuro, type KeypadKey } from '../money';
+import { formatEuro, keypadBackspace, keypadPress, parseEuro, stepCents, type KeypadKey } from '../money';
 
 const M = '−';
 
@@ -72,5 +72,14 @@ describe('R1 · tastierino', () => {
   it('massimo 7 cifre', () => {
     expect(type(['1', '2', '3', '4', '5', '6', '7', '8'])).toBe(1234567);
     expect(type(['1', '2', '3', '4', '5', '6', '00'])).toBe(1234560);
+  });
+});
+
+describe('stepCents', () => {
+  it('passo di 5 € agganciato ai multipli', () => {
+    expect(stepCents(14049, 500, 1)).toBe(14500);
+    expect(stepCents(14049, 500, -1)).toBe(14000);
+    expect(stepCents(14000, 500, 1)).toBe(14500);
+    expect(stepCents(14000, 500, -1)).toBe(13500);
   });
 });

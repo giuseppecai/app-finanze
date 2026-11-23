@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { useCurrentPeriod, useEnvelopes, useLastReconciliation, useLoans, usePeriods, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
+import { useBills, useCurrentPeriod, useEnvelopes, useLastReconciliation, useLoans, usePeriods, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { EnvelopeRow } from '../../components/EnvelopeRow';
-import { IconCompare, IconSliders } from '../../components/icons';
+import { IconCompare } from '../../components/icons';
 import { PotsCard } from '../../components/PotsCard';
+import { billsAsEnvelope } from '../../domain/bills';
 import { today } from '../../domain/clock';
 import { formatShortRange } from '../../domain/dates';
-import { summarizePeriod } from '../../domain/envelopes';
+import { summarizePeriod, type EnvelopeBalance } from '../../domain/envelopes';
 import { totalDebt, totalOwed } from '../../domain/loans';
 import { potLines } from '../../domain/pots';
 import { formatEuro } from '../../domain/money';
@@ -31,25 +32,34 @@ export function HomePage() {
   const loans = useLoans();
   const settings = useSettings();
   const periods = usePeriods();
-  if (period === undefined || !envelopes || !pots || !loans || !settings || !periods) return null;
-  const lines = potLines(pots, settings.monthlyItems);
+  const bills = useBills();
+  if (period === undefined || !envelopes || !pots || !loans || !settings || !periods || !bills) return null;
+  // Bollette sta tra le Impegnate (spese fisse), non tra i soldi messi da parte.
+  const lines = potLines(pots, settings.monthlyItems).filter((l) => l.id !== 'bills');
+  const billsBalance = pots.find((p) => p.id === 'bills')?.balance ?? 0;
+  const billsRow = bills.some((b) => b.active) || billsBalance !== 0 ? billsAsEnvelope(bills, billsBalance) : null;
   // Primo avvio: prima la configurazione in 3 passi.
   if (!settings.onboardingDone && !period) return <Navigate to={routes.onboarding} replace />;
 
   return (
     <>
       <BackupReminder settings={settings} periods={periods} />
-      {period ? <CurrentPeriod period={period} envelopes={envelopes} cardReserve={settings.cardReserve} /> : <NoPeriod />}
+      {period ? <CurrentPeriod period={period} envelopes={envelopes} cardReserve={settings.cardReserve} billsRow={billsRow} /> : <NoPeriod />}
       <PotsCard lines={lines} loansOwed={totalOwed(loans)} debtsOwed={totalDebt(loans)} />
     </>
   );
 }
 
-function SettingsLink() {
+/** Intestazione di sezione della Home: titolo, importo a destra, una riga di spiegazione. */
+function SectionHead({ id, title, meta, caption }: { id: string; title: string; meta?: string; caption?: string }) {
   return (
-    <Link to={routes.settings} className="icon-button" aria-label={it.home.settings}>
-      <IconSliders />
-    </Link>
+    <div className="home-section__head">
+      <div className="home-section__titles">
+        <h2 id={id} className="home-section__title">{title}</h2>
+        {caption ? <p className="home-section__caption">{caption}</p> : null}
+      </div>
+      {meta ? <span className="home-section__meta">{meta}</span> : null}
+    </div>
   );
 }
 
@@ -58,7 +68,6 @@ function NoPeriod() {
     <>
       <header className="home-header">
         <h1 className="screen-title">{it.appName}</h1>
-        <SettingsLink />
       </header>
       <section className="hero">
         <p className="hero__label">{it.home.noPeriodTitle}</p>
@@ -69,7 +78,7 @@ function NoPeriod() {
   );
 }
 
-function CurrentPeriod({ period, envelopes, cardReserve }: { period: Period; envelopes: Envelope[]; cardReserve: number | null }) {
+function CurrentPeriod({ period, envelopes, cardReserve, billsRow }: { period: Period; envelopes: Envelope[]; cardReserve: number | null; billsRow: EnvelopeBalance | null }) {
   const [reconcileOpen, setReconcileOpen] = useState(false);
   const txs = usePeriodTransactions(period.id);
   const lastReconciliation = useLastReconciliation();
@@ -92,7 +101,6 @@ function CurrentPeriod({ period, envelopes, cardReserve }: { period: Period; env
             {it.home.salaryIn(daysUntilSalary(period, now))} · {formatShortRange(period.calendarStart, period.calendarEnd)}
           </p>
         </div>
-        <SettingsLink />
       </header>
 
       <section className="hero" aria-label={it.home.canSpend}>
@@ -115,24 +123,22 @@ function CurrentPeriod({ period, envelopes, cardReserve }: { period: Period; env
         )}
       </section>
 
-      <div className="section-head">
-        <h2 className="section-title">{it.home.envelopes}</h2>
-        <Link to={routes.settings} className="section-head__link">{it.home.edit}</Link>
-      </div>
-      <ul className="envelope-list">
-        {spendable.map((b) => <EnvelopeRow key={b.envelope.id} balance={b} to={envelopeLink(b.envelope, recurringEnvelopes)} />)}
-      </ul>
+      <section className="home-section" aria-labelledby="spendable-title">
+        <SectionHead id="spendable-title" title={it.home.envelopes} caption={it.home.envelopesCaption} />
+        <ul className="envelope-list">
+          {spendable.map((b) => <EnvelopeRow key={b.envelope.id} balance={b} to={envelopeLink(b.envelope, recurringEnvelopes)} />)}
+        </ul>
+      </section>
 
-      {committed.length > 0 ? (
-        <>
-          <div className="section-head section-head--muted">
-            <span>{it.home.committed}</span>
-            <span>{it.home.committedLeft(formatEuro(summary.committedRemaining))}</span>
-          </div>
-          <ul className="envelope-list">
-            {committed.map((b) => <EnvelopeRow key={b.envelope.id} balance={b} to={envelopeLink(b.envelope, recurringEnvelopes)} />)}
+      {committed.length > 0 || billsRow ? (
+        <section className="home-section" aria-labelledby="committed-title">
+          <SectionHead id="committed-title" title={it.home.committed} caption={it.home.committedCaption} />
+          <ul className="card envelope-group">
+            {committed.map((b) => <EnvelopeRow key={b.envelope.id} balance={b} to={envelopeLink(b.envelope, recurringEnvelopes)} plain />)}
+            {/* Bollette: la Pocket letta come una busta impegnata (stesso aspetto), apre le bollette */}
+            {billsRow ? <EnvelopeRow balance={billsRow} to={routes.bills} plain /> : null}
           </ul>
-        </>
+        </section>
       ) : null}
 
       <ReconcileSheet

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  billsQuotaTotal, expectedShare, fundStatus, monthlyQuota, myShare, otherShare, planBillPayment,
+  billsAsEnvelope, billsQuotaTotal, depositsLeft, nextDueAfterPayment, expectedShare, fundStatus, monthlyQuota, myShare, otherShare, planBillPayment,
 } from '../bills';
 import { planOpening, type ItemQuota } from '../opening';
 import { DEFAULT_MONTHLY_ITEMS } from '../pots';
@@ -31,7 +31,7 @@ describe('R13 · quote', () => {
   });
 
   it('quote mensili: luce 40, internet 14 (mensili, tutta la quota), gas 15, acqua 10 → € 79', () => {
-    expect(all.map(monthlyQuota)).toEqual([4000, 1400, 1500, 1000]);
+    expect(all.map((b) => monthlyQuota(b))).toEqual([4000, 1400, 1500, 1000]);
     expect(billsQuotaTotal(all)).toBe(7900);
   });
 
@@ -108,5 +108,57 @@ describe('R13 · registrare una bolletta', () => {
 
   it('importo zero non valido', () => {
     expect(() => planBillPayment(luce, 0, 'me')).toThrow();
+  });
+});
+
+describe('R13 · Bollette in Home tra le Impegnate', () => {
+  const list = [
+    bill({ id: 'luce', estimate: 8000 }),
+    bill({ id: 'internet', estimate: 2800 }),
+    bill({ id: 'gas', frequency: 2, estimate: 6000 }),
+    bill({ id: 'acqua', frequency: 12, estimate: 12000, split: 'mine' }),
+    bill({ id: 'vecchia', estimate: 5000, active: false }),
+  ];
+  it('€ 134 nella Pocket su € 204 di quote previste (40 + 14 + 30 + 120): manca 70', () => {
+    expect(billsAsEnvelope(list, 13400)).toMatchObject({ put: 20400, remaining: 13400, spent: 7000 });
+  });
+  it('Pocket più piena del necessario: barra vuota', () => {
+    expect(billsAsEnvelope(list, 30000).spent).toBe(0);
+  });
+  it('Pocket sotto zero: residuo negativo (arancione)', () => {
+    expect(billsAsEnvelope(list, -500)).toMatchObject({ remaining: -500, spent: 20900 });
+  });
+});
+
+describe('R13 · quota con la prossima bolletta nota', () => {
+  const acqua = bill({ id: 'acqua', frequency: 12, estimate: 30000, split: 'mine', fund: 0, nextDue: '2027-02' });
+
+  it('acqua € 300, niente da parte, a novembre: 3 giroconti (dic, gen, feb) → € 100 al mese', () => {
+    expect(depositsLeft('2027-02', '2026-12')).toBe(3);
+    expect(monthlyQuota(acqua, '2026-12')).toBe(10000);
+  });
+  it('senza data: quota fissa € 300 / 12 = € 25', () => {
+    expect(monthlyQuota({ ...acqua, nextDue: null }, '2026-12')).toBe(2500);
+    expect(monthlyQuota(acqua)).toBe(2500);
+  });
+  it('dopo un giroconto (fondo 100, prossimo giroconto gennaio): (300 − 100) / 2 = € 100', () => {
+    expect(monthlyQuota({ ...acqua, fund: 10000 }, '2027-01')).toBe(10000);
+  });
+  it('dopo il pagamento la prossima è tra 12 mesi: si torna a € 25', () => {
+    expect(nextDueAfterPayment(acqua, '2027-02')).toBe('2028-02');
+    expect(monthlyQuota({ ...acqua, fund: 0, nextDue: '2028-02' }, '2027-03')).toBe(2500);
+  });
+  it('divisa a metà: tua quota 150 → € 50 al mese', () => {
+    expect(monthlyQuota({ ...acqua, split: 'half' }, '2026-12')).toBe(5000);
+  });
+  it('fondo già pieno → 0; bolletta in ritardo → tutto quello che manca al prossimo giroconto', () => {
+    expect(monthlyQuota({ ...acqua, fund: 30000 }, '2026-12')).toBe(0);
+    expect(monthlyQuota({ ...acqua, fund: 20000 }, '2027-04')).toBe(10000);
+  });
+  it('le mensili ignorano la data', () => {
+    expect(monthlyQuota(bill({ estimate: 8000, nextDue: '2027-02' }), '2026-12')).toBe(4000);
+  });
+  it('totale: con la data conta la quota ricalcolata', () => {
+    expect(billsQuotaTotal([bill({ estimate: 8000 }), acqua], '2026-12')).toBe(4000 + 10000);
   });
 });

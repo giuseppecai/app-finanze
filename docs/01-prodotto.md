@@ -35,13 +35,13 @@ Lo stipendio arriva il **27**. Un periodo va dal 27 al 26 del mese dopo e prende
 | Vita (uscite) | da spendere | € 200 |
 | Spesa alimentare | da spendere | € 50 |
 | Shopping | da spendere | € 120 |
-| Casa & Servizi | impegnata | € 120 (spese di casa: detersivi, piccole cose; le bollette hanno la loro Pocket) |
+| Casa & Servizi | da spendere | € 120 (spese di casa: detersivi, piccole cose; le bollette hanno la loro Pocket) |
 | Rate & Abbonamenti | impegnata (si scala da sola) | € 110 |
 
 Totale € 700 → è quanto va nel **Budget del mese** a inizio periodo.
 
 - **Da spendere**: quelle su cui l'utente decide. Solo queste contano in "Puoi ancora spendere".
-- **Impegnate**: soldi già destinati (bollette, rate, abbonamenti). Gli abbonamenti si scalano da soli nel giorno dell'addebito.
+- **Impegnate**: soldi già destinati (rate, abbonamenti; in Home ci sono anche le bollette, che hanno la loro Pocket). Gli abbonamenti si scalano da soli nel giorno dell'addebito.
 
 I **buoni pasto** non passano da Revolut e **non si registrano**: la busta Spesa alimentare copre solo la parte che i buoni non coprono.
 

@@ -213,6 +213,17 @@ interface Bill {
 
 `db.version(3).stores({})` con `upgrade()`: `giftsQuota`/`lastTravelQuota` → `monthlyItems` (Viaggi e Regali come salvadanai), `travelQuota`/`giftsQuota` dei periodi → `quotas`, `envelopeId` tolto dalle bollette. Lo stesso passaggio vale per l'import dei backup v1/v2. Il fondo delle bollette mensili parte da 0: il primo mese dopo l'aggiornamento la bolletta mostra "Mancano € X" finché la quota non arriva.
 
+### v4
+
+```ts
+interface Bill {
+  // …
+  nextDue?: PeriodId | null;      // solo periodiche: periodo in cui arriva la prossima (R13); null/assente = quota fissa
+}
+```
+
+`db.version(4).stores({})` con `upgrade()`: la busta Casa & Servizi, se impegnata, diventa da spendere. `nextDue` è facoltativo: nessuna migrazione, le bollette esistenti restano a quota fissa finché non si sceglie il mese. Lo stesso vale per l'import dei backup v1–v3.
+
 Nessuna bolletta nel seed: si creano dalla schermata Casa & Servizi (o in un passo dell'onboarding, se non ancora fatto). Le transazioni che toccano bolletta, movimenti, prestiti e salvadanai sono un'unica transazione Dexie.
 
 ## Dati iniziali (seed al primo avvio)

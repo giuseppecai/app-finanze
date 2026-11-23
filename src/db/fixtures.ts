@@ -38,7 +38,7 @@ function demoEnvelopes(): Envelope[] {
     { id: ENV.vita, name: 'Vita', shortName: 'Vita', kind: 'spendable', cap: eur(200), order: 2, archived: false },
     { id: ENV.spesa, name: 'Spesa alimentare', shortName: 'Spesa', kind: 'spendable', cap: eur(50), order: 3, archived: false },
     { id: ENV.shopping, name: 'Shopping', shortName: 'Shopping', kind: 'spendable', cap: eur(120), order: 4, archived: false },
-    { id: ENV.casa, name: 'Casa & Servizi', shortName: 'Casa', kind: 'committed', cap: eur(120), order: 5, archived: false },
+    { id: ENV.casa, name: 'Casa & Servizi', shortName: 'Casa', kind: 'spendable', cap: eur(120), order: 5, archived: false },
     { id: ENV.rate, name: 'Rate & Abbonamenti', shortName: 'Rate', kind: 'committed', cap: eur(110), order: 6, archived: false },
   ];
 }

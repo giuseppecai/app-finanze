@@ -1,6 +1,6 @@
 // Backup in JSON: tutte le tabelle + versione dello schema + data. Logica pura (niente Dexie).
 import type { DataSet } from './fixtures';
-import { migratePeriodV3, migrateSettingsV3, SCHEMA_VERSION } from './schema';
+import { migrateEnvelopeV4, migratePeriodV3, migrateSettingsV3, SCHEMA_VERSION } from './schema';
 
 export const BACKUP_APP = 'app-finanze';
 
@@ -54,7 +54,8 @@ export function parseBackup(text: string): BackupFile {
   // v2 → v3: voci fisse dell'inizio del mese, quote per voce nei periodi, bollette senza busta.
   const data = {
     settings: migrateSettingsV3(d.settings),
-    envelopes: arr(d.envelopes, 'buste'),
+    // v3 → v4: Casa & Servizi da spendere.
+    envelopes: arr(d.envelopes, 'buste').map(migrateEnvelopeV4),
     periods: arr(d.periods, 'periodi').map((p) => migratePeriodV3({ billsQuota: 0, ...p })),
     transactions: arr(d.transactions, 'movimenti').map((t) => ({ billId: null, ...t })),
     recurring: arr(d.recurring, 'abbonamenti'),

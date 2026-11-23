@@ -164,6 +164,8 @@ export interface Bill {
   personId: string | null;
   /** accantonato finora (solo periodiche), può andare sotto zero */
   fund: Cents;
+  /** periodiche: periodo ('YYYY-MM') in cui arriva la prossima bolletta; null = non si sa (quota fissa) */
+  nextDue?: PeriodId | null;
   active: boolean;
   order: number;
   createdAt: string;

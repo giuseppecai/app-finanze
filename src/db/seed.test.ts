@@ -14,7 +14,7 @@ describe('dati iniziali', () => {
       ['Vita', 'spendable', 20000],
       ['Spesa', 'spendable', 5000],
       ['Shopping', 'spendable', 12000],
-      ['Casa', 'committed', 12000],
+      ['Casa', 'spendable', 12000],
       ['Rate', 'committed', 11000],
     ]);
     expect(capsTotal(seed.envelopes)).toBe(70000);

@@ -23,21 +23,21 @@ describe('R3 · residuo delle buste (fixture Novembre, oggi 19 nov)', () => {
     expect(byId[id]).toMatchObject({ allocated: cap, put: cap, spent, remaining });
   });
 
-  it('Puoi ancora spendere = 38 + 69 − 8 + 75 + 0 = € 174', () => {
+  it('Puoi ancora spendere = 38 + 69 − 8 + 75 + 57 + 0 = € 231', () => {
     expect(summary.unassigned).toBe(0);
-    expect(summary.spendable).toBe(17400);
+    expect(summary.spendable).toBe(23100);
   });
-  it('Impegnate · rimasti = € 77,50', () => {
-    expect(summary.committedRemaining).toBe(7750);
+  it('Impegnate · rimasti = € 20,50 (solo Rate & Abbonamenti)', () => {
+    expect(summary.committedRemaining).toBe(2050);
   });
   it('Totale buste = € 251,50', () => {
     expect(summary.envelopesTotal).toBe(25150);
   });
 
-  it('con l\'entrata "Interessi" da € 1,12 → € 175,12', () => {
+  it('con l\'entrata "Interessi" da € 1,12 → € 232,12', () => {
     const full = summarizePeriod(data.envelopes, nov, novTxs);
     expect(full.unassigned).toBe(112);
-    expect(full.spendable).toBe(17512);
+    expect(full.spendable).toBe(23212);
   });
 
   it('i rimborsi aumentano il residuo', () => {
@@ -67,7 +67,14 @@ describe('R3 · colore della barra', () => {
   });
   it('impegnata → grigio, anche sotto il 20% (Rate: 20,50 su 110)', () => {
     expect(state(ENV.rate)).toBe('committed');
-    expect(state(ENV.casa)).toBe('committed');
+  });
+  it('residuo esattamente zero → grigio chiaro (busta svuotata), anche per le impegnate', () => {
+    expect(barState({ envelope: { kind: 'spendable' }, put: 4500, remaining: 0 })).toBe('empty');
+    expect(barState({ envelope: { kind: 'committed' }, put: 11000, remaining: 0 })).toBe('empty');
+    expect(barState({ envelope: { kind: 'spendable' }, put: 0, remaining: 0 })).toBe('low');
+  });
+  it('Casa & Servizi ora è da spendere: 57 su 120 → accento', () => {
+    expect(state(ENV.casa)).toBe('ok');
   });
   it('impegnata sforata → arancione', () => {
     const env: Pick<Envelope, 'kind'> = { kind: 'committed' };

@@ -58,6 +58,12 @@ export function nextPeriodToStart(lastPeriod: Pick<Period, 'id'> | null, today: 
   return byTomorrow.id > successor.id ? byTomorrow : successor;
 }
 
+/** Id del periodo del prossimo "Inizio del mese" (dove andrà il prossimo giroconto). */
+export function nextOpeningId(periods: readonly Pick<Period, 'id'>[], today: ISODate, startDay: number): PeriodId {
+  const last = periods.reduce<Pick<Period, 'id'> | null>((a, p) => (!a || p.id > a.id ? p : a), null);
+  return nextPeriodToStart(last, today, startDay).id;
+}
+
 /**
  * È ora di chiudere? Dal giorno prima dello stipendio (la fine di calendario del periodo) in poi.
  * Così il link compare il 26 nov, non subito dopo l'inizio del periodo.

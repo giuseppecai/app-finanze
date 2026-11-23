@@ -92,7 +92,7 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   const salaryOk = salary !== null && salary > 0;
   const quotas = itemQuotas(settings.monthlyItems, overrides);
   const activeBills = bills.filter((b) => b.active);
-  const opening = planOpening(salary ?? 0, envelopes, quotas, billsQuotaTotal(bills));
+  const opening = planOpening(salary ?? 0, envelopes, quotas, billsQuotaTotal(bills, target.id));
   const items = transferChecklist(opening, closing);
   // La spunta vale per quell'importo: se l'importo cambia, la riga torna da fare.
   const keyOf = (i: ChecklistItem) => `${i.key}:${i.amount}`;

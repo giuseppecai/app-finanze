@@ -74,3 +74,10 @@ export function keypadPress(cents: Cents, key: KeypadKey): Cents {
 export function keypadBackspace(cents: Cents): Cents {
   return Math.floor(cents / 10);
 }
+
+/** Stepper "agganciato" al passo: da € 140,49 il + porta a € 145 e il − a € 140; da € 140 a 145 / 135. */
+export function stepCents(value: Cents, step: Cents, direction: 1 | -1): Cents {
+  const rest = ((value % step) + step) % step;
+  if (rest === 0) return value + direction * step;
+  return direction === 1 ? value + (step - rest) : value - rest;
+}

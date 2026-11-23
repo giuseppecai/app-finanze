@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useBills, useCurrentPeriod, useLoans, usePeople, usePeriodTransactions, usePots } from '../../app/data';
+import { useBills, useCurrentPeriod, useLoans, usePeople, usePeriods, usePeriodTransactions, usePots, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { IconChevronRight } from '../../components/icons';
 import { InfoBox } from '../../components/InfoBox';
 import { TopBar } from '../../components/TopBar';
 import { billsQuotaTotal, fundStatus, isPeriodic, monthlyQuota } from '../../domain/bills';
-import { formatShortDate } from '../../domain/dates';
+import { today } from '../../domain/clock';
+import { formatShortDate, monthsBetween } from '../../domain/dates';
+import { nextOpeningId } from '../../domain/periods';
 import { balanceWith } from '../../domain/loans';
 import { formatEuro } from '../../domain/money';
 import type { Bill, Person, Transaction } from '../../domain/types';
@@ -24,11 +26,14 @@ export function BillsPage() {
   const pots = usePots();
   const period = useCurrentPeriod();
   const txs = usePeriodTransactions(period?.id ?? null);
+  const periods = usePeriods();
+  const settings = useSettings();
   const [target, setTarget] = useState<Bill | 'new' | null>(null);
-  if (!bills || !people || !loans || !pots || period === undefined || !txs) return null;
+  if (!bills || !people || !loans || !pots || period === undefined || !txs || !periods || !settings) return null;
 
   const billsPot = pots.find((p) => p.id === 'bills')?.balance ?? 0;
-  const quota = billsQuotaTotal(bills);
+  const opening = nextOpeningId(periods, today(), settings.periodStartDay);
+  const quota = billsQuotaTotal(bills, opening);
   const monthly = bills.filter((b) => !isPeriodic(b));
   const periodic = bills.filter(isPeriodic);
   const names = new Map(people.map((p) => [p.id, p]));
@@ -63,10 +68,10 @@ export function BillsPage() {
       {bills.length === 0 ? <p className="card empty-card">{it.casa.empty}</p> : null}
 
       {monthly.length > 0 ? (
-        <BillList title={it.casa.monthlyTitle} bills={monthly} names={names} txs={txs} onOpen={setTarget} />
+        <BillList title={it.casa.monthlyTitle} bills={monthly} names={names} txs={txs} opening={opening} onOpen={setTarget} />
       ) : null}
       {periodic.length > 0 ? (
-        <BillList title={it.casa.periodicTitle} bills={periodic} names={names} txs={txs} onOpen={setTarget} />
+        <BillList title={it.casa.periodicTitle} bills={periodic} names={names} txs={txs} opening={opening} onOpen={setTarget} />
       ) : null}
 
       <div className="flow__spacer" />
@@ -78,6 +83,7 @@ export function BillsPage() {
         loans={loans}
         hasPeriod={!!period}
         defaultPersonId={roommates[0] ?? null}
+        opening={opening}
         onClose={() => setTarget(null)}
       />
     </div>
@@ -89,10 +95,19 @@ type ListProps = {
   bills: Bill[];
   names: Map<string, Person>;
   txs: Transaction[];
+  /** periodo del prossimo giroconto */
+  opening: string;
   onOpen: (bill: Bill) => void;
 };
 
-function BillList({ title, bills, names, txs, onOpen }: ListProps) {
+/** "febbraio" (o "febbraio 2028" se non è entro un anno) */
+function dueMonth(id: string, opening: string): string {
+  const [y, m] = id.split('-');
+  const name = it.months.long[Number(m) - 1] ?? id;
+  return monthsBetween(opening, id) >= 12 ? `${name} ${y}` : name;
+}
+
+function BillList({ title, bills, names, txs, opening, onOpen }: ListProps) {
   return (
     <section className="recurring-list-section">
       <h2 className="section-head--muted">{title}</h2>
@@ -103,6 +118,9 @@ function BillList({ title, bills, names, txs, onOpen }: ListProps) {
             isPeriodic(b) ? it.casa.frequency[b.frequency] : null,
             b.split === 'half' ? it.casa.splitHalf(name) : it.casa.splitMine,
             b.payer === 'me' ? it.casa.payerMe : it.casa.payerRoommate(name),
+            isPeriodic(b) && b.nextDue
+              ? monthsBetween(opening, b.nextDue) < 0 ? it.casa.dueLate(dueMonth(b.nextDue, opening)) : it.casa.dueIn(dueMonth(b.nextDue, opening))
+              : null,
           ].filter(Boolean).join(' · ');
           const paid = txs.filter((t) => t.billId === b.id && t.type === 'expense').sort((x, y) => (x.date < y.date ? 1 : -1))[0];
           return (
@@ -115,7 +133,7 @@ function BillList({ title, bills, names, txs, onOpen }: ListProps) {
                 </span>
                 <span className="recurring-row__right">
                   <span className={b.active ? 'movement__amount' : 'movement__amount is-paused'}>
-                    {it.casa.quotaPerMonth(formatEuro(monthlyQuota(b)))}
+                    {it.casa.quotaPerMonth(formatEuro(monthlyQuota(b, opening)))}
                   </span>
                   {!b.active ? (
                     <span className="chip chip--paused">{it.casa.paused}</span>

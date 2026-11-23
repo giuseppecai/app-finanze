@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { routes } from '../../app/routes';
 import { InfoBox } from '../../components/InfoBox';
 import { TopBar, useCloseScreen } from '../../components/TopBar';
+import { useConfirmSheet } from '../../components/ConfirmPanel';
 import { db } from '../../db/database';
 import { canDeleteLoanTransaction, deleteLoanTransaction, updateTransaction } from '../../db/repositories';
 import { formatDayHeading } from '../../domain/dates';
@@ -16,6 +17,7 @@ import { it } from '../../i18n/it';
  */
 export function LoanEntryEdit({ tx, people }: { tx: Transaction; people: Person[] }) {
   const close = useCloseScreen();
+  const [ask, confirmSheet] = useConfirmSheet();
   const [note, setNote] = useState(tx.note);
   const [deletable, setDeletable] = useState<boolean | null>(null);
   const person = people.find((p) => p.id === tx.personId);
@@ -32,7 +34,7 @@ export function LoanEntryEdit({ tx, people }: { tx: Transaction; people: Person[
   }
 
   async function remove() {
-    if (!window.confirm(it.entry.confirmDelete)) return;
+    if (!(await ask({ title: it.entry.delete, message: it.entry.confirmDelete, confirmLabel: it.entry.delete }))) return;
     await deleteLoanTransaction(db, tx.id);
     close();
   }
@@ -59,6 +61,7 @@ export function LoanEntryEdit({ tx, people }: { tx: Transaction; people: Person[
       ) : (
         <button type="button" className="quiet-button" disabled={deletable === null} onClick={() => void remove()}>{it.entry.delete}</button>
       )}
+      {confirmSheet}
     </form>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AmountField } from '../../components/AmountField';
 import { BottomSheet } from '../../components/BottomSheet';
+import { ConfirmPanel } from '../../components/ConfirmPanel';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { Switch } from '../../components/Switch';
 import { db } from '../../db/database';
@@ -36,6 +37,7 @@ export function RecurringSheet({ target, defaultEnvelopeId, onClose }: Props) {
 
 function RecurringForm({ target, defaultEnvelopeId, onDone }: { target: Recurring | 'new'; defaultEnvelopeId: string; onDone: () => void }) {
   const existing = target === 'new' ? null : target;
+  const [confirming, setConfirming] = useState(false);
   const [name, setName] = useState(existing?.name ?? '');
   const [amount, setAmount] = useState(existing ? formatEuro(existing.amount, { decimals: 'always' }).replace('€ ', '') : '');
   const [day, setDay] = useState(existing?.dayOfMonth ?? 1);
@@ -75,9 +77,13 @@ function RecurringForm({ target, defaultEnvelopeId, onDone }: { target: Recurrin
   }
 
   async function remove() {
-    if (!existing || !window.confirm(it.recurring.confirmDelete(existing.name))) return;
+    if (!existing) return;
     await deleteRecurring(db, existing.id);
     onDone();
+  }
+
+  if (confirming) {
+    return <ConfirmPanel message={it.recurring.confirmDelete(existing?.name ?? '')} confirmLabel={it.recurring.delete} onConfirm={() => void remove()} onCancel={() => setConfirming(false)} />;
   }
 
   return (
@@ -113,7 +119,7 @@ function RecurringForm({ target, defaultEnvelopeId, onDone }: { target: Recurrin
       {error ? <p className="outcome outcome--info" role="alert">{error}</p> : null}
       <div className="recurring-form__actions">
         {existing ? (
-          <button type="button" className="outcome__button outcome__button--secondary" onClick={() => void remove()}>{it.recurring.delete}</button>
+          <button type="button" className="outcome__button outcome__button--secondary" onClick={() => setConfirming(true)}>{it.recurring.delete}</button>
         ) : null}
         <button type="submit" className="primary-button recurring-form__save" disabled={saving}>{it.recurring.save}</button>
       </div>

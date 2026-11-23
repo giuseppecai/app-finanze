@@ -68,7 +68,9 @@
   cursor: pointer;
   position: relative;
 }
-.list-row--button:hover, .list-row--button:focus-visible { background: var(--surface-sunk); color: var(--text); }
+.list-row--button:focus-visible { background: var(--surface-sunk); color: var(--text); }
+/* :hover solo con il mouse: su iPhone resterebbe acceso dopo il tocco */
+@media (hover: hover) { .list-row--button:hover { background: var(--surface-sunk); color: var(--text); } }
 .list-row--button:has(.file-input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 .list-row--action {
@@ -80,7 +82,8 @@
   font-weight: 600;
   cursor: pointer;
 }
-.list-row--action:hover, .list-row--action:focus-visible { background: var(--accent-soft); }
+.list-row--action:focus-visible { background: var(--accent-soft); }
+@media (hover: hover) { .list-row--action:hover { background: var(--accent-soft); } }
 
 .list-row--total { background: var(--surface-sunk); min-height: 64px; }
 .list-row--flat { padding: 0; min-height: var(--touch); justify-content: space-between; }
@@ -190,3 +193,53 @@
   .save-bar { animation: save-bar-in 180ms ease-out; }
   @keyframes save-bar-in { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
 }
+
+.list-row.is-removed .list-row__title { text-decoration: line-through; color: var(--text-muted); }
+.row-undo {
+  flex-shrink: 0;
+  min-height: var(--touch);
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--radius-row);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Azioni secondarie nei pannelli (Sospendi, Elimina, Togli) */
+.sheet-actions { display: flex; gap: 8px; }
+.sheet-actions__button {
+  flex: 1;
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-row);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sheet-actions__button--danger { color: var(--danger); border-color: var(--danger-light); }
+.sheet-actions__button:active { background: var(--surface-sunk); }
+.sheet-actions__button--danger:active { background: var(--danger-soft); }
+
+/* Pannello del tetto: − [importo] + sulla stessa riga */
+.cap-editor { display: flex; align-items: flex-end; gap: 8px; }
+.cap-editor .amount-field { flex: 1; min-width: 0; }
+.cap-editor__nudge { width: 52px; height: 52px; border-radius: 26px; flex-shrink: 0; margin-bottom: 4px; }
+
+.sheet-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: var(--touch);
+  border-radius: var(--radius-row);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.sheet-link:active { background: var(--accent-soft); }

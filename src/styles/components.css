@@ -201,6 +201,7 @@
 
 .envelope-row__amounts { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
 .envelope-row__amount { font-size: 15px; font-weight: 600; }
+.envelope-row__amount.is-empty { color: var(--text-muted); }
 .envelope-row__label { font-size: 12px; color: var(--text-muted); }
 
 .bar {
@@ -216,6 +217,8 @@
 .bar__fill--low { background: var(--warning); }
 .bar__fill--over { background: var(--danger); }
 .bar__fill--committed { background: var(--neutral-bar); }
+/* busta a zero: grigio chiaro, "svuotata" */
+.bar__fill--empty { background: #D6D4CD; }
 
 /* ── Messi da parte ───────────────────────────────────────── */
 
@@ -238,40 +241,48 @@
 .pots__tone--bills { background: var(--neutral-bar); }
 
 .pots__legend {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 2px 0 0;
   padding: 0;
   list-style: none;
 }
 
-.pots__item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+/* Una riga per salvadanaio: nome a sinistra, saldo a destra (i nomi lunghi non si tagliano più) */
+.pots__legend > li + li { border-top: 1px solid var(--line-soft); }
+.pots__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  min-width: 0;
+}
 
 .pots__name {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
-  font-size: 12px;
-  color: var(--text-muted);
-  white-space: nowrap;
+  font-size: 14px;
+  color: var(--text);
 }
-.pots__label { overflow: hidden; text-overflow: ellipsis; }
 
-.pots__value { font-size: 15px; font-weight: 600; }
+.pots__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.pots__value { flex-shrink: 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .pots__item--link {
   min-height: var(--touch);
-  margin: -4px -6px;
-  padding: 4px 6px;
+  margin: 0 -8px;
+  padding: 0 8px;
   border-radius: var(--radius-row);
   color: var(--text);
   text-decoration: none;
 }
 .pots__item--link .pots__name { color: var(--accent); font-weight: 600; }
 .pots__item--link .pots__name::after { content: '›'; margin-left: 2px; }
-.pots__item--link:hover, .pots__item--link:focus-visible { background: var(--surface-sunk); color: var(--text); }
+.pots__item--link:focus-visible, .pots__item--link:active { background: var(--surface-sunk); color: var(--text); }
 
 .pots__dot { width: 8px; height: 8px; border-radius: 4px; flex-shrink: 0; }
 
@@ -575,3 +586,27 @@
 
 /* Le opzioni del selettore sono alte 36 px dentro un contenitore da 44: l'area di tocco arriva a 44 */
 .segmented__option::after { content: ""; position: absolute; inset: -4px 0; }
+
+/* ── Sezioni della Home: tre blocchi che si leggono diversi ──
+   Da spendere = schede singole con barra viola (si usano ogni giorno);
+   Impegnate = un riquadro unico, righe fitte e barre grigie (vanno da sole);
+   Messi da parte = riquadro lilla (soldi fuori dal budget). */
+.home-section { margin-top: 26px; display: flex; flex-direction: column; gap: 10px; }
+
+.home-section__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 0 2px; }
+.home-section__titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.home-section__title { margin: 0; font-family: var(--font-display); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.home-section__caption { margin: 0; font-size: 12px; color: var(--text-muted); }
+.home-section__meta { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.home-section__meta--strong { font-family: var(--font-display); font-size: 20px; color: var(--text); }
+
+.envelope-group { list-style: none; margin: 0; padding: 2px 0; overflow: hidden; }
+.envelope-group > li + li { border-top: 1px solid var(--line-soft); }
+.envelope-row--plain { border-radius: 0; background: transparent; padding: 10px 14px; }
+.envelope-row--plain .envelope-row__name { color: var(--text-muted); font-weight: 500; }
+.envelope-row--plain .bar { height: 4px; }
+
+.pots { margin-top: 0; background: var(--accent-soft); }
+.pots .pots__legend > li + li { border-top-color: var(--accent-3); }
+/* sul fondo lilla il tono chiaro sparirebbe: un lilla un po' più carico */
+.pots .pots__tone--light { background: #BFA6E0; }

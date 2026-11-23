@@ -11,6 +11,7 @@ import { InfoBox } from '../../components/InfoBox';
 import { Keypad } from '../../components/Keypad';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { TopBar, useCloseScreen } from '../../components/TopBar';
+import { useConfirmSheet } from '../../components/ConfirmPanel';
 import { db } from '../../db/database';
 import {
   addLoanEntry, addTransaction, deleteTransaction, updateTransaction,
@@ -115,6 +116,7 @@ function initialAmount(params: URLSearchParams): Cents {
 
 function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs, people, loans, today: now, params }: FormProps) {
   const close = useCloseScreen();
+  const [ask, confirmSheet] = useConfirmSheet();
   const sorted = useMemo(() => sortEnvelopesForPicker(envelopes, recentTxs, now), [envelopes, recentTxs, now]);
 
   const [type, setType] = useState<EntryType>(() => {
@@ -217,7 +219,7 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
   }
 
   async function remove() {
-    if (!editing || !window.confirm(it.entry.confirmDelete)) return;
+    if (!editing || !(await ask({ title: it.entry.delete, message: it.entry.confirmDelete, confirmLabel: it.entry.delete }))) return;
     await deleteTransaction(db, editing.id);
     close();
   }
@@ -337,6 +339,7 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
       {editing ? (
         <button type="button" className="quiet-button" onClick={() => void remove()}>{it.entry.delete}</button>
       ) : null}
+      {confirmSheet}
     </form>
   );
 }
