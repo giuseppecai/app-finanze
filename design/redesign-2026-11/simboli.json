@@ -1,0 +1,537 @@
+{
+  "_nota": "Catalogo dei simboli selezionabili (nomi Lucide). 'keywords' serve a suggerire il simbolo dal nome di una nuova busta: si confronta l'inizio di ogni parola del nome, senza accenti e in minuscolo; vince il primo che corrisponde nell'ordine del catalogo.",
+  "fallback": "tag",
+  "predefiniti": {
+    "Trasporti": "train-front",
+    "Vita": "coffee",
+    "Spesa alimentare": "shopping-basket",
+    "Shopping": "shopping-bag",
+    "Casa & Servizi": "house",
+    "Rate & Abbonamenti": "repeat",
+    "Bollette": "receipt",
+    "Risparmi": "piggy-bank",
+    "Viaggi": "plane",
+    "Regali & Imprevisti": "gift",
+    "Riserva delle carte": "credit-card",
+    "Budget del mese": "wallet",
+    "Affitto": "key-round",
+    "Prestiti": "hand-coins"
+  },
+  "gruppi": [
+    {
+      "nome": "Casa",
+      "simboli": [
+        {
+          "id": "house",
+          "etichetta": "Casa",
+          "keywords": [
+            "casa",
+            "servizi"
+          ]
+        },
+        {
+          "id": "key-round",
+          "etichetta": "Affitto",
+          "keywords": [
+            "affitto",
+            "mutuo"
+          ]
+        },
+        {
+          "id": "sofa",
+          "etichetta": "Arredamento",
+          "keywords": [
+            "arredo",
+            "mobili",
+            "ikea"
+          ]
+        },
+        {
+          "id": "lamp",
+          "etichetta": "Luce",
+          "keywords": [
+            "luce",
+            "lampad"
+          ]
+        },
+        {
+          "id": "wrench",
+          "etichetta": "Riparazioni",
+          "keywords": [
+            "ripara",
+            "manutenz",
+            "idraul"
+          ]
+        },
+        {
+          "id": "zap",
+          "etichetta": "Elettricità",
+          "keywords": [
+            "elettric",
+            "enel"
+          ]
+        },
+        {
+          "id": "flame",
+          "etichetta": "Gas",
+          "keywords": [
+            "gas",
+            "riscald"
+          ]
+        },
+        {
+          "id": "droplet",
+          "etichetta": "Acqua",
+          "keywords": [
+            "acqua"
+          ]
+        },
+        {
+          "id": "wifi",
+          "etichetta": "Internet",
+          "keywords": [
+            "internet",
+            "wifi",
+            "fibra"
+          ]
+        },
+        {
+          "id": "smartphone",
+          "etichetta": "Telefono",
+          "keywords": [
+            "telefon",
+            "cellular",
+            "ricarica"
+          ]
+        },
+        {
+          "id": "receipt",
+          "etichetta": "Bollette",
+          "keywords": [
+            "bollett",
+            "utenz"
+          ]
+        },
+        {
+          "id": "tv",
+          "etichetta": "TV",
+          "keywords": [
+            "tv",
+            "streaming"
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Cibo",
+      "simboli": [
+        {
+          "id": "shopping-basket",
+          "etichetta": "Spesa",
+          "keywords": [
+            "spesa",
+            "alimentar"
+          ]
+        },
+        {
+          "id": "shopping-cart",
+          "etichetta": "Supermercato",
+          "keywords": [
+            "supermerc"
+          ]
+        },
+        {
+          "id": "utensils",
+          "etichetta": "Ristorante",
+          "keywords": [
+            "ristorant",
+            "cena",
+            "pranzo",
+            "mangiare"
+          ]
+        },
+        {
+          "id": "coffee",
+          "etichetta": "Caffè",
+          "keywords": [
+            "caffe",
+            "colazion",
+            "vita"
+          ]
+        },
+        {
+          "id": "pizza",
+          "etichetta": "Pizza",
+          "keywords": [
+            "pizza",
+            "delivery",
+            "glovo",
+            "deliveroo"
+          ]
+        },
+        {
+          "id": "wine",
+          "etichetta": "Vino",
+          "keywords": [
+            "vino",
+            "aperitiv"
+          ]
+        },
+        {
+          "id": "beer",
+          "etichetta": "Birra",
+          "keywords": [
+            "birra",
+            "pub"
+          ]
+        },
+        {
+          "id": "apple",
+          "etichetta": "Frutta",
+          "keywords": [
+            "frutta",
+            "verdura",
+            "mercato"
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Spostamenti",
+      "simboli": [
+        {
+          "id": "train-front",
+          "etichetta": "Treno",
+          "keywords": [
+            "treno",
+            "trasport",
+            "trenitalia",
+            "italo"
+          ]
+        },
+        {
+          "id": "bus",
+          "etichetta": "Autobus",
+          "keywords": [
+            "bus",
+            "atac",
+            "metro"
+          ]
+        },
+        {
+          "id": "car",
+          "etichetta": "Auto",
+          "keywords": [
+            "auto",
+            "macchina"
+          ]
+        },
+        {
+          "id": "fuel",
+          "etichetta": "Benzina",
+          "keywords": [
+            "benzin",
+            "carburant",
+            "diesel"
+          ]
+        },
+        {
+          "id": "bike",
+          "etichetta": "Bici",
+          "keywords": [
+            "bici",
+            "monopattin"
+          ]
+        },
+        {
+          "id": "plane",
+          "etichetta": "Aereo",
+          "keywords": [
+            "viagg",
+            "volo",
+            "aereo"
+          ]
+        },
+        {
+          "id": "map-pin",
+          "etichetta": "Luoghi",
+          "keywords": [
+            "gite",
+            "luoghi"
+          ]
+        },
+        {
+          "id": "sun",
+          "etichetta": "Vacanze",
+          "keywords": [
+            "vacanz",
+            "mare",
+            "estate"
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Tempo libero",
+      "simboli": [
+        {
+          "id": "party-popper",
+          "etichetta": "Uscite",
+          "keywords": [
+            "uscite",
+            "feste",
+            "svago"
+          ]
+        },
+        {
+          "id": "ticket",
+          "etichetta": "Biglietti",
+          "keywords": [
+            "bigliett",
+            "concert",
+            "event"
+          ]
+        },
+        {
+          "id": "film",
+          "etichetta": "Cinema",
+          "keywords": [
+            "cinema",
+            "film"
+          ]
+        },
+        {
+          "id": "music",
+          "etichetta": "Musica",
+          "keywords": [
+            "musica",
+            "spotify"
+          ]
+        },
+        {
+          "id": "gamepad-2",
+          "etichetta": "Giochi",
+          "keywords": [
+            "gioch",
+            "videogioc",
+            "switch",
+            "steam"
+          ]
+        },
+        {
+          "id": "book-open",
+          "etichetta": "Libri",
+          "keywords": [
+            "libri",
+            "lettura"
+          ]
+        },
+        {
+          "id": "dumbbell",
+          "etichetta": "Palestra",
+          "keywords": [
+            "palestra",
+            "sport",
+            "fitness"
+          ]
+        },
+        {
+          "id": "palette",
+          "etichetta": "Hobby",
+          "keywords": [
+            "hobby",
+            "arte"
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Persone e cura",
+      "simboli": [
+        {
+          "id": "heart",
+          "etichetta": "Persone care",
+          "keywords": [
+            "amor",
+            "partner",
+            "coppia"
+          ]
+        },
+        {
+          "id": "sparkles",
+          "etichetta": "Cura di sé",
+          "keywords": [
+            "skincare",
+            "bellezza",
+            "cura"
+          ]
+        },
+        {
+          "id": "scissors",
+          "etichetta": "Parrucchiere",
+          "keywords": [
+            "parrucch",
+            "barbier",
+            "capelli"
+          ]
+        },
+        {
+          "id": "shirt",
+          "etichetta": "Vestiti",
+          "keywords": [
+            "vestit",
+            "abbiglia"
+          ]
+        },
+        {
+          "id": "shopping-bag",
+          "etichetta": "Shopping",
+          "keywords": [
+            "shopping",
+            "acquisti",
+            "zalando",
+            "shein"
+          ]
+        },
+        {
+          "id": "pill",
+          "etichetta": "Farmaci",
+          "keywords": [
+            "farmac",
+            "medicin"
+          ]
+        },
+        {
+          "id": "stethoscope",
+          "etichetta": "Medico",
+          "keywords": [
+            "medic",
+            "salute",
+            "visite",
+            "dentist"
+          ]
+        },
+        {
+          "id": "baby",
+          "etichetta": "Bambini",
+          "keywords": [
+            "bambin",
+            "figli"
+          ]
+        },
+        {
+          "id": "dog",
+          "etichetta": "Cane",
+          "keywords": [
+            "cane"
+          ]
+        },
+        {
+          "id": "cat",
+          "etichetta": "Gatto",
+          "keywords": [
+            "gatt",
+            "animal"
+          ]
+        },
+        {
+          "id": "graduation-cap",
+          "etichetta": "Studio",
+          "keywords": [
+            "studio",
+            "corso",
+            "universit",
+            "scuola"
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Soldi",
+      "simboli": [
+        {
+          "id": "piggy-bank",
+          "etichetta": "Risparmi",
+          "keywords": [
+            "risparm",
+            "salvadanai"
+          ]
+        },
+        {
+          "id": "wallet",
+          "etichetta": "Budget",
+          "keywords": [
+            "budget",
+            "portafogl"
+          ]
+        },
+        {
+          "id": "credit-card",
+          "etichetta": "Carte",
+          "keywords": [
+            "carta",
+            "carte"
+          ]
+        },
+        {
+          "id": "landmark",
+          "etichetta": "Banca",
+          "keywords": [
+            "banca",
+            "tasse",
+            "f24"
+          ]
+        },
+        {
+          "id": "gift",
+          "etichetta": "Regali",
+          "keywords": [
+            "regal",
+            "compleann",
+            "natale"
+          ]
+        },
+        {
+          "id": "hand-coins",
+          "etichetta": "Prestiti",
+          "keywords": [
+            "prestit",
+            "debit"
+          ]
+        },
+        {
+          "id": "repeat",
+          "etichetta": "Abbonamenti",
+          "keywords": [
+            "abbonam",
+            "rate",
+            "rata"
+          ]
+        },
+        {
+          "id": "umbrella",
+          "etichetta": "Imprevisti",
+          "keywords": [
+            "imprevist",
+            "emergenz"
+          ]
+        },
+        {
+          "id": "shield",
+          "etichetta": "Assicurazioni",
+          "keywords": [
+            "assicuraz"
+          ]
+        },
+        {
+          "id": "star",
+          "etichetta": "Desideri",
+          "keywords": [
+            "desider",
+            "sogn"
+          ]
+        }
+      ]
+    }
+  ]
+}

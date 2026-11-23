@@ -1,6 +1,7 @@
 // Dati di esempio dei documenti (oggi = 2026-11-19, Novembre aperto, Giugno–Ottobre chiusi).
 // Solo dati: niente Dexie, così li usano anche i test di dominio.
 import { calendarPeriodById } from '../domain/periods';
+import { withDefaultSymbol } from '../domain/symbols';
 import type {
   Bill, Card, Cents, Envelope, Loan, Period, Person, Pot, Reconciliation, Recurring, Settings, Transaction,
 } from '../domain/types';
@@ -189,6 +190,17 @@ function demoLoans(): Loan[] {
 }
 
 export function buildDemoData(): DataSet {
+  const data = buildDemoDataRaw();
+  // Simboli predefiniti (v5) su buste, salvadanai e voci fisse.
+  return {
+    ...data,
+    settings: { ...data.settings, monthlyItems: data.settings.monthlyItems.map(withDefaultSymbol) },
+    envelopes: data.envelopes.map(withDefaultSymbol),
+    pots: data.pots.map(withDefaultSymbol),
+  };
+}
+
+function buildDemoDataRaw(): DataSet {
   return {
     settings: {
       id: 'settings',

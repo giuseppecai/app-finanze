@@ -30,10 +30,11 @@ describe('dati iniziali', () => {
     expect(seed.settings).toEqual({
       id: 'settings', periodStartDay: 27, cardReserve: null, lastEnvelopeId: null, onboardingDone: false,
       monthlyItems: [
-        { id: 'travel', name: 'Viaggi', kind: 'pot', amount: 5000, archived: false },
-        { id: 'gifts', name: 'Regali & Imprevisti', kind: 'pot', amount: 2500, archived: false },
+        { id: 'travel', name: 'Viaggi', kind: 'pot', amount: 5000, archived: false, icon: 'plane' },
+        { id: 'gifts', name: 'Regali & Imprevisti', kind: 'pot', amount: 2500, archived: false, icon: 'gift' },
       ],
     });
+    expect(seed.envelopes.map((e) => e.icon)).toEqual(['train-front', 'coffee', 'shopping-basket', 'shopping-bag', 'house', 'repeat']);
     expect(seed.pots.map((p) => [p.id, p.balance])).toEqual([['savings', 0], ['travel', 0], ['gifts', 0], ['bills', 0]]);
     expect(seed.periods).toEqual([]);
   });

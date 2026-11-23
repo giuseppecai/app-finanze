@@ -258,6 +258,8 @@ Esempio: Spesa alimentare 56, 58, 54, 59, 62 → **€ 58** → più del tetto 5
 
 ## R11 · Storico
 
+Dal redesign v2 (novembre 2026) lo Storico è il "racconto del mese": scelta del mese (ultimi 6), card "Speso a novembre" con la **spesa cumulata giorno per giorno** (spese − rimborsi delle buste; prestiti, entrate e bollette pagate dalla Pocket esclusi), il mese prima tratteggiato quando ci sono i suoi movimenti, e tre numeri: il mese prima allo stesso giorno, speso al giorno (speso ÷ giorni passati) e media dei periodi chiusi (fino a 6). Esempio Novembre al 19 nov: giorno 24 di 31, € 448,50 → **€ 18,69 al giorno**. "Dove sono andati" elenca le buste dalla più spesa con resta, messi e quota sul totale (Vita € 131 = 29%). Sotto, gli ultimi 6 mesi a colonne. La tabella che segue resta la definizione dei numeri.
+
 Per ogni periodo chiuso e busta: `messo = assegnato + riportato`, `speso = spese − rimborsi`, `avanzo = messo − speso`. Totale periodo confrontato con la somma dei tetti di quel periodo; barra arancione se speso > somma tetti. Il periodo corrente compare per ultimo, tratteggiato, con colonna "Resta" invece di "Avanzo".
 
 Dati di esempio (spesa totale per periodo, tetti 700): Giu 652 · Lug **731** (sopra) · Ago 688 · Set 640 · Ott 604 · Nov (in corso) 448,50.
@@ -265,6 +267,7 @@ Dati di esempio (spesa totale per periodo, tetti 700): Giu 652 · Lug **731** (s
 ## R12 · Ordine e default nell'inserimento rapido
 
 - Busta preselezionata = ultima usata.
+- Griglia fissa di **6 caselle** (redesign v2): le prime 5 buste di quest'ordine più **"Altre"**, che apre l'elenco di tutte le buste. Con 5 buste o meno si vedono tutte. Una busta scelta da "Altre" (o l'ultima usata) che non è tra le prime 5 prende il posto della quinta. Nella demo "Altre" contiene Rate & Abbonamenti, che si scala da sola.
 - Buste ordinate per numero di movimenti negli ultimi 60 giorni (a parità: ordine definito in Imposta). Le impegnate in fondo.
 - Data = oggi (modificabile con il pulsante calendario).
 - Validazione: importo > 0, per il prestito serve una persona.

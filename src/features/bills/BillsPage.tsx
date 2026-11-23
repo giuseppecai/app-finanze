@@ -2,10 +2,11 @@ import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useBills, useCurrentPeriod, useLoans, usePeople, usePeriods, usePeriodTransactions, usePots, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
-import { IconChevronRight } from '../../components/icons';
+import { IconChevronRight, IconPlus, IconReceipt } from '../../components/icons';
 import { InfoBox } from '../../components/InfoBox';
 import { TopBar } from '../../components/TopBar';
-import { billsQuotaTotal, fundStatus, isPeriodic, monthlyQuota } from '../../domain/bills';
+import { PageHeader } from '../../components/PageHeader';
+import { billsQuotaTotal, billsToRegister, fundStatus, isPeriodic, monthlyQuota } from '../../domain/bills';
 import { today } from '../../domain/clock';
 import { formatShortDate, monthsBetween } from '../../domain/dates';
 import { nextOpeningId } from '../../domain/periods';
@@ -34,6 +35,7 @@ export function BillsPage() {
   const billsPot = pots.find((p) => p.id === 'bills')?.balance ?? 0;
   const opening = nextOpeningId(periods, today(), settings.periodStartDay);
   const quota = billsQuotaTotal(bills, opening);
+  const toRegister = billsToRegister(bills, txs).length;
   const monthly = bills.filter((b) => !isPeriodic(b));
   const periodic = bills.filter(isPeriodic);
   const names = new Map(people.map((p) => [p.id, p]));
@@ -41,13 +43,15 @@ export function BillsPage() {
 
   return (
     <div className="flow">
-      <TopBar right={<button type="button" className="pill-button" onClick={() => setTarget('new')}>{it.casa.add}</button>} />
-      <header className="screen-header">
-        <h1 className="screen-title">{it.casa.title}</h1>
-        <p className="screen-subtitle">{it.casa.subtitle}</p>
-      </header>
+      <TopBar right={<button type="button" className="pill-button" onClick={() => setTarget('new')}><IconPlus size={20} />{it.common.add}</button>} />
+      <PageHeader
+        full
+        title={it.casa.title}
+        chip={toRegister > 0 ? { icon: <IconReceipt />, text: it.casa.toRegisterChip(toRegister) } : null}
+        muted={it.casa.fromPocket}
+      />
 
-      <section className="hero" aria-label={it.casa.potLabel}>
+      <section className="hero hero--light" aria-label={it.casa.potLabel}>
         <p className="hero__label">{it.casa.potLabel}</p>
         <p className={billsPot < 0 ? 'hero__amount hero__amount--medium is-over' : 'hero__amount hero__amount--medium'}>{formatEuro(billsPot)}</p>
         <p className="hero__status">{quota > 0 ? it.casa.perMonth(formatEuro(quota)) : it.casa.noQuota}</p>

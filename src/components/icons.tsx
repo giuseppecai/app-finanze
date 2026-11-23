@@ -2,7 +2,7 @@
 // I nomi Icon* restano quelli di prima, così i componenti non cambiano.
 import {
   ArrowDownLeft, ArrowLeftRight, ArrowRight, ArrowUp, ArrowUpRight, Calendar, ChartColumn, Check, ChevronDown, ChevronRight,
-  CircleCheck, Coffee, CreditCard, Delete, Download, HandCoins, House, Info, Lightbulb, List, Minus, Pencil, PiggyBank,
+  CircleCheck, Coffee, LayoutGrid, Sparkles, TrendingDown, CreditCard, Delete, Download, HandCoins, House, Info, Lightbulb, List, Minus, Pencil, PiggyBank,
   Plus, Receipt, Repeat, Settings, Share, ShoppingBag, ShoppingBasket, SlidersHorizontal, TrainFront, Trash2,
   TriangleAlert, Upload, Wallet, X, type LucideIcon, type LucideProps,
 } from 'lucide-react';
@@ -48,6 +48,9 @@ export const IconTrash = make(Trash2, { size: 18 });
 export const IconRepeat = make(Repeat, { size: 20 });
 export const IconReceipt = make(Receipt, { size: 20 });
 export const IconHandCoins = make(HandCoins, { size: 20 });
+export const IconLayoutGrid = make(LayoutGrid, { size: 16 });
+export const IconSparkles = make(Sparkles, { size: 15 });
+export const IconTrendingDown = make(TrendingDown, { size: 14 });
 
 /** Icona di una busta (Movimenti): per nome breve, con un'icona generica per le buste nuove. */
 const ENVELOPE_ICONS: Record<string, LucideIcon> = {

@@ -1,16 +1,15 @@
+import { IconCalendar } from './icons';
+import { PageHeader } from './PageHeader';
 import { TopBar } from './TopBar';
 
 type Props = { title: string; subtitle: string };
 
-/** Intestazione di Chiusura e Inizio: chiudi, titolo e intervallo del periodo. */
+/** Intestazione di Chiusura e Inizio: chiudi, titolo e pillola con il periodo del mese. */
 export function MonthHeader({ title, subtitle }: Props) {
   return (
     <>
       <TopBar />
-      <header className="screen-header month-header">
-        <h1 className="screen-title">{title}</h1>
-        <p className="screen-subtitle">{subtitle}</p>
-      </header>
+      <PageHeader full title={title} chip={{ icon: <IconCalendar />, text: subtitle }} />
     </>
   );
 }

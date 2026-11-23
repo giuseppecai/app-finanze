@@ -3,7 +3,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useEnvelopes, usePeople, usePeriods, usePeriodTransactions } from '../../app/data';
 import { routes } from '../../app/routes';
 import { FilterChips } from '../../components/FilterChips';
-import { EnvelopeIcon, IconArrowDownLeft, IconArrowUpRight, IconChevronDown, IconReceipt } from '../../components/icons';
+import { IconArrowDownLeft, IconArrowUpRight, IconChevronDown, IconReceipt } from '../../components/icons';
+import { PageHeader } from '../../components/PageHeader';
+import { SymbolIcon } from '../../components/Symbol';
+import { symbolFor } from '../../domain/symbols';
 import { today } from '../../domain/clock';
 import { addDays, formatDayHeading, formatShortRange } from '../../domain/dates';
 import { summarizePeriod } from '../../domain/envelopes';
@@ -39,7 +42,7 @@ export function MovementsPage() {
   if (!period) {
     return (
       <>
-        <header className="screen-header"><h1 className="screen-title">{it.movements.title}</h1></header>
+        <PageHeader title={it.movements.title} />
         <p className="placeholder">{it.movements.empty}</p>
       </>
     );
@@ -55,13 +58,11 @@ export function MovementsPage() {
 
   return (
     <>
-      <header className="movements-header">
-        <div className="screen-header">
-          <h1 className="screen-title">{it.movements.title}</h1>
-          <p className="screen-subtitle">{it.movements.summary(formatEuro(summary.total, { decimals: 'always' }), summary.count)}</p>
-        </div>
-        <PeriodSelect periods={sorted} value={period} onChange={(id) => setParam('periodo', id)} />
-      </header>
+      <PageHeader
+        title={it.movements.title}
+        chip={{ icon: <IconReceipt />, text: it.movements.spent(formatEuro(summary.total, { decimals: 'always' })) }}
+        extra={<PeriodSelect periods={sorted} value={period} onChange={(id) => setParam('periodo', id)} />}
+      />
 
       <FilterChips
         label={it.movements.filterLabel}
@@ -91,7 +92,7 @@ export function MovementsPage() {
 
 function PeriodSelect({ periods, value, onChange }: { periods: Period[]; value: Period; onChange: (id: string) => void }) {
   return (
-    <label className="pill-select">
+    <label className="period-chip">
       <span className="visually-hidden">{it.movements.periodLabel}</span>
       <span aria-hidden="true">{formatShortRange(value.calendarStart, value.calendarEnd)}</span>
       <IconChevronDown />
@@ -180,7 +181,7 @@ function MovementRow({ tx, envelope, person }: { tx: Transaction; envelope?: Env
     title = tx.note || it.casa.title;
     detail = it.movements.fromBillsPot;
   } else {
-    icon = <EnvelopeIcon shortName={envelope?.shortName ?? ''} />;
+    icon = <SymbolIcon id={envelope ? symbolFor(envelope) : 'tag'} size={20} />;
     title = tx.note || envelope?.name || '';
     const parts = [envelope?.shortName ?? '', cardName];
     if (tx.type === 'refund') parts.push(it.movements.refund);

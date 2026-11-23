@@ -26,7 +26,7 @@ export function BackupReminder({ settings, periods }: { settings: Settings; peri
       </p>
       <p className="backup-reminder__text">{it.backupReminder.text}</p>
       <div className="backup-reminder__actions">
-        <Link to={`${routes.settings}?backup=1`} className="outcome__button outcome__button--accent backup-reminder__go">{it.backupReminder.go}</Link>
+        <Link to={routes.backup} className="outcome__button outcome__button--accent backup-reminder__go">{it.backupReminder.go}</Link>
         <button
           type="button"
           className="outcome__button outcome__button--secondary"

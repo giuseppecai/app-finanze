@@ -260,8 +260,9 @@ export async function saveMonthlyItem(db: FinanzeDB, item: MonthlyItem): Promise
     await db.settings.update('settings', { monthlyItems });
     if (item.kind === 'pot') {
       const pot = await db.pots.get(item.id);
-      if (pot) await db.pots.update(item.id, { name });
-      else await db.pots.add({ id: item.id, name, balance: 0 });
+      const icon = item.icon ? { icon: item.icon } : {};
+      if (pot) await db.pots.update(item.id, { name, ...icon });
+      else await db.pots.add({ id: item.id, name, balance: 0, ...icon });
     }
   });
 }
@@ -582,6 +583,8 @@ export interface SaveEnvelopesInput {
   removed?: string[];
   /** dove va il residuo di ogni busta tolta a mese aperto (default Risparmi) */
   destinations?: Record<string, FundsDestination>;
+  /** simboli cambiati delle buste esistenti (id → nome icona) */
+  icons?: Record<string, string>;
   periodStartDay: number;
 }
 
@@ -614,6 +617,7 @@ export async function saveEnvelopes(db: FinanzeDB, input: SaveEnvelopesInput): P
     for (const id of removedIds) delete caps[id];
     const change = planCapsChange([...envelopes, ...newEnvelopes], caps, current, removed, input.destinations ?? {});
     for (const [id, cap] of Object.entries(caps)) if (id in input.caps) await db.envelopes.update(id, { cap });
+    for (const [id, icon] of Object.entries(input.icons ?? {})) if (!removedIds.includes(id)) await db.envelopes.update(id, { icon });
     if (newEnvelopes.length > 0) await db.envelopes.bulkAdd(newEnvelopes);
     if (removedIds.length > 0) {
       const periods = await db.periods.toArray();
@@ -663,11 +667,11 @@ export async function deleteMonthlyItem(db: FinanzeDB, id: string, to: FundsDest
 }
 
 /** Nuovo salvadanaio libero (una Pocket Revolut senza giroconto mensile), con il saldo che ha adesso. */
-export async function addPot(db: FinanzeDB, name: string, balance: Cents): Promise<Pot> {
+export async function addPot(db: FinanzeDB, name: string, balance: Cents, icon?: string): Promise<Pot> {
   const clean = name.trim();
   if (clean === '') throw new Error('Nome mancante');
   if (!Number.isInteger(balance)) throw new Error('Saldo non valido');
-  const pot: Pot = { id: newId(), name: clean, balance };
+  const pot: Pot = { id: newId(), name: clean, balance, ...(icon ? { icon } : {}) };
   await db.pots.add(pot);
   return pot;
 }
@@ -681,6 +685,17 @@ export async function renamePot(db: FinanzeDB, id: string, name: string): Promis
     const settings = await getSettings(db);
     if (settings.monthlyItems.some((i) => i.id === id)) {
       await db.settings.update('settings', { monthlyItems: settings.monthlyItems.map((i) => (i.id === id ? { ...i, name: clean } : i)) });
+    }
+  });
+}
+
+/** Cambia il simbolo di un salvadanaio (e della voce fissa collegata, se c'è). Si salva subito. */
+export async function setPotIcon(db: FinanzeDB, id: string, icon: string): Promise<void> {
+  await db.transaction('rw', [db.settings, db.pots], async () => {
+    await db.pots.update(id, { icon });
+    const settings = await getSettings(db);
+    if (settings.monthlyItems.some((i) => i.id === id)) {
+      await db.settings.update('settings', { monthlyItems: settings.monthlyItems.map((i) => (i.id === id ? { ...i, icon } : i)) });
     }
   });
 }

@@ -1,6 +1,9 @@
 /* Abbonamenti, interruttore, chip di stato */
 
 .pill-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   min-height: var(--touch);
   padding: 0 16px;
   border-radius: var(--r-pill);

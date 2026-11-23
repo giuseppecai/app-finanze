@@ -11,6 +11,7 @@ export const routes = {
   recurring: '/abbonamenti',
   onboarding: '/benvenuto',
   bills: '/bollette',
+  backup: '/backup',
   /** vecchio indirizzo di Bollette (prima stava dentro Casa & Servizi) */
   casa: '/casa',
 } as const;

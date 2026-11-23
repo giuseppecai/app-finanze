@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useLoans, usePeople } from '../../app/data';
-import { routes } from '../../app/routes';
-import { IconChevronDown } from '../../components/icons';
+import { IconChevronDown, IconPiggyBank } from '../../components/icons';
 import { Toast } from '../../components/Toast';
 import { TopBar } from '../../components/TopBar';
+import { PageHeader } from '../../components/PageHeader';
+import { InfoBox } from '../../components/InfoBox';
 import { db } from '../../db/database';
 import { registerRepayment, undoRepaymentTransaction } from '../../db/repositories';
 import { today } from '../../domain/clock';
@@ -42,13 +43,11 @@ export function LoansPage() {
 
   return (
     <div className="flow">
-      <TopBar right={<Link to={`${routes.entry}?tipo=prestito`} className="pill-button pill-button--link">{it.loans.add}</Link>} />
-      <header className="screen-header">
-        <h1 className="screen-title">{it.loans.title}</h1>
-        <p className="screen-subtitle">{it.loans.subtitle}</p>
-      </header>
+      {/* Un solo modo per creare un prestito: ＋ → Prestito (nota in fondo) */}
+      <TopBar />
+      <PageHeader full title={it.loans.title} chip={{ icon: <IconPiggyBank />, text: it.loans.backToSavings }} />
 
-      <section className="hero">
+      <section className="hero hero--light">
         <div className="hero__row">
           <div>
             <p className="hero__label">{it.loans.toGet}</p>
@@ -89,6 +88,7 @@ export function LoansPage() {
         <IconChevronDown className={history ? 'chevron is-open' : 'chevron'} />
       </button>
       {history ? <ClosedHistory loans={loans} names={names} /> : null}
+      <InfoBox>{it.loans.howToLend}</InfoBox>
 
       {toast ? <Toast text={toast.text} onUndo={() => void undo()} onDismiss={dismiss} /> : null}
     </div>

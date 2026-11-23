@@ -222,6 +222,10 @@ interface Bill {
 }
 ```
 
+### v5
+
+`Envelope`, `Pot` e `MonthlyItem` hanno `icon?: string`: il nome di un'icona Lucide del catalogo `src/domain/symbols.ts` (57 simboli). Nei dati si salva solo il nome. Se manca o non è nel catalogo si usa il predefinito per nome (Trasporti `train-front`, Vita `coffee`, Viaggi `plane`, Affitto `key-round`…), altrimenti `tag`. `db.version(5)` assegna i predefiniti a tutto ciò che non ha un simbolo; lo stesso vale per l'import dei backup.
+
 `db.version(4).stores({})` con `upgrade()`: la busta Casa & Servizi, se impegnata, diventa da spendere. `nextDue` è facoltativo: nessuna migrazione, le bollette esistenti restano a quota fissa finché non si sceglie il mese. Lo stesso vale per l'import dei backup v1–v3.
 
 Nessuna bolletta nel seed: si creano dalla schermata Casa & Servizi (o in un passo dell'onboarding, se non ancora fatto). Le transazioni che toccano bolletta, movimenti, prestiti e salvadanai sono un'unica transazione Dexie.

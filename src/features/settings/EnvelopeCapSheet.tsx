@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { routes } from '../../app/routes';
 import { AmountField } from '../../components/AmountField';
 import { ConfirmPanel } from '../../components/ConfirmPanel';
+import { SymbolPicker, TileEdit } from '../../components/SymbolPicker';
 import { DestinationPicker } from '../../components/DestinationPicker';
 import { BottomSheet } from '../../components/BottomSheet';
 import { IconChevronRight, IconMinus, IconPlus, IconTrash } from '../../components/icons';
@@ -23,12 +24,14 @@ export type CapTarget = {
   showRecurringLink: boolean;
   /** residuo che la busta libera se tolta a mese aperto */
   freed: Cents;
+  /** simbolo attuale (anche non ancora salvato) */
+  symbol: string;
 };
 
 type Props = {
   target: CapTarget | null;
   onClose: () => void;
-  onApply: (id: string, cap: Cents) => void;
+  onApply: (id: string, cap: Cents, icon: string) => void;
   /** senza onRemove (Benvenuto) il pannello non offre "Togli la busta" */
   onRemove?: (id: string, dest: FundsDestination) => void;
   destinations?: DestinationOption[];
@@ -40,18 +43,30 @@ const asText = (c: Cents) => amountText(c);
 
 /** Tetto di una busta: importo esatto da tastiera, ± 5 € per i ritocchi veloci, togli la busta. */
 export function EnvelopeCapSheet({ target, onClose, onApply, onRemove, destinations = [], balances = {} }: Props) {
+  // Il simbolo si cambia dal pannello: tocchi la tile con la matita e scegli. Vale con "Usa questo tetto".
+  const [icon, setIcon] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const symbol = icon ?? target?.symbol ?? 'tag';
+  const close = () => { setIcon(null); onClose(); };
   return (
-    <BottomSheet open={target !== null} onClose={onClose} title={target?.name ?? ''} subtitle={target?.detail ?? undefined}>
+    <BottomSheet
+      open={target !== null}
+      onClose={close}
+      title={target?.name ?? ''}
+      subtitle={target?.detail ?? undefined}
+      lead={target ? <TileEdit symbol={symbol} onClick={() => setPicking(true)} /> : null}
+    >
       {target ? (
         <CapForm
           key={target.id}
           target={target}
           destinations={destinations}
           balances={balances}
-          onApply={(c) => { onApply(target.id, c); onClose(); }}
-          onRemove={onRemove ? (dest) => { onRemove(target.id, dest); onClose(); } : null}
+          onApply={(c) => { onApply(target.id, c, symbol); close(); }}
+          onRemove={onRemove ? (dest) => { onRemove(target.id, dest); close(); } : null}
         />
       ) : null}
+      {target ? <SymbolPicker open={picking} name={target.name} current={symbol} onPick={setIcon} onClose={() => setPicking(false)} /> : null}
     </BottomSheet>
   );
 }
@@ -86,7 +101,7 @@ function CapForm({ target, destinations, balances, onApply, onRemove }: FormProp
         <button type="button" className="stepper__button cap-editor__nudge" aria-label={it.settings.minus5} disabled={(cents ?? 0) <= 0} onClick={() => nudge(-1)}>
           <IconMinus />
         </button>
-        <AmountField id="cap-value" large label={it.settings.stepper(target.name)} value={value} onChange={setValue} invalid={value !== '' && !valid} />
+        <AmountField id="cap-value" large label={it.settings.capPerMonth} value={value} onChange={setValue} invalid={value !== '' && !valid} />
         <button type="button" className="stepper__button cap-editor__nudge" aria-label={it.settings.plus5} onClick={() => nudge(1)}>
           <IconPlus size={18} strokeWidth={2.2} />
         </button>

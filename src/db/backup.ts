@@ -1,6 +1,6 @@
 // Backup in JSON: tutte le tabelle + versione dello schema + data. Logica pura (niente Dexie).
 import type { DataSet } from './fixtures';
-import { migrateEnvelopeV4, migratePeriodV3, migrateSettingsV3, SCHEMA_VERSION } from './schema';
+import { migrateEnvelopeV4, migratePeriodV3, migrateSettingsV3, migrateSettingsV5, SCHEMA_VERSION, withSymbol } from './schema';
 
 export const BACKUP_APP = 'app-finanze';
 
@@ -53,15 +53,15 @@ export function parseBackup(text: string): BackupFile {
   // v1 → v2: prestiti nei due sensi, billId, billsQuota, bollette, salvadanaio Bollette.
   // v2 → v3: voci fisse dell'inizio del mese, quote per voce nei periodi, bollette senza busta.
   const data = {
-    settings: migrateSettingsV3(d.settings),
+    settings: migrateSettingsV5(migrateSettingsV3(d.settings)),
     // v3 → v4: Casa & Servizi da spendere.
-    envelopes: arr(d.envelopes, 'buste').map(migrateEnvelopeV4),
+    envelopes: arr(d.envelopes, 'buste').map(migrateEnvelopeV4).map(withSymbol),
     periods: arr(d.periods, 'periodi').map((p) => migratePeriodV3({ billsQuota: 0, ...p })),
     transactions: arr(d.transactions, 'movimenti').map((t) => ({ billId: null, ...t })),
     recurring: arr(d.recurring, 'abbonamenti'),
     people: arr(d.people, 'persone'),
     loans: arr(d.loans, 'prestiti').map((l) => ({ direction: 'lent', offsets: null, ...l })),
-    pots: pots.some((p) => p.id === 'bills') ? pots : [...pots, { id: 'bills', name: 'Bollette', balance: 0 }],
+    pots: (pots.some((p) => p.id === 'bills') ? pots : [...pots, { id: 'bills', name: 'Bollette', balance: 0 }]).map(withSymbol),
     reconciliations: arr(d.reconciliations, 'confronti'),
     bills: d.bills === undefined ? [] : arr(d.bills, 'bollette').map(({ envelopeId: _unused, ...b }) => b),
   } as unknown as DataSet;

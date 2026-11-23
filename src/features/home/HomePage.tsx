@@ -3,7 +3,8 @@ import { Link, Navigate } from 'react-router-dom';
 import { useBills, useCurrentPeriod, useEnvelopes, useLastReconciliation, useLoans, usePeriods, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { EnvelopeRow } from '../../components/EnvelopeRow';
-import { IconCompare } from '../../components/icons';
+import { IconCalendar, IconCompare } from '../../components/icons';
+import { PageHeader } from '../../components/PageHeader';
 import { PotsCard } from '../../components/PotsCard';
 import { billsAsEnvelope, billsToRegister } from '../../domain/bills';
 import { today } from '../../domain/clock';
@@ -75,9 +76,7 @@ function HeroAmount({ cents }: { cents: number }) {
 function NoPeriod() {
   return (
     <>
-      <header className="hdr">
-        <h1>{it.appName}</h1>
-      </header>
+      <PageHeader title={it.appName} />
       <section className="hero">
         <p className="hero-label">{it.home.noPeriodTitle}</p>
         <p className="hero-text">{it.home.noPeriodText}</p>
@@ -114,10 +113,11 @@ function CurrentPeriod({ period, envelopes, cardReserve, billsRow, bills }: { pe
 
   return (
     <>
-      <header className="hdr">
-        <h1>{period.name}</h1>
-        <p>{it.home.salaryIn(daysUntilSalary(period, now))} · {formatShortRange(period.calendarStart, period.calendarEnd)}</p>
-      </header>
+      <PageHeader
+        title={period.name}
+        chip={{ icon: <IconCalendar />, text: it.home.salaryIn(daysUntilSalary(period, now)) }}
+        muted={formatShortRange(period.calendarStart, period.calendarEnd)}
+      />
 
       <section className="hero" aria-label={it.home.canSpend}>
         <p className="hero-label">{it.home.canSpend}</p>

@@ -26,7 +26,7 @@ export function OnboardingPage() {
 
   return (
     <div className="flow">
-      <p className="screen-subtitle">{it.onboarding.welcome}</p>
+      <span className="pay-chip welcome-chip">{it.onboarding.welcomeStep(step + 1, it.onboarding.steps.length)}</span>
       <StepIndicator steps={it.onboarding.steps} current={step} label={it.onboarding.stepsLabel} />
       {step === 0 ? <EnvelopesStep envelopes={envelopes} onNext={() => setStep(1)} /> : null}
       {step === 1 ? <RecurringStep initial={recurring} envelopes={envelopes} onBack={() => setStep(0)} onNext={() => setStep(2)} /> : null}

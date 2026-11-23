@@ -25,7 +25,7 @@ export function TopBar({ center, right }: Props) {
         <IconClose />
       </button>
       <div className="topbar__center">{center}</div>
-      <div className="topbar__right">{right}</div>
+      {right ? <div className="topbar__right">{right}</div> : null}
     </div>
   );
 }

@@ -30,6 +30,8 @@ export interface Envelope {
   cap: Cents;
   order: number;
   archived: boolean;
+  /** simbolo (nome icona Lucide, vedi domain/symbols.ts); assente = predefinito per nome */
+  icon?: string;
 }
 
 export type LeftoverChoice = 'toSavings' | 'carryOver' | 'half' | 'deficit';
@@ -128,12 +130,16 @@ export interface MonthlyItem {
   /** importo proposto a inizio mese (l'ultimo usato) */
   amount: Cents;
   archived: boolean;
+  /** simbolo (nome icona Lucide); per le voci-salvadanaio è lo stesso del salvadanaio */
+  icon?: string;
 }
 
 export interface Pot {
   id: PotId;
   name: string;
   balance: Cents;
+  /** simbolo (nome icona Lucide) */
+  icon?: string;
 }
 
 export type ReconciliationOutcome = 'ok' | 'calibrated' | 'missingExpense' | 'extraIncome' | 'ignored';

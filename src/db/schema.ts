@@ -2,11 +2,12 @@
 // non modificare mai una versione già rilasciata.
 import Dexie, { type EntityTable } from 'dexie';
 import { DEFAULT_MONTHLY_ITEMS } from '../domain/pots';
+import { symbolFor } from '../domain/symbols';
 import type {
   Bill, Envelope, Loan, Period, Person, Pot, Reconciliation, Recurring, Settings, Transaction,
 } from '../domain/types';
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export type FinanzeDB = Dexie & {
   settings: EntityTable<Settings, 'id'>;
@@ -80,7 +81,26 @@ export function openDatabase(name: string): FinanzeDB {
     .upgrade(async (tx) => {
       await tx.table('envelopes').toCollection().modify((e: Record<string, unknown>) => Object.assign(e, migrateEnvelopeV4(e)));
     });
+  // v5 (redesign v2): simbolo su buste, salvadanai e voci fisse, con i predefiniti per nome.
+  db.version(5)
+    .stores({})
+    .upgrade(async (tx) => {
+      await tx.table('envelopes').toCollection().modify((e: Record<string, unknown>) => Object.assign(e, withSymbol(e)));
+      await tx.table('pots').toCollection().modify((p: Record<string, unknown>) => Object.assign(p, withSymbol(p)));
+      await tx.table('settings').toCollection().modify((s: Record<string, unknown>) => Object.assign(s, migrateSettingsV5(s)));
+    });
   return db;
+}
+
+/** v4 → v5: assegna il simbolo predefinito (per nome) a chi non ce l'ha. */
+export function withSymbol(x: Record<string, unknown>): Record<string, unknown> {
+  if (typeof x.icon === 'string' && x.icon) return x;
+  return { ...x, icon: symbolFor({ name: String(x.name ?? '') }) };
+}
+
+export function migrateSettingsV5(s: Record<string, unknown>): Record<string, unknown> {
+  if (!Array.isArray(s.monthlyItems)) return s;
+  return { ...s, monthlyItems: (s.monthlyItems as Record<string, unknown>[]).map(withSymbol) };
 }
 
 /** v3 → v4: la busta Casa & Servizi, se ancora impegnata, diventa da spendere (usato anche dall'import dei backup). */

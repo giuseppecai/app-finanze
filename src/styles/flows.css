@@ -378,3 +378,5 @@
 }
 
 .switch-row input { width: 22px; height: 22px; accent-color: var(--accent); }
+
+.welcome-chip { align-self: flex-start; }

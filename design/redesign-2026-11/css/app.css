@@ -435,3 +435,168 @@ button.effect:active { background: var(--surface-press); }
 .tbl { font-size: 14px; }
 .tbl td:first-child { white-space: nowrap; }
 .crow .bar, .crow .meta { margin-left: 0; }
+
+/* ==========================================================================
+   Simboli delle buste e dei salvadanai (tile)
+   Una tile = icona Lucide su un quadrato arrotondato. Il colore dice l'AREA,
+   non lo stato: lilla (da spendere), grigio (impegnate), lilla pieno
+   (messi da parte), neutro (carte, backup).
+   ========================================================================== */
+.tile { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex: none;
+  background: var(--tile-spend-bg); color: var(--tile-spend-fg); }
+.tile .ico { width: 19px; height: 19px; stroke-width: 2; }
+.tile-sm { width: 28px; height: 28px; border-radius: 9px; }
+.tile-sm .ico { width: 15px; height: 15px; }
+.tile-l { width: 56px; height: 56px; border-radius: 17px; }
+.tile-l .ico { width: 28px; height: 28px; stroke-width: 1.9; }
+.tile-committed { background: var(--tile-committed-bg); color: var(--tile-committed-fg); }
+.tile-save-1 { background: var(--save-1); color: #fff; }
+.tile-save-2 { background: var(--save-2); color: #fff; }
+.tile-save-3 { background: var(--save-3); color: var(--save-1); }
+.tile-neutral { background: var(--bg); color: var(--text); }
+.env.is-empty .tile { opacity: .55; }
+
+/* Riga busta con simbolo: tile | nome + residuo / barra + "di € X" */
+.env { display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 12px; }
+.env-body { flex: 1; min-width: 0; display: block; }
+.env-bot { display: flex; align-items: center; gap: 10px; margin-top: 7px; }
+.env-bot .bar { flex: 1; margin: 0; }
+.env-bot .env-of { margin: 0; font-size: 12.5px; white-space: nowrap; flex: none; }
+.env.is-low .env-of { color: var(--state-low-text); font-weight: 560; }
+.env.is-empty .env-of { color: var(--state-empty); }
+.env.is-over .env-of { color: var(--state-over-text); font-weight: 560; }
+.crow { display: flex; gap: 12px; align-items: flex-start; }
+.crow .tile { margin-top: 1px; }
+.crow .env-bot .bar { height: var(--bar-h-sm); }
+.crow .env-bot .bar > i { background: var(--committed); }
+.crow .meta { margin: 6px 0 0; }
+.crow:active, .crow.is-pressed { margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
+.srow .k .tile-sm { margin-left: -2px; }
+
+/* Intestazione del mese (Home) */
+.hdr h1.month { margin: 0; font-size: 40px; font-weight: 720; letter-spacing: -0.04em; line-height: 1; }
+.month-meta { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.pay-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px 0 9px; border-radius: var(--r-pill);
+  background: var(--accent-soft); color: var(--accent-press); font-size: 13px; font-weight: 620; white-space: nowrap; }
+.pay-chip .ico { width: 15px; height: 15px; }
+.month-meta .muted { font-size: 13.5px; white-space: nowrap; }
+
+/* Griglia buste dell'inserimento: simbolo accanto al nome */
+.pick .n { display: flex; align-items: center; gap: 5px; }
+.pick .n .ico { width: 15px; height: 15px; flex: none; color: var(--accent); }
+.pick .n .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pick.is-committed .n .ico { color: var(--committed); }
+
+/* Selettore di simboli */
+.sheet.tall { top: 54px; display: flex; flex-direction: column; padding-bottom: 0; }
+.sheet-scroll { flex: 1; overflow-y: auto; margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter) 16px; }
+.sheet-foot { padding: 12px 0 calc(34px + 8px); border-top: 1px solid var(--line-soft); background: var(--surface); }
+.icon-preview { display: flex; align-items: center; gap: 14px; padding: 4px 0 6px; }
+.icon-preview .t { font-size: 20px; font-weight: 650; letter-spacing: -0.02em; }
+.icon-preview .s { font-size: 13.5px; color: var(--text-muted); margin-top: 2px; }
+.icon-group { font-size: 12.5px; font-weight: 620; color: var(--text-muted); margin: 18px 2px 8px; }
+.icon-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.icon-cell { height: 50px; border-radius: 14px; background: var(--bg); display: grid; place-items: center; color: var(--text);
+  transition: background-color var(--t-press), box-shadow var(--t-fast); }
+.icon-cell .ico { width: 22px; height: 22px; }
+.icon-cell:active, .icon-cell.is-pressed { background: var(--surface-press); }
+.icon-cell[aria-checked="true"] { background: var(--accent-soft); color: var(--accent-press); box-shadow: inset 0 0 0 2px var(--accent); }
+.icon-cell.is-suggested { box-shadow: inset 0 0 0 1.5px var(--line); }
+
+/* Tile modificabile (nel pannello della busta) */
+.tile-edit { position: relative; border-radius: 17px; }
+.tile-edit .badge { position: absolute; right: -5px; bottom: -5px; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); color: #fff; display: grid; place-items: center; box-shadow: 0 0 0 3px var(--surface); }
+.tile-edit .badge .ico { width: 13px; height: 13px; stroke-width: 2.4; }
+.tile-edit::after { content: ""; position: absolute; inset: -6px; } /* area di tocco */
+.sheet-head.with-tile { justify-content: flex-start; align-items: center; gap: 14px; }
+.sheet-head.with-tile > div:nth-child(2) { flex: 1; min-width: 0; }
+.sheet-head.with-tile h3 { margin-top: 0; }
+
+/* --- Intestazione uniforme: titolo grande + pillola (tutte le schede) ---- */
+.period-chip { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px 0 11px; border-radius: var(--r-pill);
+  background: var(--surface); font-size: 13px; font-weight: 600; white-space: nowrap; position: relative; box-shadow: inset 0 0 0 1px var(--line); }
+.period-chip .ico, .pay-chip .ico-s { width: 14px; height: 14px; }
+.period-chip::after, button.pay-chip::after { content: ""; position: absolute; inset: -8px -2px; }
+.period-chip:active { background: var(--surface-press); }
+.topbar + .hdr .month { font-size: 36px; }
+
+/* --- Storico ------------------------------------------------------------- */
+.pace-card { padding-bottom: 14px; }
+.pace-card .of { font-size: 15px; font-weight: 500; color: var(--text-on-ink-muted); letter-spacing: 0; }
+.good-chip { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: var(--r-pill);
+  background: rgba(143, 217, 168, .14); color: #A9E5BD; font-size: 12.5px; font-weight: 620; white-space: nowrap; }
+.good-chip .ico { width: 14px; height: 14px; }
+.pace { display: block; width: 100%; height: auto; margin-top: 12px; overflow: visible; }
+.pace .lbl { font: 500 11px var(--font); fill: #A9A0BA; }
+.pace .lbl.strong { fill: #fff; font-weight: 650; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--text-on-ink-muted); margin-top: 6px; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .ln { width: 16px; height: 0; border-top: 2px solid #C9B5EA; display: inline-block; }
+.legend .ln.dash { border-top: 2px dashed #8C84A0; }
+.legend.light { color: var(--text-muted); margin-top: 4px; }
+.legend .sq { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.legend .sq.hatch { background: repeating-linear-gradient(45deg, #3B2363 0 2px, #E9DFF6 2px 5px); box-shadow: inset 0 0 0 1px #3B2363; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 14px; border-radius: 14px; overflow: hidden; background: rgba(255,255,255,.10); }
+.stats > div { background: var(--surface-ink); padding: 10px 10px 9px; display: flex; flex-direction: column; gap: 3px; }
+.stats > div:first-child { padding-left: 2px; }
+.stats .k { font-size: 11.5px; color: var(--text-on-ink-muted); line-height: 1.25; }
+.stats .v { font-size: 16px; font-weight: 650; color: #fff; letter-spacing: -0.01em; }
+.cats { padding: 4px 14px; }
+.cat { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 11px 0; border-top: 1px solid var(--line-soft); }
+.cat:first-child { border-top: 0; }
+.cat:active { background: var(--surface-press); margin: 0 -14px; padding-left: 14px; padding-right: 14px; transform: none; }
+.cat-body { flex: 1; min-width: 0; display: block; }
+.cat-top, .cat-sub { display: flex; justify-content: space-between; gap: 10px; }
+.cat-n { font-weight: 540; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-v { font-weight: 650; }
+.cat-v.over, .over-t { color: var(--state-over-text); }
+.over-t { font-weight: 600; }
+.cat-bar { display: block; height: 6px; border-radius: 3px; background: var(--track); margin: 7px 0 5px; overflow: hidden; }
+.cat-bar i { display: block; height: 100%; border-radius: 3px; background: var(--state-ok); }
+.cat-sub { font-size: 12.5px; color: var(--text-muted); }
+.cat-sub > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.months { display: block; width: 100%; height: auto; overflow: visible; }
+.months .xl { font: 500 12px var(--font); fill: var(--text-muted); }
+.months .xl.on { fill: var(--text); font-weight: 700; }
+.months .cap { font: 650 11.5px var(--font); fill: var(--text); }
+.months .cap.over { fill: var(--state-over-text); }
+.months .ref { font: 500 11px var(--font); fill: var(--text-muted); }
+.months .col { cursor: pointer; }
+.months .col:active path { opacity: .8; }
+.insight { display: flex; gap: 12px; background: var(--surface); border-radius: var(--r-card); padding: 14px 16px 8px; }
+.insight .t { font-weight: 640; }
+.insight .s { font-size: 14px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+.month-seg { margin-bottom: 12px; font-size: 14px; }
+.month-seg button[aria-checked="true"] { background: var(--surface-ink); color: #fff; }
+.stats > div:first-child { padding-left: 10px; }
+.stats { margin-left: -6px; margin-right: -6px; }
+
+/* === Revisione dopo la critica ========================================== */
+/* Gerarchia: il titolo cede il passo al numero della card */
+.hdr h1.month { font-size: var(--fs-title); letter-spacing: -0.035em; }
+.topbar + .hdr .month { font-size: 32px; }
+.hero-amount { letter-spacing: -0.04em; }
+
+/* Card chiara: per schermate con un solo numero (Bollette, Prestiti) */
+.hero.light { background: var(--surface); color: var(--text); }
+.hero.light .hero-label { color: var(--text-muted); }
+.hero.light .hero-amount { font-size: 44px; }
+.hero.light .hero-foot { border-top-color: var(--line-soft); color: var(--text-muted); }
+
+/* Storico, "Dove sono andati": barra di QUOTA, diversa da quella delle buste
+   (niente binario, più sottile, viola medio) così non si confonde con "quanto resta" */
+.cat-bar { height: 4px; background: transparent; border-radius: 2px; }
+.cat-bar i { background: var(--save-2); border-radius: 2px; }
+
+/* Inserimento: casella "Altre" (le buste oltre le 5 più usate) */
+.pick-more { display: flex; flex-direction: column; align-items: flex-start; background: transparent; box-shadow: inset 0 0 0 1.5px var(--line); }
+.pick-more > .ico { width: 16px; height: 16px; color: var(--accent); margin-bottom: 2px; }
+.pick-more .n { color: var(--accent-press); }
+.pick-more .r { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* Aree di tocco ≥ 44 pt per elementi piccoli */
+.check { position: relative; }
+.check::after { content: ""; position: absolute; inset: -9px; }
+.editable { position: relative; }
+.editable::after { content: ""; position: absolute; inset: -4px -2px; }

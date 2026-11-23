@@ -115,6 +115,7 @@
 }
 
 .topbar__center { display: flex; justify-content: center; min-width: 0; }
+.topbar:not(:has(.topbar__right)) { grid-template-columns: var(--touch) 1fr; }
 .topbar__center > .segmented { width: 100%; }
 .topbar__right { display: flex; justify-content: flex-end; }
 
@@ -209,19 +210,29 @@
    Stati (classe is-*): ok · low ambra · empty svuotata · over sforata · committed (grigia) */
 .env-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .env {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   min-height: 64px;
-  padding: 13px 16px 14px;
+  padding: 12px 14px 12px 12px;
   border-radius: var(--r-row);
   background: var(--surface);
   color: var(--text);
   text-decoration: none;
 }
 .env:active { background: var(--surface-press); }
+.env-body { flex: 1; min-width: 0; display: block; }
 .env-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.env-bot { display: flex; align-items: center; gap: 10px; margin-top: 7px; }
+.env-bot .bar { flex: 1; margin: 0; }
+.env-bot .env-of { flex: none; margin: 0; font-size: 12.5px; white-space: nowrap; }
+.is-low .env-of { color: var(--state-low-text); font-weight: 560; }
+.is-empty .env-of { color: var(--state-empty); }
+.is-over .env-of { color: var(--state-over-text); font-weight: 560; }
+.env.is-empty .tile { opacity: .55; }
 .env-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-body); font-weight: 520; }
 .env-amounts { flex: none; white-space: nowrap; }
-.env-amt { font-size: 17px; font-weight: 640; letter-spacing: -0.015em; }
+.env-amt { flex: none; font-size: 17px; font-weight: 640; letter-spacing: -0.015em; white-space: nowrap; }
 .env-of { margin-left: 4px; font-size: var(--fs-small); font-weight: 450; color: var(--text-muted); }
 .env-state { margin-left: 6px; font-size: 12px; font-weight: 600; }
 
@@ -243,11 +254,12 @@
 /* Impegnate: un riquadro compatto, barre grigie sottili, riga di contesto */
 .committed { list-style: none; margin: 0; padding: 2px 16px; border-radius: var(--r-card); background: var(--surface); }
 .committed > li + li { border-top: 1px solid var(--line-soft); }
-.crow { display: block; padding: 12px 0 13px; color: var(--text); text-decoration: none; }
+.crow { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0 13px; color: var(--text); text-decoration: none; }
+.crow .tile { margin-top: 1px; }
 .crow:active { margin: 0 -16px; padding-left: 16px; padding-right: 16px; background: var(--surface-press); }
 .crow .env-top { align-items: center; }
 .crow .env-amt { font-size: var(--fs-amount); }
-.crow .bar { height: var(--bar-h-sm); margin-top: 9px; }
+.crow .bar { height: var(--bar-h-sm); }
 .crow .bar > i { background: var(--committed); }
 .crow.is-over .bar > i { background: var(--state-over); }
 .crow-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; font-size: 12.5px; color: var(--text-muted); }
@@ -385,7 +397,15 @@
 }
 .envelope-picker__option[aria-checked='true'] .envelope-picker__name { color: var(--accent-press); }
 
-.envelope-picker__name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; font-weight: 600; }
+.envelope-picker__name { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; white-space: nowrap; font-size: 14.5px; font-weight: 600; }
+.envelope-picker__name > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.envelope-picker__name svg { flex: none; color: var(--accent); }
+.envelope-picker__option.is-committed .envelope-picker__name svg { color: var(--committed); }
+/* casella "Altre": contorno, icona griglia, i nomi delle buste nascoste */
+.envelope-picker__more { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line); color: var(--accent-press); align-items: flex-start; }
+.envelope-picker__more > svg { color: var(--accent); margin-bottom: 2px; }
+.envelope-picker__more .envelope-picker__name { color: var(--accent-press); }
+.envelope-picker__more .envelope-picker__rest { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .envelope-picker__rest { display: block; margin-top: 1px; font-size: 13px; color: var(--text-muted); white-space: nowrap; }
 .envelope-picker__mini { display: block; height: 4px; margin-top: 7px; border-radius: 2px; background: var(--track); overflow: hidden; }
 .envelope-picker__mini > i { display: block; height: 100%; background: var(--state-ok); }
@@ -582,8 +602,8 @@
   height: 36px;
   flex-shrink: 0;
   border-radius: 11px;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--tile-spend-bg);
+  color: var(--tile-spend-fg);
   display: grid;
   place-items: center;
   font-size: 14px;
@@ -611,3 +631,40 @@
 /* Le opzioni del selettore sono alte 36 px dentro un contenitore da 44: l'area di tocco arriva a 44 */
 .segmented__option::after { content: ""; position: absolute; inset: -4px 0; }
 
+
+/* ── Redesign v2: simboli (tile) e intestazione uniforme ──────────────── */
+
+/* Tile: icona Lucide su un quadrato arrotondato; il colore dice l'area, non lo stato */
+.tile { width: 36px; height: 36px; flex: none; border-radius: 11px; display: grid; place-items: center; background: var(--tile-spend-bg); color: var(--tile-spend-fg); }
+.tile--sm { width: 28px; height: 28px; border-radius: 9px; }
+.tile--l { width: 56px; height: 56px; border-radius: 17px; }
+.tile--committed { background: var(--tile-committed-bg); color: var(--tile-committed-fg); }
+.tile--save-1 { background: var(--save-1); color: #fff; }
+.tile--save-2 { background: var(--save-2); color: #fff; }
+.tile--save-3 { background: var(--save-3); color: var(--save-1); }
+.tile--neutral { background: var(--bg); color: var(--text); }
+
+/* Intestazione: titolo grande + pillola lilla + testo grigio */
+.hdr h1.month { margin: 0; font-size: var(--fs-title); font-weight: 720; letter-spacing: -0.035em; line-height: 1; }
+.hdr--full h1.month { font-size: 32px; }
+.month-meta { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.month-meta__muted { font-size: 13.5px; color: var(--text-muted); white-space: nowrap; }
+.pay-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px 0 9px; border-radius: var(--r-pill); background: var(--accent-soft); color: var(--accent-press); font-size: 13px; font-weight: 620; white-space: nowrap; }
+.pay-chip svg { width: 15px; height: 15px; flex: none; }
+.period-chip { position: relative; display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px 0 11px; border-radius: var(--r-pill); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.period-chip svg { width: 14px; height: 14px; }
+.period-chip::after { content: ""; position: absolute; inset: -8px -2px; }
+.period-chip select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+
+/* Card chiara: schermate con un solo saldo (Bollette, Prestiti) */
+.hero.hero--light { background: var(--surface); color: var(--text); }
+.hero--light .hero__label, .hero--light .hero-label { color: var(--text-muted); }
+.hero--light .hero__status, .hero--light .hero-foot { color: var(--text-muted); border-top-color: var(--line-soft); }
+
+/* Consiglio (Storico, Chiusura): simbolo, titolo, testo, pulsante */
+.insight { display: flex; gap: 12px; padding: 14px 16px; border-radius: var(--r-card); background: var(--surface); }
+.insight__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.insight__title { font-weight: 640; }
+.insight__text { font-size: 14px; line-height: 1.4; color: var(--text-muted); }
+.insight__action { align-self: flex-start; min-height: var(--touch); margin-top: 8px; padding: 0 16px; border: none; border-radius: 12px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); color: var(--text); font-size: 15px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; }
+.insight__action:active { background: var(--surface-press); }

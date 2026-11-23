@@ -1,6 +1,7 @@
 // R10 · Spesa media, R11 · Storico, R6 · Suggerimento tetto.
+import { diffDays } from './dates';
 import type { EnvelopeBalance } from './envelopes';
-import type { Cents, Envelope, Period } from './types';
+import type { Cents, Envelope, ISODate, Period, Transaction } from './types';
 
 type ClosedPeriod = Pick<Period, 'id' | 'allocations' | 'carryIn' | 'leftovers' | 'closedAt'>;
 
@@ -153,4 +154,81 @@ export function recentHistory(
     .reverse()
     .map((p) => historyForClosed(p, envelopeOrder));
   return current ? [...closed, historyForCurrent(current.period, current.balances)] : closed;
+}
+
+// ── Storico (redesign v2): il "racconto del mese" ─────────────────────────────
+
+/**
+ * Spesa cumulata giorno per giorno di un periodo: indice 0 = primo giorno (il 27). Conta come
+ * "Speso" dello Storico: spese meno rimborsi delle buste; prestiti, entrate e bollette pagate dalla
+ * Pocket restano fuori. `days` = durata del periodo.
+ */
+export function cumulativeSpending(
+  txs: readonly Pick<Transaction, 'date' | 'type' | 'amount' | 'envelopeId'>[],
+  calendarStart: ISODate,
+  days: number,
+): Cents[] {
+  const daily = new Array<Cents>(days).fill(0);
+  for (const t of txs) {
+    if (t.envelopeId === null) continue;
+    const i = diffDays(calendarStart, t.date);
+    if (i < 0 || i >= days) continue;
+    if (t.type === 'expense') daily[i]! += t.amount;
+    else if (t.type === 'refund') daily[i]! -= t.amount;
+  }
+  let run = 0;
+  return daily.map((d) => (run += d));
+}
+
+export interface MonthPace {
+  /** giorno del periodo (1 = il 27), per il periodo in corso; per un periodo chiuso = durata */
+  day: number;
+  days: number;
+  /** speso al giorno = speso ÷ giorni passati */
+  perDay: Cents;
+  /** il mese prima allo stesso giorno (null se non ci sono i suoi movimenti) */
+  previousSameDay: Cents | null;
+  /** differenza con il mese prima allo stesso giorno: negativa = hai speso meno */
+  diff: Cents | null;
+  /** media della spesa dei periodi chiusi (fino a 6) */
+  average: Cents | null;
+}
+
+/** Numeri della card "Speso a novembre": ritmo, confronto con il mese prima, media dei 6 mesi. */
+export function monthPace(input: {
+  spent: Cents;
+  day: number;
+  days: number;
+  previous: readonly Cents[] | null;
+  closedSpent: readonly Cents[];
+}): MonthPace {
+  const day = Math.max(1, Math.min(input.day, input.days));
+  const prev = input.previous && input.previous.length > 0 ? input.previous[Math.min(day, input.previous.length) - 1] ?? null : null;
+  const closed = input.closedSpent.slice(-6);
+  return {
+    day,
+    days: input.days,
+    perDay: Math.round(input.spent / day),
+    previousSameDay: prev,
+    diff: prev === null ? null : input.spent - prev,
+    average: closed.length === 0 ? null : Math.round(closed.reduce((s, v) => s + v, 0) / closed.length),
+  };
+}
+
+export interface WhereRow extends HistoryRow {
+  /** quota sul totale speso, 0–1 */
+  share: number;
+  /** larghezza della barra: speso ÷ speso della busta più grande */
+  scale: number;
+}
+
+/** "Dove sono andati": buste dalla più spesa, con la quota sul totale. */
+export function whereItWent(rows: readonly HistoryRow[]): WhereRow[] {
+  const spent = rows.filter((r) => r.spent > 0);
+  const total = spent.reduce((s, r) => s + r.spent, 0);
+  const max = spent.reduce((m, r) => Math.max(m, r.spent), 0);
+  return spent
+    .slice()
+    .sort((a, b) => b.spent - a.spent)
+    .map((r) => ({ ...r, share: total > 0 ? r.spent / total : 0, scale: max > 0 ? r.spent / max : 0 }));
 }

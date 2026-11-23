@@ -4,6 +4,7 @@ import { useCurrentPeriod, useEnvelopes, usePeriods, usePeriodTransactions, useR
 import { routes } from '../../app/routes';
 import { InfoBox } from '../../components/InfoBox';
 import { MonthHeader } from '../../components/MonthHeader';
+import { Tile } from '../../components/Symbol';
 import { OptionList } from '../../components/OptionList';
 import { StepIndicator } from '../../components/StepIndicator';
 import { TopBar } from '../../components/TopBar';
@@ -126,12 +127,16 @@ function Closing({ period, envelopes, periods, recurring, txs }: Props) {
         }
         if (envelope.cap >= s.suggestedCap) return null;
         return (
-          <InfoBox key={s.envelopeId} tone="tip">
-            <p>{it.closing.suggestion(envelope.name, s.overMonths, s.months, formatEuro(roundToEuro(s.averageOver)))}</p>
-            <button type="button" className="info-box__action" onClick={() => void raiseCap(envelope, s.suggestedCap)}>
-              {it.closing.raiseCap(formatEuro(s.suggestedCap))}
-            </button>
-          </InfoBox>
+          <div key={s.envelopeId} className="insight">
+            <Tile symbol="lightbulb" />
+            <div className="insight__body">
+              <p className="insight__title">{it.history.oftenOver(envelope.name)}</p>
+              <p className="insight__text">{it.history.oftenOverText(s.overMonths, s.months, formatEuro(roundToEuro(s.averageOver)), formatEuro(s.suggestedCap))}</p>
+              <button type="button" className="insight__action" onClick={() => void raiseCap(envelope, s.suggestedCap)}>
+                {it.closing.raiseCap(formatEuro(s.suggestedCap))}
+              </button>
+            </div>
+          </div>
         );
       })}
 

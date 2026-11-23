@@ -63,6 +63,12 @@
   --save-2:         #8662C0; /* secondo salvadanaio */
   --save-3:         #B9A0DF; /* terzo salvadanaio (sempre con legenda e importo) */
 
+  /* --- Simboli (tile delle buste): il colore dice l'area, non lo stato --- */
+  --tile-spend-bg:     #EEE6F8; /* da spendere: lilla chiaro */
+  --tile-spend-fg:     #5A3390; /* icona viola · 7,6:1 sul lilla */
+  --tile-committed-bg: #ECEAE4; /* impegnate: grigio, come le barre */
+  --tile-committed-fg: #5E5D57;
+
   /* --- Soldi in entrata (rimborsi, interessi, restituzioni) --------------- */
   --money-in:       #1C7A4D; /* "+ € 1,12" · 5,3:1 su bianco */
 
@@ -73,9 +79,9 @@
   /* --- Tipografia ---------------------------------------------------------- */
   --font: 'Geist', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
 
-  --fs-hero:     44px;  /* "Puoi ancora spendere" · 650, tracking −0.035em */
+  --fs-hero:     52px;  /* "Puoi ancora spendere": il numero più grande dell'app · 650 */
   --fs-keypad:   56px;  /* importo nel tastierino · 650 */
-  --fs-title:    28px;  /* titolo di schermata · 650, −0.02em */
+  --fs-title:    34px;  /* titolo di schermata (scheda) · 720, −0.035em; 32 px sotto la X */
   --fs-section:  19px;  /* titolo di sezione · 620 */
   --fs-amount-l: 22px;  /* importi in card · 620 */
   --fs-body:     16px;  /* testo di riga · 500 */

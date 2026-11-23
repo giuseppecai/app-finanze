@@ -11,6 +11,8 @@ export interface PotLine {
   id: string;
   name: string;
   balance: Cents;
+  /** simbolo del salvadanaio (o della sua voce fissa) */
+  icon?: string;
 }
 
 /**
@@ -20,7 +22,10 @@ export interface PotLine {
  */
 export function potLines(pots: readonly Pot[], items: readonly MonthlyItem[]): PotLine[] {
   const byId = new Map(pots.map((p) => [p.id, p]));
-  const line = (id: string, fallback: string): PotLine => ({ id, name: byId.get(id)?.name ?? fallback, balance: byId.get(id)?.balance ?? 0 });
+  const line = (id: string, fallback: string): PotLine => {
+    const icon = byId.get(id)?.icon ?? items.find((i) => i.id === id)?.icon;
+    return { id, name: byId.get(id)?.name ?? fallback, balance: byId.get(id)?.balance ?? 0, ...(icon ? { icon } : {}) };
+  };
   const fromItems = items
     .filter((i) => i.kind === 'pot' && (!i.archived || (byId.get(i.id)?.balance ?? 0) !== 0))
     .map((i) => ({ ...line(i.id, i.name), name: i.name }));

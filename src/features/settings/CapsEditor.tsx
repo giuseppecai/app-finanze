@@ -4,6 +4,8 @@ import { db } from '../../db/database';
 import { setEnvelopeCaps } from '../../db/repositories';
 import { formatEuro } from '../../domain/money';
 import { capsTotal } from '../../domain/opening';
+import { symbolFor } from '../../domain/symbols';
+import { Tile } from '../../components/Symbol';
 import type { Envelope } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { EnvelopeCapSheet, type CapTarget } from './EnvelopeCapSheet';
@@ -33,8 +35,9 @@ export function CapsEditor({ envelopes }: Props) {
                   <button
                     type="button"
                     className="list-row list-row--button"
-                    onClick={() => setTarget({ id: e.id, name: e.name, cap: e.cap, detail: null, recurringCount: 0, showRecurringLink: false, freed: 0 })}
+                    onClick={() => setTarget({ id: e.id, name: e.name, cap: e.cap, detail: null, recurringCount: 0, showRecurringLink: false, freed: 0, symbol: symbolFor(e) })}
                   >
+                    <Tile symbol={symbolFor(e)} />
                     <span className="list-row__text"><span className="list-row__title">{e.name}</span></span>
                     <span className="list-row__value">{formatEuro(e.cap)}</span>
                     <IconChevronRight className="list-row__chevron" />
@@ -57,7 +60,7 @@ export function CapsEditor({ envelopes }: Props) {
       <EnvelopeCapSheet
         target={target}
         onClose={() => setTarget(null)}
-        onApply={(id, cap) => void setEnvelopeCaps(db, { [id]: cap })}
+        onApply={(id, cap, icon) => void Promise.all([setEnvelopeCaps(db, { [id]: cap }), db.envelopes.update(id, { icon })])}
       />
     </>
   );

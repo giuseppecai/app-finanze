@@ -1,5 +1,6 @@
 // Dati iniziali al primo avvio (docs/03-modello-dati.md § Dati iniziali). Solo dati.
 import { DEFAULT_MONTHLY_ITEMS } from '../domain/pots';
+import { withDefaultSymbol } from '../domain/symbols';
 import type { DataSet } from './fixtures';
 
 /**
@@ -30,11 +31,11 @@ export function buildSeed(newId: () => string, now: string): DataSet {
       id: 'settings',
       periodStartDay: 27,
       cardReserve: null,
-      monthlyItems: DEFAULT_MONTHLY_ITEMS.map((i) => ({ ...i })),
+      monthlyItems: DEFAULT_MONTHLY_ITEMS.map((i) => withDefaultSymbol({ ...i })),
       lastEnvelopeId: null,
       onboardingDone: false,
     },
-    envelopes,
+    envelopes: envelopes.map(withDefaultSymbol),
     periods: [],
     transactions: [],
     recurring,
@@ -45,7 +46,7 @@ export function buildSeed(newId: () => string, now: string): DataSet {
       { id: 'travel', name: 'Viaggi', balance: 0 },
       { id: 'gifts', name: 'Regali & Imprevisti', balance: 0 },
       { id: 'bills', name: 'Bollette', balance: 0 },
-    ],
+    ].map(withDefaultSymbol),
     reconciliations: [],
     bills: [],
   };

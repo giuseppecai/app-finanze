@@ -59,15 +59,21 @@
   --money-in-soft:  #E4F1EA;
   --done-text:      #155E3B; /* chip "fatto" */
 
+  /* --- Simboli (tile): il colore dice l'area, non lo stato -------------- */
+  --tile-spend-bg:     #EEE6F8;
+  --tile-spend-fg:     #5A3390; /* 7,6:1 sul lilla */
+  --tile-committed-bg: #ECEAE4;
+  --tile-committed-fg: #5E5D57;
+
   /* --- Avvisi non gravi: neutri con icona -------------------------------- */
   --info-bg:        #ECEAE4;
   --info-text:      #3E3D39;
 
   /* --- Tipografia: Geist, un solo file variabile self-hosted -------------- */
   --font: 'Geist', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
-  --fs-hero:     44px;
+  --fs-hero:     52px; /* Puoi ancora spendere: il numero più grande dell'app */
   --fs-keypad:   56px;
-  --fs-title:    28px;
+  --fs-title:    34px; /* titolo di schermata; 32 sotto la X */
   --fs-section:  19px;
   --fs-amount-l: 22px;
   --fs-body:     16px;

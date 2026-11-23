@@ -134,3 +134,30 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
 .primary-button--danger { background: var(--surface-ink); }
 .primary-button--danger:active:not(:disabled) { background: #3A2C50; }
 .confirm-panel .sheet-actions__button { flex: none; }
+
+/* Pannello con simbolo a sinistra del titolo */
+.sheet__head--lead { justify-content: flex-start; align-items: center; gap: 14px; }
+.sheet__head--lead .sheet__titles { flex: 1; min-width: 0; }
+.sheet__head--lead .sheet__title { margin-top: 0; }
+
+/* Simbolo modificabile: tile grande con la matita */
+.tile-edit { position: relative; flex: none; padding: 0; border: none; background: transparent; border-radius: 17px; cursor: pointer; }
+.tile-edit::after { content: ""; position: absolute; inset: -6px; }
+.tile-edit__badge { position: absolute; right: -5px; bottom: -5px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; box-shadow: 0 0 0 3px var(--surface); }
+
+/* Selettore dei simboli: pannello alto, griglia che scorre, pulsante fisso in basso */
+.sheet--tall { height: calc(100dvh - var(--safe-top) - 54px); }
+.sheet--tall .sheet__body { height: 100%; padding-bottom: 0; }
+.icon-preview { display: flex; align-items: center; gap: 14px; padding: 2px 0 4px; }
+.icon-preview__name { font-size: 20px; font-weight: 650; letter-spacing: -0.02em; }
+.icon-preview__note { margin-top: 2px; font-size: 13.5px; color: var(--text-muted); }
+.icon-groups { flex: 1; min-height: 0; overflow-y: auto; margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter) 16px; }
+.icon-group { margin: 18px 2px 8px; font-size: 12.5px; font-weight: 620; color: var(--text-muted); }
+.icon-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.icon-cell { height: 50px; border: none; border-radius: 14px; background: var(--bg); color: var(--text); display: grid; place-items: center; transition: background-color var(--t-press), box-shadow var(--t-fast); }
+.icon-cell:active { background: var(--surface-press); }
+.icon-cell[aria-checked='true'] { background: var(--accent-soft); color: var(--accent-press); box-shadow: inset 0 0 0 2px var(--accent); }
+.icon-cell.is-suggested { box-shadow: inset 0 0 0 1.5px var(--line); }
+.sheet-foot { padding: 12px 0 calc(var(--safe-bottom) + 16px); border-top: 1px solid var(--line-soft); background: var(--surface); }
+.sheet-foot .primary-button { width: 100%; }
+.suggest-note { display: flex; align-items: center; gap: 6px; margin-top: -4px; font-size: 13px; color: var(--text-muted); }

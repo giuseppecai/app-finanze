@@ -13,6 +13,8 @@ import { deleteMonthlyItem, newId, saveMonthlyItem } from '../../db/repositories
 import { parseEuro, amountText } from '../../domain/money';
 import type { MonthlyItem } from '../../domain/types';
 import { it } from '../../i18n/it';
+import { SymbolPicker, TileEdit } from '../../components/SymbolPicker';
+import { suggestSymbol, symbolFor } from '../../domain/symbols';
 
 type Props = {
   /** 'new' per una voce nuova, null = chiuso */
@@ -33,6 +35,10 @@ export function MonthlyItemSheet({ target, onClose }: Props) {
 
 function ItemForm({ item, onDone }: { item: MonthlyItem | null; onDone: () => void }) {
   const [name, setName] = useState(item?.name ?? '');
+  // simbolo: quello salvato; per una voce nuova si suggerisce dal nome finché non lo scegli a mano
+  const [manualIcon, setManualIcon] = useState<string | null>(item ? symbolFor(item) : null);
+  const [picking, setPicking] = useState(false);
+  const icon = manualIcon ?? suggestSymbol(name);
   const [kind, setKind] = useState<MonthlyItem['kind']>(item?.kind ?? 'payment');
   const [amount, setAmount] = useState(item ? text(item.amount) : '');
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +75,7 @@ function ItemForm({ item, onDone }: { item: MonthlyItem | null; onDone: () => vo
       return;
     }
     try {
-      await saveMonthlyItem(db, { id: item?.id ?? newId(), name, kind, amount: cents, archived });
+      await saveMonthlyItem(db, { id: item?.id ?? newId(), name, kind, amount: cents, archived, icon });
       onDone();
     } catch (e) {
       console.error(e);
@@ -95,10 +101,14 @@ function ItemForm({ item, onDone }: { item: MonthlyItem | null; onDone: () => vo
 
   return (
     <form className="recurring-form" onSubmit={(e) => { e.preventDefault(); void save(); }}>
-      <div className="entry__section">
-        <label htmlFor="item-name" className="entry__label">{it.items.name}</label>
-        <input id="item-name" className="text-input" value={name} placeholder={it.items.namePlaceholder} onChange={(e) => setName(e.target.value)} />
+      <div className="new-envelope__name">
+        <TileEdit symbol={icon} onClick={() => setPicking(true)} />
+        <div className="entry__section">
+          <label htmlFor="item-name" className="entry__label">{it.items.name}</label>
+          <input id="item-name" className="text-input" value={name} placeholder={it.items.namePlaceholder} onChange={(e) => setName(e.target.value)} />
+        </div>
       </div>
+      <SymbolPicker open={picking} name={name.trim()} current={icon} suggested={suggestSymbol(name)} onPick={setManualIcon} onClose={() => setPicking(false)} />
       {/* Il tipo non cambia dopo la creazione: un salvadanaio ha già i suoi soldi. */}
       {item ? null : (
         <div className="recurring-form__card">

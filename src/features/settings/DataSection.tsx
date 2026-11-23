@@ -5,11 +5,11 @@ import { DestinationPicker } from '../../components/DestinationPicker';
 import { AmountField } from '../../components/AmountField';
 import { BottomSheet } from '../../components/BottomSheet';
 import { ConfirmPanel } from '../../components/ConfirmPanel';
-import { IconTrash, IconCard, IconChevronRight, IconDownload, IconPiggyBank, IconPlus, IconUpload } from '../../components/icons';
+import { IconTrash, IconChevronRight, IconDownload, IconPlus, IconUpload } from '../../components/icons';
 import { BackupError, backupFileName, buildBackup, parseBackup } from '../../db/backup';
 import { db } from '../../db/database';
 import { readAll, replaceAll } from '../../db/dataset';
-import { addPot, newId, removePot, renamePot, saveMonthlyItem, setCardReserve, setPotBalances, updateSettings } from '../../db/repositories';
+import { addPot, newId, removePot, renamePot, saveMonthlyItem, setCardReserve, setPotBalances, updateSettings, setPotIcon } from '../../db/repositories';
 import { nowISO, today } from '../../domain/clock';
 import { formatShortDate, localISODate } from '../../domain/dates';
 import { formatEuro, parseEuro, amountText } from '../../domain/money';
@@ -18,12 +18,15 @@ import { potLines } from '../../domain/pots';
 import { DEFAULT_DESTINATION, FIXED_POTS, fundsDestinations, UNASSIGNED, type DestinationOption, type FundsDestination } from '../../domain/settings';
 import type { Cents, Settings } from '../../domain/types';
 import { it } from '../../i18n/it';
+import { Tile } from '../../components/Symbol';
+import { SymbolPicker, TileEdit } from '../../components/SymbolPicker';
+import { suggestSymbol, symbolFor } from '../../domain/symbols';
 
 const text = (c: number) => amountText(c);
 
 /** Quello che si corregge: un salvadanaio (nome, saldo), uno nuovo, o la riserva delle carte. */
 type Editing =
-  | { kind: 'pot'; id: string; name: string; value: Cents }
+  | { kind: 'pot'; id: string; name: string; value: Cents; icon: string }
   | { kind: 'newPot' }
   | { kind: 'reserve'; value: Cents | null };
 
@@ -42,9 +45,12 @@ export function PotsGroup({ settings }: { settings: Settings }) {
       <ul className="card list-card list">
         {lines.map((p) => (
           <li key={p.id}>
-            <button type="button" className="list-row list-row--button" onClick={() => setEditing({ kind: 'pot', id: p.id, name: p.name, value: p.balance })}>
-              <span className="list-row__lead" aria-hidden="true"><IconPiggyBank /></span>
-              <span className="list-row__text"><span className="list-row__title">{p.name}</span></span>
+            <button type="button" className="list-row list-row--button" onClick={() => setEditing({ kind: 'pot', id: p.id, name: p.name, value: p.balance, icon: symbolFor(p) })}>
+              <Tile symbol={symbolFor(p)} />
+              <span className="list-row__text">
+                <span className="list-row__title">{p.name}</span>
+                <span className="list-row__detail">{p.id === 'bills' ? it.settings.pocketBalance : it.settings.balanceLabel}</span>
+              </span>
               <span className={p.balance < 0 ? 'list-row__value is-over' : 'list-row__value'}>{formatEuro(p.balance)}</span>
               <IconChevronRight className="list-row__chevron" />
             </button>
@@ -52,7 +58,7 @@ export function PotsGroup({ settings }: { settings: Settings }) {
         ))}
         <li>
           <button type="button" className="list-row list-row--button" onClick={() => setEditing({ kind: 'reserve', value: settings.cardReserve })}>
-            <span className="list-row__lead" aria-hidden="true"><IconCard /></span>
+            <Tile symbol="credit-card" />
             <span className="list-row__text">
               <span className="list-row__title">{it.settings.reserve}</span>
               <span className="list-row__detail">{it.settings.reserveDetail}</span>
@@ -94,6 +100,9 @@ function NewPotForm({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState('');
   const [value, setValue] = useState('0');
   const [monthly, setMonthly] = useState('');
+  const [manualIcon, setManualIcon] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const icon = manualIcon ?? suggestSymbol(name);
   const [error, setError] = useState<string | null>(null);
   const cents = parseEuro(value);
   const monthlyCents = monthly.trim() === '' ? 0 : parseEuro(monthly);
@@ -108,10 +117,10 @@ function NewPotForm({ onDone }: { onDone: () => void }) {
       if (monthlyCents > 0) {
         // Con un giroconto mensile diventa anche una voce fissa dell'inizio del mese (stesso id).
         const id = newId();
-        await saveMonthlyItem(db, { id, name, kind: 'pot', amount: monthlyCents, archived: false });
+        await saveMonthlyItem(db, { id, name, kind: 'pot', amount: monthlyCents, archived: false, icon });
         if (cents !== 0) await setPotBalances(db, { [id]: cents });
       } else {
-        await addPot(db, name, cents);
+        await addPot(db, name, cents, icon);
       }
       onDone();
     } catch (e) {
@@ -122,10 +131,14 @@ function NewPotForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form className="recurring-form" onSubmit={(e) => { e.preventDefault(); void save(); }}>
-      <div className="entry__section">
-        <label htmlFor="pot-name" className="entry__label">{it.settings.potName}</label>
-        <input id="pot-name" className="text-input" value={name} placeholder={it.settings.potNamePlaceholder} onChange={(e) => setName(e.target.value)} />
+      <div className="new-envelope__name">
+        <TileEdit symbol={icon} onClick={() => setPicking(true)} />
+        <div className="entry__section">
+          <label htmlFor="pot-name" className="entry__label">{it.settings.potName}</label>
+          <input id="pot-name" className="text-input" value={name} placeholder={it.settings.potNamePlaceholder} onChange={(e) => setName(e.target.value)} />
+        </div>
       </div>
+      <SymbolPicker open={picking} name={name.trim()} current={icon} suggested={suggestSymbol(name)} onPick={setManualIcon} onClose={() => setPicking(false)} />
       <AmountField id="pot-balance" label={it.settings.potBalance} value={value} onChange={setValue} invalid={value !== '' && cents === null} />
       <AmountField id="pot-monthly" label={it.settings.potMonthly} value={monthly} placeholder="0" onChange={setMonthly} invalid={monthlyCents === null} />
       <p className="muted-note">{it.settings.potBalanceHint}</p>
@@ -148,6 +161,8 @@ function BalanceForm({ editing, destinations, balances, onDone }: BalanceFormPro
   const [dest, setDest] = useState<FundsDestination>(DEFAULT_DESTINATION);
   const removable = editing.kind === 'pot' && !FIXED_POTS.includes(editing.id);
   const [name, setName] = useState(editing.kind === 'pot' ? editing.name : '');
+  const [icon, setIcon] = useState(editing.kind === 'pot' ? editing.icon : 'credit-card');
+  const [picking, setPicking] = useState(false);
   const [value, setValue] = useState(editing.value === null ? '' : text(editing.value));
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -165,6 +180,7 @@ function BalanceForm({ editing, destinations, balances, onDone }: BalanceFormPro
     if (editing.kind === 'pot') {
       await setPotBalances(db, { [editing.id]: cents! });
       if (removable && name.trim() !== editing.name) await renamePot(db, editing.id, name);
+      if (icon !== editing.icon) await setPotIcon(db, editing.id, icon);
     } else await setCardReserve(db, empty ? null : cents);
     onDone();
   }
@@ -201,10 +217,16 @@ function BalanceForm({ editing, destinations, balances, onDone }: BalanceFormPro
 
   return (
     <form className="recurring-form" onSubmit={(e) => { e.preventDefault(); void save(); }}>
-      {removable ? (
-        <div className="entry__section">
-          <label htmlFor="pot-rename" className="entry__label">{it.settings.potName}</label>
-          <input id="pot-rename" className="text-input" value={name} onChange={(e) => setName(e.target.value)} />
+      {editing.kind === 'pot' ? (
+        <div className="new-envelope__name">
+          <TileEdit symbol={icon} onClick={() => setPicking(true)} />
+          {removable ? (
+            <div className="entry__section">
+              <label htmlFor="pot-rename" className="entry__label">{it.settings.potName}</label>
+              <input id="pot-rename" className="text-input" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+          ) : <p className="list-row__title">{editing.name}</p>}
+          <SymbolPicker open={picking} name={name.trim()} current={icon} onPick={setIcon} onClose={() => setPicking(false)} />
         </div>
       ) : null}
       <AmountField

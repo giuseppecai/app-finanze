@@ -13,6 +13,7 @@ import { MovementsPage } from './features/movements/MovementsPage';
 import { OnboardingPage } from './features/onboarding/OnboardingPage';
 import { OpeningPage } from './features/opening/OpeningPage';
 import { RecurringPage } from './features/recurring/RecurringPage';
+import { BackupPage } from './features/settings/BackupPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 
 export function App() {
@@ -33,6 +34,7 @@ export function App() {
           <Route path={routes.recurring} element={<RecurringPage />} />
           <Route path={routes.onboarding} element={<OnboardingPage />} />
           <Route path={routes.bills} element={<BillsPage />} />
+          <Route path={routes.backup} element={<BackupPage />} />
           <Route path={routes.casa} element={<Navigate to={routes.bills} replace />} />
         </Route>
         <Route path="*" element={<Navigate to={routes.home} replace />} />

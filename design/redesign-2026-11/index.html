@@ -39,7 +39,9 @@ figcaption button,figcaption a{height:34px;padding:0 12px;border-radius:999px;bo
 <figcaption><span class="n">12</span>Pannello Confronta<button data-full>Pagina intera</button></figcaption></figure><figure><div class="phone"><iframe src="schermate/13-pannello-tetto-busta.html" title="Pannello tetto busta" loading="lazy"></iframe></div>
 <figcaption><span class="n">13</span>Pannello tetto busta<button data-full>Pagina intera</button></figcaption></figure><figure><div class="phone"><iframe src="schermate/14-pannello-registra-bolletta.html" title="Pannello bolletta" loading="lazy"></iframe></div>
 <figcaption><span class="n">14</span>Pannello bolletta<button data-full>Pagina intera</button></figcaption></figure><figure><div class="phone"><iframe src="schermate/15-conferma-togli-salvadanaio.html" title="Conferma: togli salvadanaio" loading="lazy"></iframe></div>
-<figcaption><span class="n">15</span>Conferma: togli salvadanaio<button data-full>Pagina intera</button></figcaption></figure></main><script>
+<figcaption><span class="n">15</span>Conferma: togli salvadanaio<button data-full>Pagina intera</button></figcaption></figure><figure><div class="phone"><iframe src="schermate/16-pannello-scegli-simbolo.html" title="Pannello: scegli il simbolo" loading="lazy"></iframe></div>
+<figcaption><span class="n">16</span>Pannello: scegli il simbolo<button data-full>Pagina intera</button></figcaption></figure><figure><div class="phone"><iframe src="schermate/17-pannello-nuova-busta.html" title="Pannello: nuova busta" loading="lazy"></iframe></div>
+<figcaption><span class="n">17</span>Pannello: nuova busta<button data-full>Pagina intera</button></figcaption></figure></main><script>
 document.querySelectorAll('[data-full]').forEach(b=>b.addEventListener('click',()=>{
   const ph=b.closest('figure').querySelector('.phone'),f=ph.querySelector('iframe');
   if(ph.classList.toggle('full')){const h=f.contentDocument.documentElement.scrollHeight;f.style.height=Math.max(844,h)+'px';b.textContent='Schermo 390 × 844'}

@@ -7,6 +7,10 @@ type Props = {
   onClose: () => void;
   title: string;
   subtitle?: ReactNode;
+  /** elemento a sinistra del titolo (es. il simbolo modificabile della busta) */
+  lead?: ReactNode;
+  /** pannello alto quasi tutto lo schermo, con il contenuto che scorre (selettore dei simboli) */
+  tall?: boolean;
   children: ReactNode;
 };
 
@@ -14,7 +18,7 @@ type Props = {
  * Pannello dal basso su `<dialog>` modale: il browser gestisce focus, tasto Esc e velo.
  * Tocco sul velo o sulla X → chiude. Mentre è aperto la pagina sotto non scorre.
  */
-export function BottomSheet({ open, onClose, title, subtitle, children }: Props) {
+export function BottomSheet({ open, onClose, title, subtitle, lead, tall = false, children }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -32,10 +36,13 @@ export function BottomSheet({ open, onClose, title, subtitle, children }: Props)
   return (
     <dialog
       ref={ref}
-      className="sheet"
+      className={tall ? 'sheet sheet--tall' : 'sheet'}
       aria-labelledby="sheet-title"
-      onClose={() => {
-        document.documentElement.classList.remove('sheet-open');
+      onClose={(e) => {
+        // In React l'evento "close" di un pannello dentro un altro risale anche al pannello esterno:
+        // chiude solo quello che si è chiuso davvero.
+        if (e.target !== e.currentTarget) return;
+        if (!document.querySelector('dialog.sheet[open]')) document.documentElement.classList.remove('sheet-open');
         onClose();
       }}
       onClick={(e) => {
@@ -44,7 +51,8 @@ export function BottomSheet({ open, onClose, title, subtitle, children }: Props)
       }}
     >
       <div className="sheet__body">
-        <div className="sheet__head">
+        <div className={lead ? 'sheet__head sheet__head--lead' : 'sheet__head'}>
+          {lead}
           <div className="sheet__titles">
             <h2 id="sheet-title" className="sheet__title">{title}</h2>
             {subtitle ? <p className="sheet__subtitle">{subtitle}</p> : null}

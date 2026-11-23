@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyRepayment, debtors, openLoansOf, owedBy, totalOwed, undoRepayment } from '../loans';
 import { averageSpending, capSuggestion, historyForClosed, historyForCurrent } from '../stats';
 import { summarizePeriod } from '../envelopes';
-import { preselectedEnvelope, sortEnvelopesForPicker, validateEntry } from '../entry';
+import { pickerGrid, preselectedEnvelope, sortEnvelopesForPicker, validateEntry } from '../entry';
 import type { Loan } from '../types';
 import { buildDemoData, DEMO_TODAY, ENV } from '../../db/fixtures';
 
@@ -175,5 +175,27 @@ describe('R11 · ultimi 6 mesi', () => {
     expect(recentHistory(data.periods, data.envelopes.map((e) => e.id), null).map((p) => p.periodId)).toEqual([
       '2026-06', '2026-07', '2026-08', '2026-09', '2026-10',
     ]);
+  });
+});
+
+describe('Inserimento · griglia a 6 caselle', () => {
+  const env = (id: string, order: number) => ({ id, name: id, shortName: id, kind: 'spendable' as const, cap: 100, order, archived: false });
+  const seven = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(env);
+  it('con 5 buste o meno si vedono tutte, senza "Altre"', () => {
+    expect(pickerGrid(seven.slice(0, 5), 'a')).toEqual({ visible: seven.slice(0, 5), hidden: [] });
+  });
+  it('demo (6 buste): le 5 da spendere + "Altre" con Rate', () => {
+    const sorted = sortEnvelopesForPicker(data.envelopes, data.transactions.filter((t) => t.periodId === '2026-11'), DEMO_TODAY);
+    expect(pickerGrid(sorted, ENV.vita).hidden.map((e) => e.shortName)).toEqual(['Rate']);
+  });
+  it('con più di 5: le prime 5 + "Altre" con le restanti', () => {
+    const g = pickerGrid(seven, 'b');
+    expect(g.visible.map((e) => e.id)).toEqual(['a', 'b', 'c', 'd', 'e']);
+    expect(g.hidden.map((e) => e.id)).toEqual(['f', 'g']);
+  });
+  it('la busta scelta fuori dalle prime 5 prende il posto della quinta', () => {
+    const g = pickerGrid(seven, 'g');
+    expect(g.visible.map((e) => e.id)).toEqual(['a', 'b', 'c', 'd', 'g']);
+    expect(g.hidden.map((e) => e.id)).toEqual(['e', 'f']);
   });
 });

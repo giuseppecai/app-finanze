@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useBills, useCurrentPeriod, useEnvelopes, usePeriods, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { BottomSheet } from '../../components/BottomSheet';
-import { IconChevronRight, IconCompare, IconPlus } from '../../components/icons';
-import { ScreenHeader } from '../../components/ScreenHeader';
+import { IconChevronRight, IconCompare, IconEnvelopes, IconPlus, IconSparkles } from '../../components/icons';
+import { PageHeader } from '../../components/PageHeader';
+import { Tile } from '../../components/Symbol';
+import { SymbolPicker, TileEdit } from '../../components/SymbolPicker';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { Stepper } from '../../components/Stepper';
 import { db } from '../../db/database';
@@ -15,6 +17,7 @@ import { nextOpeningId } from '../../domain/periods';
 import { formatEuro } from '../../domain/money';
 import { mainRecurringEnvelope } from '../../domain/recurring';
 import { potLines } from '../../domain/pots';
+import { suggestSymbol, symbolFor } from '../../domain/symbols';
 import {
   allocationAfterRemoval, DEFAULT_DESTINATION, fundsDestinations, planCapsChange, recurringOnEnvelope, UNASSIGNED,
   type CapsChange, type DestinationOption, type FundsDestination,
@@ -22,11 +25,13 @@ import {
 import { averageSpending } from '../../domain/stats';
 import type { Bill, Cents, Envelope, EnvelopeKind, MonthlyItem, Period, Recurring, Settings, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
-import { BackupGroup, PotsGroup } from './DataSection';
+import { PotsGroup } from './DataSection';
+import { daysAgo } from '../../domain/movements';
+import { localISODate } from '../../domain/dates';
 import { EnvelopeCapSheet, type CapTarget } from './EnvelopeCapSheet';
 import { MonthlyItemSheet } from './MonthlyItemSheet';
 
-type NewEnvelope = { id: string; name: string; shortName: string; kind: EnvelopeKind; cap: Cents };
+type NewEnvelope = { id: string; name: string; shortName: string; kind: EnvelopeKind; cap: Cents; icon: string };
 
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
@@ -50,7 +55,11 @@ export function SettingsPage() {
   const lines = potLines(pots, settings.monthlyItems);
   return (
     <div className="settings">
-      <ScreenHeader title={it.settings.title} subtitle={it.settings.subtitle} />
+      <PageHeader
+        title={it.settings.title}
+        chip={{ icon: <IconEnvelopes />, text: it.settings.capsChip(formatEuro(envelopes.filter((e) => !e.archived).reduce((s, e) => s + e.cap, 0))) }}
+        muted={it.settings.envelopesCount(envelopes.filter((e) => !e.archived).length)}
+      />
       <EnvelopesGroup
         key={envelopes.map((e) => `${e.id}:${e.cap}:${e.archived}`).join('|')}
         envelopes={envelopes}
@@ -65,7 +74,24 @@ export function SettingsPage() {
       />
       <MonthGroup settings={settings} bills={bills} opening={nextOpeningId(periods, today(), settings.periodStartDay)} />
       <PotsGroup settings={settings} />
-      <BackupGroup settings={settings} />
+      <section className="group" aria-labelledby="data-title">
+        <h2 id="data-title" className="group__title">{it.settings.dataTitle}</h2>
+        <ul className="card list-card list">
+          <li>
+            <Link to={routes.backup} className="list-row list-row--button">
+              <Tile symbol="download" />
+              <span className="list-row__text">
+                <span className="list-row__title">{it.settings.backupRow}</span>
+                <span className="list-row__detail">
+                  {settings.lastBackupAt ? it.settings.lastBackup(it.relativeDays(daysAgo(localISODate(new Date(settings.lastBackupAt)), today()))) : it.settings.neverBackup}
+                </span>
+              </span>
+              <IconChevronRight className="list-row__chevron" />
+            </Link>
+          </li>
+        </ul>
+        <p className="group__footer">{it.settings.backupHint}</p>
+      </section>
     </div>
   );
 }
@@ -87,15 +113,31 @@ function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinati
   const initial = () => Object.fromEntries(active.map((e) => [e.id, e.cap]));
   const [caps, setCaps] = useState<Record<string, Cents>>(initial);
   const [added, setAdded] = useState<NewEnvelope[]>([]);
+  const [icons, setIcons] = useState<Record<string, string>>({});
   const [removed, setRemoved] = useState<string[]>([]);
   const [removedDest, setRemovedDest] = useState<Record<string, FundsDestination>>({});
   const [target, setTarget] = useState<CapTarget | null>(null);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const recurringEnvelope = mainRecurringEnvelope(recurring);
+  // Da Storico/Chiusura: "Porta il tetto a € 60" apre qui il pannello della busta con € 60 già scritto.
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    const id = params.get('busta');
+    const cap = Number(params.get('tetto'));
+    const e = id ? active.find((x) => x.id === id) : undefined;
+    if (!e || !Number.isInteger(cap) || cap <= 0) return;
+    setTarget({
+      id: e.id, name: e.name, cap, detail: null, recurringCount: recurringOnEnvelope(e.id, recurring).length,
+      showRecurringLink: e.id === recurringEnvelope, freed: freedBy(e.id), symbol: symbolFor(e),
+    });
+    setParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
 
   const changedCaps = Object.fromEntries(Object.entries(caps).filter(([id, c]) => !removed.includes(id) && envelopes.find((e) => e.id === id)?.cap !== c));
-  const dirty = Object.keys(changedCaps).length > 0 || added.length > 0 || removed.length > 0;
+  const changedIcons = Object.fromEntries(Object.entries(icons).filter(([id, icon]) => envelopes.find((e) => e.id === id) && symbolFor(envelopes.find((e) => e.id === id)!) !== icon));
+  const dirty = Object.keys(changedCaps).length > 0 || added.length > 0 || removed.length > 0 || Object.keys(changedIcons).length > 0;
   const keptCaps = Object.fromEntries(Object.entries(caps).filter(([id]) => !removed.includes(id)));
   const allCaps = { ...keptCaps, ...Object.fromEntries(added.map((a) => [a.id, a.cap])) };
   const removedPlan = Object.fromEntries(removed.map((id) => [id, current ? allocationAfterRemoval(id, current, txs) : null]));
@@ -125,11 +167,12 @@ function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinati
     setMessage(null);
     try {
       const settings = await db.settings.get('settings');
-      const change = await saveEnvelopes(db, { caps: changedCaps, added, removed, destinations: removedDest, periodStartDay: settings?.periodStartDay ?? 27 });
+      const change = await saveEnvelopes(db, { caps: changedCaps, added, removed, destinations: removedDest, icons: changedIcons, periodStartDay: settings?.periodStartDay ?? 27 });
       setMessage(transferText(change, true) || it.settings.saved);
       setAdded([]);
       setRemoved([]);
       setRemovedDest({});
+      setIcons({});
     } catch (e) {
       console.error(e);
       setMessage(it.settings.error);
@@ -143,6 +186,7 @@ function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinati
     setAdded([]);
     setRemoved([]);
     setRemovedDest({});
+    setIcons({});
   }
 
   type Detail = { text: string; warn?: boolean; was?: string | null };
@@ -162,10 +206,11 @@ function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinati
       : { text: it.settings.average(formatEuro(avg.average)), was };
   }
 
-  function row(id: string, name: string, cap: Cents, detail: Detail | null, open: () => void) {
+  function row(id: string, name: string, cap: Cents, detail: Detail | null, open: () => void, symbol: string) {
     return (
       <li key={id}>
         <button type="button" className="list-row list-row--button" aria-label={`${name}: ${formatEuro(cap)}. ${it.settings.tapToEdit}`} onClick={() => { setMessage(null); open(); }}>
+          <Tile symbol={symbol} />
           <span className="list-row__text">
             <span className="list-row__title">{name}</span>
             {detail ? (
@@ -189,6 +234,7 @@ function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinati
       ...list.map((e) => {
         const cap = caps[e.id] ?? e.cap;
         const detail = detailFor(e);
+        const symbol = icons[e.id] ?? symbolFor(e);
         return row(e.id, e.name, cap, detail, () => setTarget({
           id: e.id,
           name: e.name,
@@ -197,11 +243,12 @@ function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinati
           recurringCount: recurringOnEnvelope(e.id, recurring).length,
           showRecurringLink: e.id === recurringEnvelope,
           freed: freedBy(e.id),
-        }));
+          symbol,
+        }), symbol);
       }),
       ...extra.map((a) => row(a.id, a.name, a.cap, { text: it.settings.newBadge }, () => setTarget({
-        id: a.id, name: a.name, cap: a.cap, detail: it.settings.newBadge, recurringCount: 0, showRecurringLink: false, freed: 0,
-      }))),
+        id: a.id, name: a.name, cap: a.cap, detail: it.settings.newBadge, recurringCount: 0, showRecurringLink: false, freed: 0, symbol: a.icon,
+      }), a.icon)),
     ];
   }
 
@@ -268,9 +315,12 @@ function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinati
       <EnvelopeCapSheet
         target={target}
         onClose={() => setTarget(null)}
-        onApply={(id, cap) => {
-          if (added.some((a) => a.id === id)) setAdded((xs) => xs.map((x) => (x.id === id ? { ...x, cap } : x)));
-          else setCaps((c) => ({ ...c, [id]: cap }));
+        onApply={(id, cap, icon) => {
+          if (added.some((a) => a.id === id)) setAdded((xs) => xs.map((x) => (x.id === id ? { ...x, cap, icon } : x)));
+          else {
+            setCaps((c) => ({ ...c, [id]: cap }));
+            setIcons((m) => ({ ...m, [id]: icon }));
+          }
         }}
         destinations={destinations}
         balances={balances}
@@ -299,20 +349,29 @@ function NewEnvelopeForm({ onAdd }: { onAdd: (e: NewEnvelope) => void }) {
   const [name, setName] = useState('');
   const [kind, setKind] = useState<EnvelopeKind>('spendable');
   const [cap, setCap] = useState<Cents>(5000);
+  // Il simbolo si suggerisce dal nome finché non lo scegli a mano: da lì vince la tua scelta.
+  const [manualIcon, setManualIcon] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const suggested = suggestSymbol(name);
+  const icon = manualIcon ?? suggested;
   const valid = name.trim() !== '';
   return (
     <form
       className="recurring-form"
       onSubmit={(e) => {
         e.preventDefault();
-        if (valid) onAdd({ id: newId(), name: name.trim(), shortName: name.trim().split(/\s+/)[0] ?? name.trim(), kind, cap });
+        if (valid) onAdd({ id: newId(), name: name.trim(), shortName: name.trim().split(/\s+/)[0] ?? name.trim(), kind, cap, icon });
       }}
     >
-      <div className="entry__section">
-        <label htmlFor="new-envelope-name" className="entry__label">{it.settings.newName}</label>
-        <input id="new-envelope-name" className="text-input" value={name} placeholder={it.settings.newNamePlaceholder} onChange={(e) => setName(e.target.value)} />
+      <div className="new-envelope__name">
+        <TileEdit symbol={icon} onClick={() => setPicking(true)} />
+        <div className="entry__section">
+          <label htmlFor="new-envelope-name" className="entry__label">{it.settings.newName}</label>
+          <input id="new-envelope-name" className="text-input" value={name} placeholder={it.settings.newNamePlaceholder} onChange={(e) => setName(e.target.value)} />
+        </div>
       </div>
-      <div className="recurring-form__card">
+      {!manualIcon && name.trim() !== '' ? <p className="suggest-note"><IconSparkles size={15} />{it.symbols.suggested}</p> : null}
+      <div className="entry__section">
         <span className="entry__label">{it.settings.newKind}</span>
         <SegmentedControl
           label={it.settings.newKind}
@@ -324,11 +383,12 @@ function NewEnvelopeForm({ onAdd }: { onAdd: (e: NewEnvelope) => void }) {
           onChange={setKind}
         />
       </div>
-      <div className="list-row list-row--flat">
-        <span className="list-row__title">{it.settings.stepper(name.trim() || it.settings.newName)}</span>
+      <div className="entry__section">
+        <span className="entry__label">{it.settings.capPerMonth}</span>
         <Stepper label={it.settings.stepper(name || it.settings.newName)} value={cap} onChange={setCap} />
       </div>
-      <button type="submit" className="primary-button" disabled={!valid}>{it.settings.add}</button>
+      <button type="submit" className="primary-button" disabled={!valid}>{it.settings.addEnvelope}</button>
+      <SymbolPicker open={picking} name={name.trim()} current={icon} suggested={suggested} onPick={setManualIcon} onClose={() => setPicking(false)} />
     </form>
   );
 }
@@ -358,6 +418,7 @@ function MonthGroup({ settings, bills, opening }: { settings: Settings; bills: B
         {settings.monthlyItems.map((item) => (
           <li key={item.id}>
             <button type="button" className="list-row list-row--button" onClick={() => setTarget(item)}>
+              <Tile symbol={symbolFor(item)} />
               <span className="list-row__text">
                 <span className={item.archived ? 'list-row__title is-muted' : 'list-row__title'}>{item.name}</span>
                 <span className="list-row__detail">
@@ -371,6 +432,7 @@ function MonthGroup({ settings, bills, opening }: { settings: Settings; bills: B
         ))}
         <li>
           <Link to={routes.bills} className="list-row list-row--button">
+            <Tile symbol="receipt" />
             <span className="list-row__text">
               <span className="list-row__title">{it.settings.billsRow}</span>
               <span className="list-row__detail">{it.settings.billsDetail(activeBills.length)}</span>

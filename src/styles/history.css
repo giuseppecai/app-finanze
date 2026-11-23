@@ -83,3 +83,50 @@
 .backup-reminder__actions { display: flex; gap: 8px; margin-top: 2px; }
 .backup-reminder__go { display: inline-flex; align-items: center; text-decoration: none; }
 .backup-reminder__go:hover { color: var(--text-on-dark); }
+
+/* ── Storico v2 ───────────────────────────────────────────── */
+.month-seg { margin-bottom: 12px; }
+.month-seg .segmented__option { font-size: 14px; }
+.month-seg .segmented__option[aria-checked='true'] { background: var(--surface-ink); color: #fff; }
+
+.pace-card { padding-bottom: 14px; gap: 6px; }
+.pace-card__amount { font-size: 44px; }
+.pace-card__of { font-size: 15px; font-weight: 500; letter-spacing: 0; color: var(--text-on-ink-muted); }
+.good-chip { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: var(--r-pill); background: rgba(143, 217, 168, .14); color: #A9E5BD; font-size: 12.5px; font-weight: 620; white-space: nowrap; }
+.good-chip--more { background: rgba(255, 255, 255, .10); color: var(--text-on-ink-muted); }
+.pace { display: block; width: 100%; height: auto; margin-top: 10px; overflow: visible; }
+.pace .lbl { font: 500 11px var(--font); fill: #A9A0BA; }
+.pace .lbl.strong { fill: #fff; font-weight: 650; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin: 12px -6px 0; border-radius: 14px; overflow: hidden; background: rgba(255, 255, 255, .10); }
+.stats > div { display: flex; flex-direction: column; gap: 3px; padding: 10px; background: var(--surface-ink); }
+.stats .k { font-size: 11.5px; line-height: 1.25; color: var(--text-on-ink-muted); }
+.stats .v { font-size: 16px; font-weight: 650; letter-spacing: -0.01em; color: #fff; }
+
+/* Dove sono andati: barra di QUOTA, diversa da quella delle buste (sottile, viola medio, niente binario) */
+.cats { list-style: none; margin: 0; padding: 4px 14px; }
+.cats > li + li { border-top: 1px solid var(--line-soft); }
+.cat { display: flex; gap: 12px; align-items: center; padding: 11px 0; color: var(--text); text-decoration: none; }
+.cat:active { margin: 0 -14px; padding-left: 14px; padding-right: 14px; background: var(--surface-press); }
+.cat-body { flex: 1; min-width: 0; display: block; }
+.cat-top, .cat-sub { display: flex; justify-content: space-between; gap: 10px; }
+.cat-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 540; }
+.cat-v { flex: none; font-weight: 650; white-space: nowrap; }
+.cat-v.over, .over-t { color: var(--state-over-text); }
+.over-t { font-weight: 600; }
+.cat-bar { display: block; height: 4px; margin: 7px 0 5px; border-radius: 2px; background: transparent; overflow: hidden; }
+.cat-bar > i { display: block; height: 100%; border-radius: 2px; background: var(--save-2); }
+.cat-bar.is-committed > i { background: var(--committed); }
+.cat-sub { font-size: 12.5px; color: var(--text-muted); }
+.cat-sub > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Ultimi 6 mesi: valore sopra la colonna scelta e su quelle sopra il budget */
+.chart__col { position: relative; flex-direction: column; justify-content: flex-end; align-items: stretch; }
+.chart__value { margin-bottom: 4px; text-align: center; font-size: 11.5px; font-weight: 650; color: var(--text); white-space: nowrap; }
+.chart__value.is-over { color: var(--state-over-text); }
+.chart__bar { background: #C9B5EA; border-radius: 8px; }
+.chart__bar.is-selected { background: var(--state-ok); }
+.chart__bar.is-over { background: var(--state-over); }
+.chart__bar.is-current { background: repeating-linear-gradient(45deg, #3B2363 0 2px, #E9DFF6 2px 7px); box-shadow: inset 0 0 0 1.5px #3B2363; }
+.chart__legend-box { background: var(--state-over); }
+.chart__legend-box--selected { background: var(--state-ok); }
+.chart__legend-box--current { background: repeating-linear-gradient(45deg, #3B2363 0 2px, #E9DFF6 2px 5px); box-shadow: inset 0 0 0 1px #3B2363; }

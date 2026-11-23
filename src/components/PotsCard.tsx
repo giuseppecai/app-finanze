@@ -4,15 +4,18 @@ import { formatEuro } from '../domain/money';
 import { potsTotal, type PotLine } from '../domain/pots';
 import type { Cents } from '../domain/types';
 import { it } from '../i18n/it';
-import { IconChevronRight, IconHandCoins } from './icons';
+import { IconChevronRight } from './icons';
+import { Tile } from './Symbol';
+import { symbolFor } from '../domain/symbols';
 
 type Props = { lines: readonly PotLine[]; loansOwed: Cents; debtsOwed?: Cents };
 
 /** Tonalità lilla: Risparmi la più scura, gli altri salvadanai alternano due lilla più chiari. */
-function tone(id: string, index: number): string {
-  if (id === 'savings') return 'var(--save-1)';
-  return index % 2 === 1 ? 'var(--save-2)' : 'var(--save-3)';
+function toneOf(id: string, index: number): 'save-1' | 'save-2' | 'save-3' {
+  if (id === 'savings') return 'save-1';
+  return index % 2 === 1 ? 'save-2' : 'save-3';
 }
+const tone = (id: string, index: number) => `var(--${toneOf(id, index)})`;
 
 /** "Messi da parte": area lilla con totale nel titolo, barra divisa per salvadanaio, elenco, prestiti da riavere. */
 export function PotsCard({ lines, loansOwed, debtsOwed = 0 }: Props) {
@@ -33,7 +36,8 @@ export function PotsCard({ lines, loansOwed, debtsOwed = 0 }: Props) {
         <ul className="save-list">
           {lines.map((p, i) => (
             <li key={p.id} className="srow">
-              <span className="k"><span className="sw" style={{ background: tone(p.id, i) }} aria-hidden="true" />{p.name}</span>
+              {/* la tile fa anche da legenda della barra divisa */}
+              <span className="k"><Tile symbol={symbolFor(p)} tone={toneOf(p.id, i)} size="sm" />{p.name}</span>
               <span className={p.balance < 0 ? 'v is-over' : 'v'}>{formatEuro(p.balance)}</span>
             </li>
           ))}
@@ -41,7 +45,7 @@ export function PotsCard({ lines, loansOwed, debtsOwed = 0 }: Props) {
             <li>
               <Link to={routes.loans} className="srow srow--link">
                 <span className="k">
-                  <IconHandCoins size={18} />
+                  <Tile symbol="hand-coins" tone="neutral" size="sm" />
                   {it.home.loansToGet}{debtsOwed > 0 ? ` · ${it.home.youOwe(formatEuro(debtsOwed))}` : ''}
                 </span>
                 <span className="v">{formatEuro(loansOwed)}<IconChevronRight size={16} /></span>

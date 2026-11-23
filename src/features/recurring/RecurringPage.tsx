@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCurrentPeriod, useEnvelopes, usePeriodTransactions, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
-import { IconArrowRight } from '../../components/icons';
+import { IconArrowRight, IconCalendar, IconPlus } from '../../components/icons';
 import { InfoBox } from '../../components/InfoBox';
 import { TopBar } from '../../components/TopBar';
+import { PageHeader } from '../../components/PageHeader';
 import { today } from '../../domain/clock';
 import { formatShortRange, parseISODate } from '../../domain/dates';
 import { formatEuro } from '../../domain/money';
 import { calendarPeriodFor } from '../../domain/periods';
-import { mainRecurringEnvelope, monthlyTotal, recurringRows, type RecurringStatus } from '../../domain/recurring';
+import { mainRecurringEnvelope, monthlyTotal, recurringRows, type RecurringStatus, nextUpcomingCharge } from '../../domain/recurring';
 import type { Recurring } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { RecurringSheet } from './RecurringSheet';
@@ -45,27 +46,30 @@ export function RecurringPage() {
   const cap = envelope ? (period?.allocations[envelope.id] ?? envelope.cap) : 0;
   const total = monthlyTotal(recurring);
   const margin = cap - total;
+  const next = period ? nextUpcomingCharge(rows) : null;
 
   return (
     <div className="flow">
-      <TopBar right={<button type="button" className="pill-button" onClick={() => setEditing('new')}>{it.recurring.add}</button>} />
-      <header className="screen-header">
-        <h1 className="screen-title">{it.recurring.title}</h1>
-        {envelope ? <p className="screen-subtitle">{it.recurring.subtitle(envelope.name)}</p> : null}
-      </header>
+      <TopBar right={<button type="button" className="pill-button" onClick={() => setEditing('new')}><IconPlus size={20} />{it.common.add}</button>} />
+      <PageHeader
+        full
+        title={it.recurring.title}
+        chip={next ? { icon: <IconCalendar />, text: it.recurring.nextChip(next.recurring.name, next.status.inDays <= 0 ? it.recurring.status.today : next.status.inDays === 1 ? it.recurring.status.tomorrow : it.recurring.status.inDays(next.status.inDays)) } : null}
+      />
 
       <section className="hero">
         <div className="hero__row">
           <div>
             <p className="hero__label">{it.recurring.monthly}</p>
-            <p className="hero__amount hero__amount--medium">{formatEuro(total, { decimals: 'always' })}</p>
+            <p className="hero__amount hero__amount--medium">{formatEuro(total)}</p>
           </div>
           {envelope ? <span className="hero__status">{it.recurring.envelopeCap(formatEuro(cap))}</span> : null}
         </div>
         {envelope ? (
           <>
             <span className="hero__bar" aria-hidden="true">
-              <span className={margin < 0 ? 'hero__bar-fill is-over' : 'hero__bar-fill'} style={{ width: `${cap > 0 ? Math.min(100, (total / cap) * 100) : 100}%` }} />
+              {/* barra = quanto RESTA nella busta (come tutte le barre delle buste) */}
+              <span className={margin < 0 ? 'hero__bar-fill is-over' : 'hero__bar-fill'} style={{ width: `${margin < 0 ? 100 : cap > 0 ? (margin / cap) * 100 : 0}%` }} />
             </span>
             <div className="hero-foot">
               <span>{margin >= 0 ? it.recurring.margin(formatEuro(margin, { decimals: 'always' })) : it.recurring.overflow(formatEuro(-margin, { decimals: 'always' }))}</span>
@@ -96,7 +100,7 @@ export function RecurringPage() {
                       <span className="movement__detail">{it.recurring.detail(it.cards[r.card])}</span>
                     </span>
                     <span className="recurring-row__right">
-                      <span className={r.active ? 'movement__amount' : 'movement__amount is-paused'}>{formatEuro(r.amount, { decimals: 'always' })}</span>
+                      <span className={r.active ? 'movement__amount' : 'movement__amount is-paused'}>{formatEuro(r.amount)}</span>
                       {period || status.kind === 'paused' ? <span className={`chip chip--${status.kind}`}>{statusLabel(status)}</span> : null}
                     </span>
                   </button>
