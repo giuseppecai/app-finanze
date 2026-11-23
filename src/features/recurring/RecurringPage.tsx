@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCurrentPeriod, useEnvelopes, usePeriodTransactions, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
+import { IconArrowRight } from '../../components/icons';
 import { InfoBox } from '../../components/InfoBox';
 import { TopBar } from '../../components/TopBar';
 import { today } from '../../domain/clock';
@@ -66,18 +67,16 @@ export function RecurringPage() {
             <span className="hero__bar" aria-hidden="true">
               <span className={margin < 0 ? 'hero__bar-fill is-over' : 'hero__bar-fill'} style={{ width: `${cap > 0 ? Math.min(100, (total / cap) * 100) : 100}%` }} />
             </span>
-            <Link to={routes.settings} className="hero__link">
-              {margin >= 0 ? it.recurring.margin(formatEuro(margin, { decimals: 'always' })) : it.recurring.overflow(formatEuro(-margin, { decimals: 'always' }))}
-            </Link>
+            <div className="hero-foot">
+              <span>{margin >= 0 ? it.recurring.margin(formatEuro(margin, { decimals: 'always' })) : it.recurring.overflow(formatEuro(-margin, { decimals: 'always' }))}</span>
+              <Link to={routes.settings} className="hero-link">{it.recurring.changeCap}<IconArrowRight size={18} /></Link>
+            </div>
           </>
         ) : null}
       </section>
 
       <section className="recurring-list-section">
-        <div className="section-head">
-          <h2 className="section-title">{it.recurring.thisMonth}</h2>
-          <span className="summary-card__note">{formatShortRange(range.calendarStart, range.calendarEnd)} · {it.recurring.tapToEdit}</span>
-        </div>
+        <h2 className="group-label">{it.recurring.thisMonth} · {formatShortRange(range.calendarStart, range.calendarEnd)}</h2>
         {rows.length === 0 ? (
           <p className="placeholder">{it.recurring.empty}</p>
         ) : (
@@ -94,7 +93,7 @@ export function RecurringPage() {
                     </span>
                     <span className="movement__text">
                       <span className={r.active ? 'movement__title' : 'movement__title is-muted'}>{r.name}</span>
-                      <span className="movement__detail">{it.recurring.detail(it.cards[r.card], r.dayOfMonth)}</span>
+                      <span className="movement__detail">{it.recurring.detail(it.cards[r.card])}</span>
                     </span>
                     <span className="recurring-row__right">
                       <span className={r.active ? 'movement__amount' : 'movement__amount is-paused'}>{formatEuro(r.amount, { decimals: 'always' })}</span>

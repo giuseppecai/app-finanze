@@ -4,60 +4,51 @@ import { formatEuro } from '../domain/money';
 import { potsTotal, type PotLine } from '../domain/pots';
 import type { Cents } from '../domain/types';
 import { it } from '../i18n/it';
-import { IconChevronRight } from './icons';
+import { IconChevronRight, IconHandCoins } from './icons';
 
 type Props = { lines: readonly PotLine[]; loansOwed: Cents; debtsOwed?: Cents };
 
-/** Tonalità: Risparmi accento pieno, Bollette grigio (soldi già impegnati), gli altri salvadanai alternano due viola chiari. */
+/** Tonalità lilla: Risparmi la più scura, gli altri salvadanai alternano due lilla più chiari. */
 function tone(id: string, index: number): string {
-  if (id === 'savings') return 'savings';
-  if (id === 'bills') return 'bills';
-  return index % 2 === 1 ? 'light' : 'mid';
+  if (id === 'savings') return 'var(--save-1)';
+  return index % 2 === 1 ? 'var(--save-2)' : 'var(--save-3)';
 }
 
-/** "Messi da parte": totale dei salvadanai, barra in tonalità, legenda; Bollette apre le bollette. */
+/** "Messi da parte": area lilla con totale nel titolo, barra divisa per salvadanaio, elenco, prestiti da riavere. */
 export function PotsCard({ lines, loansOwed, debtsOwed = 0 }: Props) {
   const total = potsTotal(lines);
+  const positive = lines.reduce((s, p) => s + Math.max(p.balance, 0), 0);
   return (
-    <section className="home-section" aria-labelledby="pots-title">
-      <div className="home-section__head">
-        <div className="home-section__titles">
-          <h2 id="pots-title" className="home-section__title">{it.home.savedAside}</h2>
-          <p className="home-section__caption">{it.home.savedAsideCaption}</p>
+    <section className="sec" aria-labelledby="pots-title">
+      <div className="sec-head">
+        <h2 id="pots-title">{it.home.savedAside}</h2>
+        <span className="sec-total">{formatEuro(total)}</span>
+      </div>
+      <div className="save">
+        <div className="save-split" role="img" aria-label={lines.map((p) => `${p.name} ${formatEuro(p.balance)}`).join(', ')}>
+          {lines.map((p, i) => (
+            <i key={p.id} style={{ flexGrow: positive > 0 ? Math.max(p.balance, 0) : 1, background: tone(p.id, i) }} />
+          ))}
         </div>
-        <span className="home-section__meta home-section__meta--strong">{formatEuro(total)}</span>
-      </div>
-      <div className="card pots">
-      <div className="pots__bar" aria-hidden="true">
-        {lines.map((p, i) => (
-          <span key={p.id} className={`pots__segment pots__tone--${tone(p.id, i)}`} style={{ flexGrow: Math.max(p.balance, 0) || 0.0001 }} />
-        ))}
-      </div>
-      <ul className="pots__legend">
-        {lines.map((p, i) => {
-          const body = (
-            <>
-              <span className="pots__name"><span className={`pots__dot pots__tone--${tone(p.id, i)}`} aria-hidden="true" /><span className="pots__label">{p.name}</span></span>
-              <span className="pots__value">{formatEuro(p.balance)}</span>
-            </>
-          );
-          return p.id === 'bills' ? (
-            <li key={p.id}>
-              <Link to={routes.bills} className="pots__item pots__item--link" aria-label={it.home.billsLink(formatEuro(p.balance))}>
-                {body}
+        <ul className="save-list">
+          {lines.map((p, i) => (
+            <li key={p.id} className="srow">
+              <span className="k"><span className="sw" style={{ background: tone(p.id, i) }} aria-hidden="true" />{p.name}</span>
+              <span className={p.balance < 0 ? 'v is-over' : 'v'}>{formatEuro(p.balance)}</span>
+            </li>
+          ))}
+          {loansOwed > 0 || debtsOwed > 0 ? (
+            <li>
+              <Link to={routes.loans} className="srow srow--link">
+                <span className="k">
+                  <IconHandCoins size={18} />
+                  {it.home.loansToGet}{debtsOwed > 0 ? ` · ${it.home.youOwe(formatEuro(debtsOwed))}` : ''}
+                </span>
+                <span className="v">{formatEuro(loansOwed)}<IconChevronRight size={16} /></span>
               </Link>
             </li>
-          ) : (
-            <li key={p.id} className="pots__item">{body}</li>
-          );
-        })}
-      </ul>
-      {loansOwed > 0 || debtsOwed > 0 ? (
-        <Link to={routes.loans} className="pots__loans">
-          <span>{it.home.loansToGet}{debtsOwed > 0 ? ` · ${it.home.youOwe(formatEuro(debtsOwed))}` : ''}</span>
-          <span className="pots__loans-amount">{formatEuro(loansOwed)}<IconChevronRight /></span>
-        </Link>
-      ) : null}
+          ) : null}
+        </ul>
       </div>
     </section>
   );

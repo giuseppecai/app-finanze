@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { daysAgo, entryFeedback, expensesSummary, groupByDay, signedAmount } from '../movements';
+import { dayTotalKind, daysAgo, entryFeedback, expensesSummary, groupByDay, signedAmount } from '../movements';
 import { buildDemoData, DEMO_TODAY } from '../../db/fixtures';
 
 const data = buildDemoData();
@@ -21,6 +21,14 @@ describe('Movimenti', () => {
     const groups = groupByDay(nov);
     expect(groups.find((g) => g.date === '2026-11-17')!.total).toBe(112);
     expect(groups.find((g) => g.date === '2026-11-12')!.total).toBe(-4800); // Cena 42 + Disney+ 6, non il prestito a Marco
+  });
+
+  it('etichetta del totale: "spese" il 12 nov (prestito escluso), "entrate" il 17, "nessuna spesa" con solo un prestito', () => {
+    const groups = groupByDay(nov);
+    expect(dayTotalKind(groups.find((g) => g.date === '2026-11-12')!)).toBe('spent');
+    expect(dayTotalKind(groups.find((g) => g.date === '2026-11-17')!)).toBe('in');
+    const onlyLoan = groupByDay(nov.filter((t) => t.type === 'loan'))[0]!;
+    expect(dayTotalKind(onlyLoan)).toBe('none');
   });
 
   it('segno: spese e prestiti escono, rimborsi ed entrate entrano', () => {

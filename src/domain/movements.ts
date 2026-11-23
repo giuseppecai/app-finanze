@@ -37,6 +37,15 @@ export function groupByDay(txs: readonly Transaction[]): DayGroup[] {
   return groups;
 }
 
+/**
+ * Etichetta del totale del giorno in Movimenti: cosa conta davvero (i prestiti restano fuori).
+ * "spese − € 48,00", "entrate + € 1,12", "nessuna spesa".
+ */
+export function dayTotalKind(group: Pick<DayGroup, 'transactions' | 'total'>): 'spent' | 'in' | 'none' {
+  if (!group.transactions.some((t) => countsInTotals(t.type)) || group.total === 0) return 'none';
+  return group.total < 0 ? 'spent' : 'in';
+}
+
 /** "Speso € 448,50 · 16 spese": totale e numero delle spese (i rimborsi non le riducono qui). */
 export function expensesSummary(txs: readonly Transaction[]): { total: Cents; count: number } {
   const expenses = txs.filter((t) => t.type === 'expense');

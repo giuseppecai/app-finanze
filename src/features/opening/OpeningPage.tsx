@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useBills, useCurrentPeriod, useEnvelopes, usePeriods, usePeriodTransactions, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { AmountField } from '../../components/AmountField';
 import { BottomSheet } from '../../components/BottomSheet';
 import { CheckRow } from '../../components/CheckRow';
+import { IconPlus } from '../../components/icons';
 import { InfoBox } from '../../components/InfoBox';
 import { MonthHeader } from '../../components/MonthHeader';
 import { StepIndicator } from '../../components/StepIndicator';
@@ -13,14 +14,13 @@ import { startPeriod } from '../../db/repositories';
 import { today } from '../../domain/clock';
 import { planClosing, type ClosingOption, type ClosingPlan } from '../../domain/closing';
 import { formatLongRange } from '../../domain/dates';
-import { formatEuro, parseEuro } from '../../domain/money';
+import { formatEuro, parseEuro, amountText } from '../../domain/money';
 import { closingPreview, transferChecklist, type ChecklistItem } from '../../domain/monthEnd';
 import { activeEnvelopes, itemQuotas, planOpening, type ItemQuota } from '../../domain/opening';
 import { nextPeriodToStart } from '../../domain/periods';
 import { billsQuotaTotal } from '../../domain/bills';
 import type { Bill, Cents, Envelope, Period, Recurring, Settings, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
-import { CapsEditor } from '../settings/CapsEditor';
 import { MonthlyItemSheet } from '../settings/MonthlyItemSheet';
 
 const OPTIONS: ClosingOption[] = ['toSavings', 'carryOver', 'half'];
@@ -75,7 +75,6 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   const [editing, setEditing] = useState<ItemQuota | null>(null);
   const [newItem, setNewItem] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [editCaps, setEditCaps] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,7 +99,6 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   const allDone = done === items.length;
   const canStart = allDone && salaryOk && !saving;
   const closingMonth = current?.name.toLowerCase() ?? '';
-  const names = activeEnvelopes(envelopes).map((e) => e.shortName).join(', ');
 
   function toggle(item: ChecklistItem, on: boolean) {
     setChecked((prev) => {
@@ -112,9 +110,10 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   }
 
   function titleOf(item: ChecklistItem): string {
-    if (item.kind === 'closing') return `${it.accounts[item.from]} → ${it.accounts[item.to]}`;
-    if (item.item) return item.item.kind === 'payment' ? it.opening.payTitle(item.item.name) : `→ ${item.item.name}`;
-    return `→ ${it.accounts[item.to]}`;
+    // Il titolo è la destinazione; il sottotitolo spiega da dove arrivano i soldi.
+    if (item.kind === 'closing') return it.accounts[item.to] ?? '';
+    if (item.item) return item.item.kind === 'payment' ? it.opening.payTitle(item.item.name) : item.item.name;
+    return it.accounts[item.to] ?? '';
   }
 
   function noteOf(item: ChecklistItem): string {
@@ -122,7 +121,7 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
       case 'closing':
         return item.to === 'savings' ? it.opening.notes.closingSurplus(closingMonth) : it.opening.notes.closingDeficit(closingMonth);
       case 'budget':
-        return it.opening.notes.budget(names);
+        return it.opening.notes.budget(activeEnvelopes(envelopes).length);
       case 'item':
         return item.item?.kind === 'payment' ? it.opening.notes.payment : it.opening.notes.pot;
       case 'bills':
@@ -161,23 +160,19 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
       <MonthHeader title={it.opening.title(target.name.toLowerCase())} subtitle={formatLongRange(target.calendarStart, target.calendarEnd)} />
       {current ? <StepIndicator steps={it.monthSteps.items} current={2} label={it.monthSteps.label} /> : null}
 
-      <section className="card summary-card">
-        <AmountField
-          id="salary"
-          large
-          label={it.opening.salary(settings.periodStartDay)}
-          placeholder={it.opening.salaryPlaceholder}
-          value={salaryText}
-          onChange={setSalaryText}
-          invalid={salaryText !== '' && !salaryOk}
-        />
-      </section>
+      <AmountField
+        id="salary"
+        large
+        label={it.opening.salary(settings.periodStartDay)}
+        placeholder={it.opening.salaryPlaceholder}
+        value={salaryText}
+        onChange={setSalaryText}
+        invalid={salaryText !== '' && !salaryOk}
+      />
 
-      <section className="check-list" aria-labelledby="transfers-title">
-        <div className="check-list__head">
-          <h2 id="transfers-title" className="section-title">{it.opening.transfers}</h2>
-          <p className="muted-note">{it.opening.transfersHint}</p>
-        </div>
+      <section aria-labelledby="transfers-title">
+        <h2 id="transfers-title" className="group-label">{it.opening.transfers}</h2>
+        <div className="card check-list">
         {items.map((item) => {
           const q = quotaOf(item);
           return (
@@ -194,15 +189,16 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
             />
           );
         })}
-        <button type="button" className="link-button" onClick={() => setNewItem(true)}>{it.opening.addItem}</button>
+        <button type="button" className="list-row list-row--action" onClick={() => setNewItem(true)}>
+          <IconPlus size={20} />{it.opening.addItem}
+        </button>
+        </div>
       </section>
 
-      <p className="muted-note">{it.opening.cardsNote}</p>
+      <InfoBox>{it.opening.cardsNote}</InfoBox>
 
-      <button type="button" className="link-button" aria-expanded={editCaps} onClick={() => setEditCaps((v) => !v)}>
-        {editCaps ? it.opening.hideEnvelopes : it.opening.editEnvelopes}
-      </button>
-      {editCaps ? <CapsEditor envelopes={envelopes} /> : null}
+      {/* Un solo modo per cambiare i tetti: Imposta (lì valgono anche per il mese aperto). */}
+      <Link to={routes.settings} className="link-button">{it.opening.editEnvelopes}</Link>
 
       {error ? <InfoBox>{error}</InfoBox> : null}
       <QuotaSheet
@@ -229,7 +225,7 @@ function QuotaSheet({ quota, onClose, onApply }: { quota: ItemQuota | null; onCl
 }
 
 function QuotaForm({ quota, onApply }: { quota: ItemQuota; onApply: (id: string, amount: Cents) => void }) {
-  const [value, setValue] = useState(formatEuro(quota.amount, { decimals: 'always' }).replace('€ ', ''));
+  const [value, setValue] = useState(amountText(quota.amount));
   const cents = parseEuro(value);
   return (
     <form className="recurring-form" onSubmit={(e) => { e.preventDefault(); if (cents !== null) onApply(quota.item.id, cents); }}>

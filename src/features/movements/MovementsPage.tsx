@@ -1,13 +1,14 @@
+import type { ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useEnvelopes, usePeople, usePeriods, usePeriodTransactions } from '../../app/data';
 import { routes } from '../../app/routes';
 import { FilterChips } from '../../components/FilterChips';
-import { IconChevronDown } from '../../components/icons';
+import { EnvelopeIcon, IconArrowDownLeft, IconArrowUpRight, IconChevronDown, IconReceipt } from '../../components/icons';
 import { today } from '../../domain/clock';
 import { addDays, formatDayHeading, formatShortRange } from '../../domain/dates';
 import { summarizePeriod } from '../../domain/envelopes';
 import { formatEuro } from '../../domain/money';
-import { expensesSummary, groupByDay, signedAmount } from '../../domain/movements';
+import { dayTotalKind, expensesSummary, groupByDay, signedAmount } from '../../domain/movements';
 import { currentPeriod } from '../../domain/periods';
 import type { Envelope, Period, Person, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
@@ -124,19 +125,25 @@ function MovementList({ txs, envelopes, people, emptyText }: ListProps) {
   const personById = new Map(people.map((p) => [p.id, p]));
   return (
     <div className="day-groups">
-      {groupByDay(txs).map((group) => (
-        <section key={group.date} className="day-group">
-          <div className="day-group__head">
-            <h2>{dayLabel(group.date)}</h2>
-            <span>{signed(group.total)}</span>
-          </div>
-          <ul className="card movement-list">
-            {group.transactions.map((tx) => (
-              <MovementRow key={tx.id} tx={tx} envelope={tx.envelopeId ? envById.get(tx.envelopeId) : undefined} person={tx.personId ? personById.get(tx.personId) : undefined} />
-            ))}
-          </ul>
-        </section>
-      ))}
+      {groupByDay(txs).map((group) => {
+        const kind = dayTotalKind(group);
+        return (
+          <section key={group.date} className="day-group">
+            {/* Intestazione fissa in alto mentre si scorre: giorno e cosa conta nel totale */}
+            <div className="day-group__head">
+              <h2>{dayLabel(group.date)}</h2>
+              <span>
+                {kind === 'none' ? it.movements.dayNone : kind === 'spent' ? it.movements.daySpent(signed(group.total)) : it.movements.dayIn(signed(group.total))}
+              </span>
+            </div>
+            <ul className="card movement-list">
+              {group.transactions.map((tx) => (
+                <MovementRow key={tx.id} tx={tx} envelope={tx.envelopeId ? envById.get(tx.envelopeId) : undefined} person={tx.personId ? personById.get(tx.personId) : undefined} />
+              ))}
+            </ul>
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -145,16 +152,21 @@ function MovementRow({ tx, envelope, person }: { tx: Transaction; envelope?: Env
   const isLoan = tx.type === 'loan' || tx.type === 'loanRepayment' || tx.type === 'debt' || tx.type === 'debtRepayment';
   const personName = person?.name ?? it.movements.unknownPerson;
   const cardName = tx.card ? it.cards[tx.card] : it.budgetPocket;
+  // Prestiti e debiti non sono spese: avatar tondo con l'iniziale, importo grigio senza segno, freccia.
+  const outgoing = tx.type === 'loan' || tx.type === 'debtRepayment';
 
-  let initial: string;
+  let icon: ReactNode;
+  let iconClass = 'movement__icon';
   let title: string;
   let detail: string;
   if (tx.type === 'income') {
-    initial = '+';
+    icon = <IconArrowDownLeft />;
+    iconClass += ' movement__icon--in';
     title = tx.note || it.movements.income;
     detail = `${it.movements.income} · ${cardName}`;
   } else if (isLoan) {
-    initial = personName.charAt(0).toUpperCase();
+    icon = personName.charAt(0).toUpperCase();
+    iconClass += ' movement__icon--person';
     const label = {
       loan: it.movements.loan(personName),
       loanRepayment: it.movements.repayment(personName),
@@ -164,13 +176,13 @@ function MovementRow({ tx, envelope, person }: { tx: Transaction; envelope?: Env
     title = tx.note || label;
     detail = label;
   } else if (tx.type === 'expense' && !tx.envelopeId && tx.billId) {
-    initial = 'B';
+    icon = <IconReceipt />;
     title = tx.note || it.casa.title;
     detail = it.movements.fromBillsPot;
   } else {
-    initial = (envelope?.shortName ?? '?').charAt(0).toUpperCase();
+    icon = <EnvelopeIcon shortName={envelope?.shortName ?? ''} />;
     title = tx.note || envelope?.name || '';
-    const parts = [envelope?.name ?? '', cardName];
+    const parts = [envelope?.shortName ?? '', cardName];
     if (tx.type === 'refund') parts.push(it.movements.refund);
     if (tx.source === 'recurring') parts.push(it.movements.auto);
     detail = parts.join(' · ');
@@ -179,12 +191,19 @@ function MovementRow({ tx, envelope, person }: { tx: Transaction; envelope?: Env
   const positive = signedAmount(tx) > 0;
   const content = (
     <>
-      <span className={tx.type === 'income' ? 'movement__icon movement__icon--income' : 'movement__icon'} aria-hidden="true">{initial}</span>
+      <span className={iconClass} aria-hidden="true">{icon}</span>
       <span className="movement__text">
         <span className="movement__title">{title}</span>
         <span className="movement__detail">{detail}</span>
       </span>
-      <span className={positive ? 'movement__amount is-positive' : 'movement__amount'}>{signed(signedAmount(tx))}</span>
+      {isLoan ? (
+        <span className="movement__amount movement__amount--loan">
+          {outgoing ? <IconArrowUpRight /> : <IconArrowDownLeft size={16} />}
+          {formatEuro(tx.amount, { decimals: 'always' })}
+        </span>
+      ) : (
+        <span className={positive ? 'movement__amount is-positive' : 'movement__amount'}>{signed(signedAmount(tx))}</span>
+      )}
     </>
   );
 

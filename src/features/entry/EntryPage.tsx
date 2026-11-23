@@ -12,14 +12,15 @@ import { Keypad } from '../../components/Keypad';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { TopBar, useCloseScreen } from '../../components/TopBar';
 import { useConfirmSheet } from '../../components/ConfirmPanel';
+import { announce } from '../../components/Toast';
 import { db } from '../../db/database';
 import {
   addLoanEntry, addTransaction, deleteTransaction, updateTransaction,
 } from '../../db/repositories';
 import { today } from '../../domain/clock';
-import { addDays, formatDayHeading, formatShortDate } from '../../domain/dates';
+import { addDays, formatShortDate } from '../../domain/dates';
 import { preselectedEnvelope, sortEnvelopesForPicker, validateEntry } from '../../domain/entry';
-import { summarizePeriod } from '../../domain/envelopes';
+import { barFill, summarizePeriod } from '../../domain/envelopes';
 import { balanceWith } from '../../domain/loans';
 import { formatEuro, KEYPAD_MAX_DIGITS } from '../../domain/money';
 import { entryFeedback } from '../../domain/movements';
@@ -142,10 +143,13 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
   const [error, setError] = useState<string | null>(null);
 
   // Residui delle buste senza il movimento che sto modificando.
-  const remaining = useMemo(() => {
+  const { remaining, put } = useMemo(() => {
     const others = editing ? periodTxs.filter((t) => t.id !== editing.id) : periodTxs;
     const summary = summarizePeriod(envelopes, period, others);
-    return Object.fromEntries(summary.balances.map((b) => [b.envelope.id, b.remaining]));
+    return {
+      remaining: Object.fromEntries(summary.balances.map((b) => [b.envelope.id, b.remaining])),
+      put: Object.fromEntries(summary.balances.map((b) => [b.envelope.id, b.put])),
+    };
   }, [editing, periodTxs, envelopes, period]);
 
   const isIncome = type === 'income';
@@ -162,25 +166,32 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
   });
   const canSave = errors.length === 0 && !saving;
 
-  let feedback: { text: string; tone: 'muted' | 'over' | 'accent' } | null = null;
+  // Pillola sotto l'importo: effetto della spesa sulla busta, con la mini barra di quanto resterà.
+  let feedback: { text: string; tone: 'muted' | 'over' | 'accent'; fill: number | null } | null = null;
   if (isLoan && person) {
     const after = balanceWith(loans, person.id) + (direction === 'lent' ? amount : -amount);
     const value = formatEuro(Math.abs(after), { decimals: 'always' });
     feedback = {
       text: after > 0 ? it.entry.loanOwesYou(person.name, value) : after < 0 ? it.entry.loanYouOwe(person.name, value) : it.entry.loanEven(person.name),
       tone: 'muted',
+      fill: null,
     };
   } else if (!isIncome && !isLoan && envelope) {
-    const f = entryFeedback(type === 'refund' ? 'refund' : 'expense', remaining[envelope.id] ?? 0, amount);
+    const before = remaining[envelope.id] ?? 0;
+    const f = entryFeedback(type === 'refund' ? 'refund' : 'expense', before, amount);
     const value = formatEuro(f.amount, { decimals: 'always' });
-    if (f.kind === 'back') feedback = { text: it.entry.feedbackBack(envelope.name, value), tone: 'accent' };
-    else if (f.kind === 'over') feedback = { text: it.entry.feedbackOver(envelope.name, value), tone: 'over' };
-    else feedback = { text: it.entry.feedbackLeft(envelope.name, value), tone: 'muted' };
+    const after = type === 'refund' ? before + amount : before - amount;
+    const fill = barFill({ remaining: after, put: put[envelope.id] ?? 0 });
+    if (f.kind === 'back') feedback = { text: it.entry.feedbackBack(envelope.shortName, value), tone: 'accent', fill };
+    else if (f.kind === 'over') feedback = { text: it.entry.feedbackOver(envelope.shortName, value), tone: 'over', fill: null };
+    else feedback = { text: it.entry.feedbackLeft(envelope.shortName, value), tone: 'muted', fill };
   }
 
   const saveLabel = editing
     ? it.entry.saveEdit
-    : isLoan
+    : amount === 0
+      ? it.entry.writeAmount
+      : isLoan
       ? direction === 'lent'
         ? it.entry.saveLoan(amountText, person?.name ?? '…')
         : it.entry.saveDebt(amountText, person?.name ?? '…')
@@ -204,10 +215,15 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
         if (editing) {
           await updateTransaction(db, editing.id, fields);
         } else {
-          await addTransaction(db, {
+          const tx = await addTransaction(db, {
             ...fields, card, source: params.get('fonte') === 'confronta' ? 'reconcile' : 'manual',
             recurringId: null, personId: null, loanAllocations: null, billId: null,
           });
+          // Torna alla schermata di prima con "Salvati € 12,40 in Vita · Annulla".
+          announce(
+            isIncome ? it.entry.savedIncome(amountText) : it.entry.saved(amountText, envelope?.shortName ?? ''),
+            () => deleteTransaction(db, tx.id),
+          );
         }
       }
       close();
@@ -224,7 +240,7 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
     close();
   }
 
-  const dateLabel = date === now ? it.entry.today : formatShortDate(date);
+  const dateLabel = date === now ? it.entry.today : date === addDays(now, -1) ? it.entry.yesterday : formatShortDate(date);
   const typeOptions = editing
     ? [
         { value: 'expense' as const, label: it.entry.types.expense },
@@ -250,26 +266,29 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
             <SegmentedControl label={it.entry.typeLabel} options={typeOptions} value={type as 'expense' | 'refund' | 'loan'} onChange={setType} />
           )
         }
-        right={
-          <label className="icon-button date-button" aria-label={it.entry.dateLabel(dateLabel)}>
-            <IconCalendar />
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => { if (e.target.value) setDate(e.target.value); }}
-            />
-          </label>
-        }
       />
 
       <div className="entry__amount-block">
         {type === 'refund' ? <p className="entry__hint">{it.entry.refundHint}</p> : null}
         {isIncome ? <p className="entry__hint">{it.entry.incomeHint}</p> : null}
-        {date !== now ? <p className="entry__hint">{formatDayHeading(date)}</p> : null}
         <p className="entry__amount" aria-live="polite">
-          {type === 'refund' || isIncome ? '+ ' : ''}{amountText}
+          {type === 'refund' || isIncome ? '+ ' : ''}<span className="cur">€</span>{amountText.replace('€\u00a0', '')}
+          <span className="caret" aria-hidden="true" />
         </p>
-        {feedback ? <p className={`entry__feedback entry__feedback--${feedback.tone}`}>{feedback.text}</p> : null}
+        <div className="entry__effects">
+          {/* La data è un chip con la scritta: una data diversa da oggi si vede (diventa scuro). */}
+          <label className={date === now ? 'date-chip' : 'date-chip is-changed'} aria-label={it.entry.dateLabel(dateLabel)}>
+            <IconCalendar size={18} />
+            {dateLabel}
+            <input type="date" value={date} onChange={(e) => { if (e.target.value) setDate(e.target.value); }} />
+          </label>
+          {feedback ? (
+            <p className={`effect effect--${feedback.tone}`}>
+              {feedback.fill !== null ? <span className="effect__mini" aria-hidden="true"><i style={{ width: `${feedback.fill * 100}%` }} /></span> : null}
+              {feedback.text}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       {isLoan ? (
@@ -299,11 +318,12 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
         </>
       ) : !isIncome ? (
         <div className="entry__section">
-          <h2 className="entry__label">{it.entry.whichEnvelope} <span className="entry__label-soft">{it.entry.byUse}</span></h2>
+          <h2 className="entry__label">{it.entry.whichEnvelope}</h2>
           <EnvelopePicker
             label={it.entry.envelopeLabel}
             envelopes={pickerEnvelopes}
             remaining={remaining}
+            put={put}
             value={envelopeId}
             onChange={setEnvelopeId}
           />
@@ -311,13 +331,13 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
       ) : null}
 
       <div className="entry__section">
-        <label htmlFor="entry-note" className="entry__label">{isLoan ? it.entry.reason : it.entry.note}</label>
+        <label htmlFor="entry-note" className={isLoan ? 'entry__label' : 'visually-hidden'}>{isLoan ? it.entry.reason : it.entry.note}</label>
         <input
           id="entry-note"
           className="text-input"
           type="text"
           value={note}
-          placeholder={isLoan ? it.entry.reasonPlaceholder : it.entry.notePlaceholder}
+          placeholder={isLoan ? it.entry.reasonPlaceholder : it.entry.noteOptional}
           autoComplete="off"
           enterKeyHint="done"
           onChange={(e) => setNote(e.target.value)}

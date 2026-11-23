@@ -77,11 +77,11 @@ export function HistoryPage() {
 
       {suggestions.map(({ envelope, s }) =>
         s ? (
-          <InfoBox key={envelope.id} tone="warning">
+          <InfoBox key={envelope.id} tone="tip">
             <p>
               <strong>{envelope.name}</strong> {it.history.suggestion(s.overMonths, s.months, formatEuro(roundToEuro(s.averageOver)), formatEuro(s.suggestedCap))}
             </p>
-            <Link to={routes.settings} className="text-link warning-link">{it.history.editEnvelopes}</Link>
+            <Link to={routes.settings} className="text-link">{it.history.editEnvelopes}</Link>
           </InfoBox>
         ) : null,
       )}
@@ -112,7 +112,7 @@ function Chart({ history, selected, onSelect, periodName }: ChartProps) {
         </span>
       </div>
       <div className="chart__plot">
-        <div className="chart__budget" style={{ bottom: pct(budget) }} aria-hidden="true" />
+        <div className="chart__budget" style={{ bottom: pct(budget) }} aria-hidden="true"><span>{it.history.budget(formatEuro(budget))}</span></div>
         {history.map((h) => {
           const isSel = h.periodId === selected.periodId;
           const cls = ['chart__bar', h.overBudget ? 'is-over' : '', isSel ? 'is-selected' : '', h.inProgress ? 'is-current' : ''].join(' ');
@@ -138,8 +138,8 @@ function Chart({ history, selected, onSelect, periodName }: ChartProps) {
         ))}
       </div>
       <div className="chart__legend">
-        <span><span className="chart__legend-line" aria-hidden="true" />{it.history.budget(formatEuro(budget))}</span>
         <span><span className="chart__legend-box" aria-hidden="true" />{it.history.overBudget}</span>
+        <span><span className="chart__legend-box chart__legend-box--current" aria-hidden="true" />{it.history.inProgressLegend}</span>
       </div>
     </section>
   );

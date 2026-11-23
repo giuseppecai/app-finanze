@@ -126,7 +126,7 @@ function Closing({ period, envelopes, periods, recurring, txs }: Props) {
         }
         if (envelope.cap >= s.suggestedCap) return null;
         return (
-          <InfoBox key={s.envelopeId} tone="warning">
+          <InfoBox key={s.envelopeId} tone="tip">
             <p>{it.closing.suggestion(envelope.name, s.overMonths, s.months, formatEuro(roundToEuro(s.averageOver)))}</p>
             <button type="button" className="info-box__action" onClick={() => void raiseCap(envelope, s.suggestedCap)}>
               {it.closing.raiseCap(formatEuro(s.suggestedCap))}

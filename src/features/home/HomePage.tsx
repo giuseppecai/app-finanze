@@ -5,7 +5,7 @@ import { routes } from '../../app/routes';
 import { EnvelopeRow } from '../../components/EnvelopeRow';
 import { IconCompare } from '../../components/icons';
 import { PotsCard } from '../../components/PotsCard';
-import { billsAsEnvelope } from '../../domain/bills';
+import { billsAsEnvelope, billsToRegister } from '../../domain/bills';
 import { today } from '../../domain/clock';
 import { formatShortRange } from '../../domain/dates';
 import { summarizePeriod, type EnvelopeBalance } from '../../domain/envelopes';
@@ -14,7 +14,8 @@ import { potLines } from '../../domain/pots';
 import { formatEuro } from '../../domain/money';
 import { daysAgo } from '../../domain/movements';
 import { daysUntilSalary, isTimeToClose } from '../../domain/periods';
-import type { Envelope, Period } from '../../domain/types';
+import { nextUpcomingCharge, recurringRows } from '../../domain/recurring';
+import type { Bill, Envelope, Period } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { BackupReminder } from './BackupReminder';
 import { ReconcileSheet } from './ReconcileSheet';
@@ -44,41 +45,51 @@ export function HomePage() {
   return (
     <>
       <BackupReminder settings={settings} periods={periods} />
-      {period ? <CurrentPeriod period={period} envelopes={envelopes} cardReserve={settings.cardReserve} billsRow={billsRow} /> : <NoPeriod />}
+      {period ? <CurrentPeriod period={period} envelopes={envelopes} cardReserve={settings.cardReserve} billsRow={billsRow} bills={bills} /> : <NoPeriod />}
       <PotsCard lines={lines} loansOwed={totalOwed(loans)} debtsOwed={totalDebt(loans)} />
     </>
   );
 }
 
-/** Intestazione di sezione della Home: titolo, importo a destra, una riga di spiegazione. */
-function SectionHead({ id, title, meta, caption }: { id: string; title: string; meta?: string; caption?: string }) {
+/** Intestazione di sezione: titolo a sinistra, etichetta a destra ("quanto resta"). */
+function SectionHead({ id, title, tag }: { id: string; title: string; tag?: string }) {
   return (
-    <div className="home-section__head">
-      <div className="home-section__titles">
-        <h2 id={id} className="home-section__title">{title}</h2>
-        {caption ? <p className="home-section__caption">{caption}</p> : null}
-      </div>
-      {meta ? <span className="home-section__meta">{meta}</span> : null}
+    <div className="sec-head">
+      <h2 id={id}>{title}</h2>
+      {tag ? <span className="sec-tag">{tag}</span> : null}
     </div>
+  );
+}
+
+/** "€ 232,12" con i centesimi più piccoli, come nella card principale del redesign. */
+function HeroAmount({ cents }: { cents: number }) {
+  const text = formatEuro(cents, { decimals: 'always' });
+  const [whole, dec] = text.split(',');
+  return (
+    <p className={cents < 0 ? 'hero-amount is-over' : 'hero-amount'}>
+      {whole}<span className="cents">,{dec}</span>
+    </p>
   );
 }
 
 function NoPeriod() {
   return (
     <>
-      <header className="home-header">
-        <h1 className="screen-title">{it.appName}</h1>
+      <header className="hdr">
+        <h1>{it.appName}</h1>
       </header>
       <section className="hero">
-        <p className="hero__label">{it.home.noPeriodTitle}</p>
-        <p className="hero__text">{it.home.noPeriodText}</p>
-        <Link to={routes.opening} className="hero__link">{it.home.noPeriodAction}</Link>
+        <p className="hero-label">{it.home.noPeriodTitle}</p>
+        <p className="hero-text">{it.home.noPeriodText}</p>
+        <div className="hero-foot">
+          <Link to={routes.opening} className="hero-link">{it.home.noPeriodAction}</Link>
+        </div>
       </section>
     </>
   );
 }
 
-function CurrentPeriod({ period, envelopes, cardReserve, billsRow }: { period: Period; envelopes: Envelope[]; cardReserve: number | null; billsRow: EnvelopeBalance | null }) {
+function CurrentPeriod({ period, envelopes, cardReserve, billsRow, bills }: { period: Period; envelopes: Envelope[]; cardReserve: number | null; billsRow: EnvelopeBalance | null; bills: Bill[] }) {
   const [reconcileOpen, setReconcileOpen] = useState(false);
   const txs = usePeriodTransactions(period.id);
   const lastReconciliation = useLastReconciliation();
@@ -92,51 +103,65 @@ function CurrentPeriod({ period, envelopes, cardReserve, billsRow }: { period: P
   const committed = summary.balances.filter((b) => b.envelope.kind === 'committed');
   const timeToClose = isTimeToClose(period, now);
 
+  // Righe di contesto delle Impegnate: il prossimo addebito e le bollette ancora da registrare.
+  const next = nextUpcomingCharge(recurringRows(recurring, period, txs, now));
+  const recurringMeta = next
+    ? it.home.nextCharge(next.recurring.name, formatEuro(next.recurring.amount), next.status.inDays <= 0 ? it.recurring.status.today : next.status.inDays === 1 ? it.recurring.status.tomorrow : it.recurring.status.inDays(next.status.inDays))
+    : recurring.some((r) => r.active) ? it.home.allCharged : null;
+  const monthlyBills = bills.filter((b) => b.active && b.frequency === 1).length;
+  const toRegister = billsToRegister(bills, txs).length;
+  const billsMeta = monthlyBills === 0 ? null : toRegister > 0 ? it.home.billsToRegister(toRegister) : it.home.billsAllRegistered;
+
   return (
     <>
-      <header className="home-header">
-        <div className="screen-header">
-          <h1 className="screen-title">{period.name}</h1>
-          <p className="screen-subtitle">
-            {it.home.salaryIn(daysUntilSalary(period, now))} · {formatShortRange(period.calendarStart, period.calendarEnd)}
-          </p>
-        </div>
+      <header className="hdr">
+        <h1>{period.name}</h1>
+        <p>{it.home.salaryIn(daysUntilSalary(period, now))} · {formatShortRange(period.calendarStart, period.calendarEnd)}</p>
       </header>
 
       <section className="hero" aria-label={it.home.canSpend}>
-        <p className="hero__label">{it.home.canSpend}</p>
-        <div className="hero__row">
-          <p className={summary.spendable < 0 ? 'hero__amount is-over' : 'hero__amount'}>{formatEuro(summary.spendable)}</p>
-          <button type="button" className="hero__pill" onClick={() => setReconcileOpen(true)}>
-            <IconCompare />
-            {it.reconcile.open}
-          </button>
+        <p className="hero-label">{it.home.canSpend}</p>
+        <HeroAmount cents={summary.spendable} />
+        <button type="button" className="pill-btn" onClick={() => setReconcileOpen(true)}>
+          <IconCompare />
+          {it.reconcile.open}
+        </button>
+        <div className="hero-foot">
+          {timeToClose ? (
+            <Link to={routes.closing} className="hero-link">{it.home.closeMonth}</Link>
+          ) : (
+            <span>
+              <span className={lastReconciliation ? 'dot' : 'dot dot--off'} aria-hidden="true" />
+              {lastReconciliation
+                ? it.home.lastReconcile(it.relativeDays(daysAgo(lastReconciliation.date, now)))
+                : it.home.neverReconciled}
+            </span>
+          )}
         </div>
-        {timeToClose ? (
-          <Link to={routes.closing} className="hero__link">{it.home.closeMonth}</Link>
-        ) : (
-          <p className="hero__status">
-            {lastReconciliation
-              ? it.home.lastReconcile(it.relativeDays(daysAgo(lastReconciliation.date, now)))
-              : it.home.neverReconciled}
-          </p>
-        )}
       </section>
 
-      <section className="home-section" aria-labelledby="spendable-title">
-        <SectionHead id="spendable-title" title={it.home.envelopes} caption={it.home.envelopesCaption} />
-        <ul className="envelope-list">
+      <section className="sec" aria-labelledby="spendable-title">
+        <SectionHead id="spendable-title" title={it.home.envelopes} tag={it.home.envelopesTag} />
+        <ul className="env-list">
           {spendable.map((b) => <EnvelopeRow key={b.envelope.id} balance={b} to={envelopeLink(b.envelope, recurringEnvelopes)} />)}
         </ul>
       </section>
 
       {committed.length > 0 || billsRow ? (
-        <section className="home-section" aria-labelledby="committed-title">
-          <SectionHead id="committed-title" title={it.home.committed} caption={it.home.committedCaption} />
-          <ul className="card envelope-group">
-            {committed.map((b) => <EnvelopeRow key={b.envelope.id} balance={b} to={envelopeLink(b.envelope, recurringEnvelopes)} plain />)}
+        <section className="sec" aria-labelledby="committed-title">
+          <SectionHead id="committed-title" title={it.home.committed} tag={it.home.committedTag} />
+          <ul className="committed">
+            {committed.map((b) => (
+              <EnvelopeRow
+                key={b.envelope.id}
+                balance={b}
+                to={envelopeLink(b.envelope, recurringEnvelopes)}
+                committed
+                meta={recurringEnvelopes.has(b.envelope.id) ? recurringMeta : null}
+              />
+            ))}
             {/* Bollette: la Pocket letta come una busta impegnata (stesso aspetto), apre le bollette */}
-            {billsRow ? <EnvelopeRow balance={billsRow} to={routes.bills} plain /> : null}
+            {billsRow ? <EnvelopeRow balance={billsRow} to={routes.bills} committed meta={billsMeta} /> : null}
           </ul>
         </section>
       ) : null}

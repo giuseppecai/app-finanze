@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useBills, useCurrentPeriod, useLoans, usePeople, usePeriods, usePeriodTransactions, usePots, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
@@ -56,11 +56,17 @@ export function BillsPage() {
       {roommates.map((id) => {
         const name = names.get(id)?.name ?? it.movements.unknownPerson;
         const balance = balanceWith(loans, id);
-        const text = balance > 0 ? it.casa.owesYou(name, formatEuro(balance)) : balance < 0 ? it.casa.youOwe(name, formatEuro(-balance)) : `${name}: ${it.casa.even}`;
         return (
           <Link key={id} to={`${routes.loans}?persona=${encodeURIComponent(id)}`} className="card link-row">
-            <span>{text}</span>
-            <IconChevronRight />
+            <span className="avatar" aria-hidden="true">{name.charAt(0).toUpperCase()}</span>
+            <span className="link-row__text">
+              <span className="link-row__title">{it.casa.withName(name)}</span>
+              <span className="link-row__detail">
+                {balance > 0 ? it.casa.owesYou(name, formatEuro(balance)) : balance < 0 ? it.casa.youOwe(name, formatEuro(-balance)) : it.casa.nothingPending}
+              </span>
+            </span>
+            {balance === 0 ? <span className="chip chip--done">{it.casa.even}</span> : null}
+            <IconChevronRight className="chev" />
           </Link>
         );
       })}
@@ -110,41 +116,41 @@ function dueMonth(id: string, opening: string): string {
 function BillList({ title, bills, names, txs, opening, onOpen }: ListProps) {
   return (
     <section className="recurring-list-section">
-      <h2 className="section-head--muted">{title}</h2>
+      <h2 className="group-label">{title}</h2>
       <ul className="card movement-list">
         {bills.map((b) => {
           const name = b.personId ? names.get(b.personId)?.name ?? it.movements.unknownPerson : '';
+          const periodic = isPeriodic(b);
           const detail = [
-            isPeriodic(b) ? it.casa.frequency[b.frequency] : null,
-            b.split === 'half' ? it.casa.splitHalf(name) : it.casa.splitMine,
-            b.payer === 'me' ? it.casa.payerMe : it.casa.payerRoommate(name),
-            isPeriodic(b) && b.nextDue
-              ? monthsBetween(opening, b.nextDue) < 0 ? it.casa.dueLate(dueMonth(b.nextDue, opening)) : it.casa.dueIn(dueMonth(b.nextDue, opening))
-              : null,
+            periodic ? it.casa.frequency[b.frequency] : null,
+            b.split === 'half' ? (periodic ? it.casa.splitHalfShort.toLowerCase() : it.casa.splitHalf(name)) : it.casa.splitMine,
+            b.split === 'half' ? (b.payer === 'me' ? it.casa.payerMe : it.casa.payerRoommate(name)) : null,
           ].filter(Boolean).join(' · ');
           const paid = txs.filter((t) => t.billId === b.id && t.type === 'expense').sort((x, y) => (x.date < y.date ? 1 : -1))[0];
+          const late = periodic && b.nextDue ? monthsBetween(opening, b.nextDue) < 0 : false;
+          const quota = monthlyQuota(b, opening);
+          const chip = !b.active ? (
+            <span className="chip chip--paused">{it.casa.paused}</span>
+          ) : !periodic ? (
+            paid
+              ? <span className="chip chip--done">{it.casa.registeredOn(formatShortDate(paid.date))}</span>
+              : <span className="chip chip--upcoming">{it.casa.toRegister}</span>
+          ) : b.nextDue ? (
+            late
+              ? <span className="chip chip--upcoming">{it.casa.dueLateChip}</span>
+              : <span className="chip chip--later">{it.casa.dueChip(dueMonth(b.nextDue, opening))}</span>
+          ) : null;
           return (
             <li key={b.id}>
               <button type="button" className="bill-row" onClick={() => onOpen(b)}>
-                <span className="movement__text">
-                  <span className={b.active ? 'movement__title' : 'movement__title is-muted'}>{b.name}</span>
-                  <span className="movement__detail">{detail}</span>
-                  <FundBar bill={b} />
-                </span>
-                <span className="recurring-row__right">
-                  <span className={b.active ? 'movement__amount' : 'movement__amount is-paused'}>
-                    {it.casa.quotaPerMonth(formatEuro(monthlyQuota(b, opening)))}
+                <span className="bill-row__top">
+                  <span className={b.active ? 'bill-row__name' : 'bill-row__name is-muted'}>{b.name}</span>
+                  <span className={b.active ? 'bill-row__quota' : 'bill-row__quota is-paused'}>
+                    {formatEuro(quota)}<small>{it.casa.perMonthShort}</small>
                   </span>
-                  {!b.active ? (
-                    <span className="chip chip--paused">{it.casa.paused}</span>
-                  ) : !isPeriodic(b) ? (
-                    paid ? (
-                      <span className="chip chip--charged">{it.casa.registeredOn(formatShortDate(paid.date))}</span>
-                    ) : (
-                      <span className="chip chip--upcoming">{it.casa.toRegister}</span>
-                    )
-                  ) : null}
                 </span>
+                <span className="bill-row__detail">{detail}</span>
+                <FundBar bill={b} chip={chip} />
               </button>
             </li>
           );
@@ -154,7 +160,7 @@ function BillList({ title, bills, names, txs, opening, onOpen }: ListProps) {
   );
 }
 
-function FundBar({ bill }: { bill: Bill }) {
+function FundBar({ bill, chip }: { bill: Bill; chip: ReactNode }) {
   const s = fundStatus(bill);
   const pct = s.target > 0 ? Math.max(0, Math.min(100, (s.fund / s.target) * 100)) : 0;
   return (
@@ -162,8 +168,11 @@ function FundBar({ bill }: { bill: Bill }) {
       <span className="bar" aria-hidden="true">
         <span className={s.missing > 0 ? 'bar__fill bar__fill--over' : 'bar__fill bar__fill--ok'} style={{ width: `${pct}%` }} />
       </span>
-      <span className={s.missing > 0 ? 'movement__detail is-over' : 'movement__detail'}>
-        {s.missing > 0 ? it.casa.fundMissing(formatEuro(s.missing)) : it.casa.fundOf(formatEuro(s.fund), formatEuro(s.target))}
+      <span className="fund__foot">
+        <span className={s.missing > 0 ? 'bill-row__detail is-over' : 'bill-row__detail'}>
+          {s.missing > 0 ? it.casa.fundMissing(formatEuro(s.missing)) : it.casa.fundOf(formatEuro(s.fund), formatEuro(s.target))}
+        </span>
+        {chip}
       </span>
     </span>
   );

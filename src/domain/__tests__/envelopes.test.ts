@@ -86,9 +86,13 @@ describe('R3 · colore della barra', () => {
     expect(barState({ envelope: env, put: 10000, remaining: 2000 })).toBe('ok');
     expect(state(ENV.trasporti)).toBe('ok');
   });
-  it('larghezza = speso / messo, massimo 100%', () => {
-    expect(barFill({ spent: 6200, put: 10000 })).toBeCloseTo(0.62);
-    expect(barFill({ spent: 5800, put: 5000 })).toBe(1);
-    expect(barFill({ spent: -500, put: 5000 })).toBe(0);
+  it('larghezza = quanto resta (residuo / messo): Trasporti 38 su 100 → 38%', () => {
+    expect(barFill({ remaining: 3800, put: 10000 })).toBeCloseTo(0.38);
+    expect(barFill({ remaining: 0, put: 4500 })).toBe(0);
+    expect(barFill({ remaining: 5500, put: 5000 })).toBe(1);
+  });
+  it('sforata → barra piena (tutta arancione); senza niente messo → vuota', () => {
+    expect(barFill({ remaining: -800, put: 5000 })).toBe(1);
+    expect(barFill({ remaining: 0, put: 0 })).toBe(0);
   });
 });

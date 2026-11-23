@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  billsAsEnvelope, billsQuotaTotal, depositsLeft, nextDueAfterPayment, expectedShare, fundStatus, monthlyQuota, myShare, otherShare, planBillPayment,
+  billsAsEnvelope, billsQuotaTotal, billsToRegister, depositsLeft, nextDueAfterPayment, expectedShare, fundStatus, monthlyQuota, myShare, otherShare, planBillPayment,
 } from '../bills';
 import { planOpening, type ItemQuota } from '../opening';
 import { DEFAULT_MONTHLY_ITEMS } from '../pots';
@@ -160,5 +160,16 @@ describe('R13 · quota con la prossima bolletta nota', () => {
   });
   it('totale: con la data conta la quota ricalcolata', () => {
     expect(billsQuotaTotal([bill({ estimate: 8000 }), acqua], '2026-12')).toBe(4000 + 10000);
+  });
+});
+
+describe('Home · bollette da registrare', () => {
+  it('le mensili attive senza spesa nel periodo; non le periodiche né quelle in pausa', () => {
+    const luce = bill({ id: 'luce', estimate: 8000 });
+    const internet = bill({ id: 'internet', estimate: 2800 });
+    const gas = bill({ id: 'gas', frequency: 2, estimate: 6000 });
+    const vecchia = bill({ id: 'vecchia', estimate: 1000, active: false });
+    const txs = [{ billId: 'internet', type: 'expense' }];
+    expect(billsToRegister([luce, internet, gas, vecchia], txs).map((b) => b.id)).toEqual(['luce']);
   });
 });

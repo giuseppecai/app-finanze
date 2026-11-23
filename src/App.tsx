@@ -2,6 +2,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { routes } from './app/routes';
 import { AppLayout } from './components/AppLayout';
 import { FullScreenLayout } from './components/FullScreenLayout';
+import { ToastHost } from './components/Toast';
 import { BillsPage } from './features/bills/BillsPage';
 import { ClosingPage } from './features/closing/ClosingPage';
 import { EntryPage } from './features/entry/EntryPage';
@@ -36,6 +37,7 @@ export function App() {
         </Route>
         <Route path="*" element={<Navigate to={routes.home} replace />} />
       </Routes>
+      <ToastHost />
     </HashRouter>
   );
 }

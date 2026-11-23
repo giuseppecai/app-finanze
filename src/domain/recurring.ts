@@ -130,3 +130,9 @@ export function mainRecurringEnvelope(recurrings: readonly Recurring[]): string 
   for (const [id, n] of counts) if (best === null || n > (counts.get(best) ?? 0)) best = id;
   return best;
 }
+
+/** Il prossimo addebito del periodo (Home, sotto Rate & Abbonamenti): il primo "tra N giorni". */
+export function nextUpcomingCharge(rows: readonly RecurringRow[]): (RecurringRow & { status: Extract<RecurringStatus, { kind: 'upcoming' }> }) | null {
+  const upcoming = rows.filter((r): r is RecurringRow & { status: Extract<RecurringStatus, { kind: 'upcoming' }> } => r.status.kind === 'upcoming');
+  return upcoming.sort((a, b) => (a.status.date < b.status.date ? -1 : a.status.date > b.status.date ? 1 : 0))[0] ?? null;
+}

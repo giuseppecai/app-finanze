@@ -5,21 +5,21 @@ import { DestinationPicker } from '../../components/DestinationPicker';
 import { AmountField } from '../../components/AmountField';
 import { BottomSheet } from '../../components/BottomSheet';
 import { ConfirmPanel } from '../../components/ConfirmPanel';
-import { IconChevronRight, IconShare } from '../../components/icons';
+import { IconTrash, IconCard, IconChevronRight, IconDownload, IconPiggyBank, IconPlus, IconUpload } from '../../components/icons';
 import { BackupError, backupFileName, buildBackup, parseBackup } from '../../db/backup';
 import { db } from '../../db/database';
 import { readAll, replaceAll } from '../../db/dataset';
 import { addPot, newId, removePot, renamePot, saveMonthlyItem, setCardReserve, setPotBalances, updateSettings } from '../../db/repositories';
 import { nowISO, today } from '../../domain/clock';
 import { formatShortDate, localISODate } from '../../domain/dates';
-import { formatEuro, parseEuro } from '../../domain/money';
+import { formatEuro, parseEuro, amountText } from '../../domain/money';
 import { daysAgo } from '../../domain/movements';
 import { potLines } from '../../domain/pots';
 import { DEFAULT_DESTINATION, FIXED_POTS, fundsDestinations, UNASSIGNED, type DestinationOption, type FundsDestination } from '../../domain/settings';
 import type { Cents, Settings } from '../../domain/types';
 import { it } from '../../i18n/it';
 
-const text = (c: number) => formatEuro(c, { decimals: 'always' }).replace('€ ', '').replace('− ', '-');
+const text = (c: number) => amountText(c);
 
 /** Quello che si corregge: un salvadanaio (nome, saldo), uno nuovo, o la riserva delle carte. */
 type Editing =
@@ -43,6 +43,7 @@ export function PotsGroup({ settings }: { settings: Settings }) {
         {lines.map((p) => (
           <li key={p.id}>
             <button type="button" className="list-row list-row--button" onClick={() => setEditing({ kind: 'pot', id: p.id, name: p.name, value: p.balance })}>
+              <span className="list-row__lead" aria-hidden="true"><IconPiggyBank /></span>
               <span className="list-row__text"><span className="list-row__title">{p.name}</span></span>
               <span className={p.balance < 0 ? 'list-row__value is-over' : 'list-row__value'}>{formatEuro(p.balance)}</span>
               <IconChevronRight className="list-row__chevron" />
@@ -50,16 +51,19 @@ export function PotsGroup({ settings }: { settings: Settings }) {
           </li>
         ))}
         <li>
-          <button type="button" className="list-row list-row--action" onClick={() => { setMessage(null); setEditing({ kind: 'newPot' }); }}>{it.settings.newPot}</button>
-        </li>
-        <li>
           <button type="button" className="list-row list-row--button" onClick={() => setEditing({ kind: 'reserve', value: settings.cardReserve })}>
+            <span className="list-row__lead" aria-hidden="true"><IconCard /></span>
             <span className="list-row__text">
               <span className="list-row__title">{it.settings.reserve}</span>
               <span className="list-row__detail">{it.settings.reserveDetail}</span>
             </span>
             <span className="list-row__value">{settings.cardReserve === null ? it.settings.reserveNotSet : formatEuro(settings.cardReserve)}</span>
             <IconChevronRight className="list-row__chevron" />
+          </button>
+        </li>
+        <li>
+          <button type="button" className="list-row list-row--action" onClick={() => { setMessage(null); setEditing({ kind: 'newPot' }); }}>
+            <IconPlus size={20} />{it.settings.newPot.replace('+ ', '')}
           </button>
         </li>
       </ul>
@@ -182,7 +186,9 @@ function BalanceForm({ editing, destinations, balances, onDone }: BalanceFormPro
     return (
       <ConfirmPanel
         message={it.settings.removePotConfirm(editing.name)}
-        confirmLabel={it.settings.removePot}
+        confirmLabel={editing.value !== 0
+          ? it.funds.removeAndMove('Togli', formatEuro(editing.value), destinations.find((d) => d.value === dest)?.name ?? '')
+          : it.settings.removePot}
         onConfirm={() => void remove()}
         onCancel={() => setConfirming(false)}
       >
@@ -215,7 +221,7 @@ function BalanceForm({ editing, destinations, balances, onDone }: BalanceFormPro
       {removable ? (
         <div className="sheet-actions">
           <button type="button" className="sheet-actions__button sheet-actions__button--danger" onClick={() => setConfirming(true)}>
-            {it.settings.removePot}
+            <IconTrash />{it.settings.removePot}
           </button>
         </div>
       ) : null}
@@ -298,18 +304,23 @@ export function BackupGroup({ settings }: { settings: Settings }) {
       <ul className="card list-card list">
         <li>
           <button type="button" className="list-row list-row--button" onClick={() => void exportBackup()}>
+            <span className="list-row__lead" aria-hidden="true"><IconDownload /></span>
             <span className="list-row__text">
-              <span className="list-row__title list-row__title--accent">{it.settings.export}</span>
+              <span className="list-row__title">{it.settings.export}</span>
               <span className="list-row__detail">
                 {last ? it.settings.lastBackup(it.relativeDays(daysAgo(localISODate(new Date(last)), today()))) : it.settings.neverBackup}
               </span>
             </span>
-            <IconShare className="list-row__chevron list-row__chevron--accent" />
+            <IconChevronRight className="list-row__chevron" />
           </button>
         </li>
         <li>
           <label className="list-row list-row--button">
-            <span className="list-row__text"><span className="list-row__title">{it.settings.import}</span></span>
+            <span className="list-row__lead" aria-hidden="true"><IconUpload /></span>
+            <span className="list-row__text">
+              <span className="list-row__title">{it.settings.import}</span>
+              <span className="list-row__detail">{it.settings.importDetail}</span>
+            </span>
             <IconChevronRight className="list-row__chevron" />
             <input
               ref={fileRef}

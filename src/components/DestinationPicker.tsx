@@ -22,7 +22,12 @@ export function DestinationPicker({ amount, options, balances, value, onChange }
       options={options.map((o) => ({
         value: o.value,
         title: o.name,
-        detail: o.value === UNASSIGNED ? it.funds.unassignedDetail : it.funds.potDetail(formatEuro(balances[o.value] ?? 0)),
+        // Sull'opzione scelta si vede già il nuovo saldo: "Ora € 1.240 → € 1.420".
+        detail: o.value === UNASSIGNED
+          ? it.funds.unassignedDetail
+          : o.value === value
+            ? it.funds.potAfter(formatEuro(balances[o.value] ?? 0), formatEuro((balances[o.value] ?? 0) + amount))
+            : it.funds.potDetail(formatEuro(balances[o.value] ?? 0)),
       }))}
       value={value}
       onChange={onChange}

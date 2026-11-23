@@ -137,3 +137,8 @@ export function billsAsEnvelope(bills: readonly Bill[], potBalance: Cents): Enve
     remaining: potBalance,
   };
 }
+
+/** Bollette mensili attive non ancora registrate nel periodo (Home: "2 da registrare questo mese"). */
+export function billsToRegister(bills: readonly Bill[], periodTxs: readonly { billId: string | null; type: string }[]): Bill[] {
+  return bills.filter((b) => b.active && !isPeriodic(b) && !periodTxs.some((t) => t.billId === b.id && t.type === 'expense'));
+}

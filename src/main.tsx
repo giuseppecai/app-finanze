@@ -17,6 +17,9 @@ import './styles/bills.css';
 import './styles/history.css';
 import './styles/settings.css';
 
+// iOS Safari attiva :active (riscontro al tocco) solo se c'è un listener touchstart.
+document.addEventListener('touchstart', () => {}, { passive: true });
+
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Elemento #root mancante in index.html');
 const root = createRoot(rootElement);

@@ -7,7 +7,7 @@ import { Switch } from '../../components/Switch';
 import { db } from '../../db/database';
 import { deleteRecurring, newId, runRecurringCharges, saveRecurring } from '../../db/repositories';
 import { nowISO, today } from '../../domain/clock';
-import { formatEuro, parseEuro } from '../../domain/money';
+import { parseEuro, amountText } from '../../domain/money';
 import type { Card, Recurring } from '../../domain/types';
 import { it } from '../../i18n/it';
 
@@ -39,7 +39,7 @@ function RecurringForm({ target, defaultEnvelopeId, onDone }: { target: Recurrin
   const existing = target === 'new' ? null : target;
   const [confirming, setConfirming] = useState(false);
   const [name, setName] = useState(existing?.name ?? '');
-  const [amount, setAmount] = useState(existing ? formatEuro(existing.amount, { decimals: 'always' }).replace('€ ', '') : '');
+  const [amount, setAmount] = useState(existing ? amountText(existing.amount) : '');
   const [day, setDay] = useState(existing?.dayOfMonth ?? 1);
   const [card, setCard] = useState<Card>(existing?.card ?? 'extra');
   const [active, setActive] = useState(existing?.active ?? true);

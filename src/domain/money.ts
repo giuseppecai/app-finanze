@@ -2,6 +2,8 @@
 import type { Cents } from './types';
 
 const MINUS = '−'; // segno meno tipografico
+/** spazio non separabile: "€ 8" e "− € 8" non vanno mai a capo */
+const NBSP = ' ';
 
 export interface FormatEuroOptions {
   /** 'auto': niente decimali se i centesimi sono zero (liste). 'always': sempre 2 decimali (tastierino, confronto). */
@@ -15,18 +17,25 @@ function groupThousands(n: number): string {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
-/** `€ 12,40`, `€ 1.240`, `− € 8`, `+ € 1,12` */
+/** `€ 12,40`, `€ 1.240`, `− € 8`, `+ € 1,12` (con spazi non separabili) */
 export function formatEuro(cents: Cents, options: FormatEuroOptions = {}): string {
   if (!Number.isInteger(cents)) throw new Error(`Importo non intero in centesimi: ${cents}`);
   const { decimals = 'auto', sign = 'auto' } = options;
   const abs = Math.abs(cents);
   const euros = Math.floor(abs / 100);
   const rest = abs % 100;
-  let body = `€ ${groupThousands(euros)}`;
+  let body = `€${NBSP}${groupThousands(euros)}`;
   if (decimals === 'always' || rest !== 0) body += `,${String(rest).padStart(2, '0')}`;
-  if (cents < 0) return `${MINUS} ${body}`;
-  if (sign === 'always' && cents > 0) return `+ ${body}`;
+  if (cents < 0) return `${MINUS}${NBSP}${body}`;
+  if (sign === 'always' && cents > 0) return `+${NBSP}${body}`;
   return body;
+}
+
+/** Importo da mettere in un campo di testo modificabile: "12,40", "-8,00" (niente simbolo, sempre 2 decimali). */
+export function amountText(cents: Cents): string {
+  const abs = Math.abs(cents);
+  const body = `${groupThousands(Math.floor(abs / 100))},${String(abs % 100).padStart(2, '0')}`;
+  return cents < 0 ? `-${body}` : body;
 }
 
 /**

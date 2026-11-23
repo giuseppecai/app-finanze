@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mainRecurringEnvelope, recurringRows } from '../recurring';
+import { mainRecurringEnvelope, nextUpcomingCharge, recurringRows } from '../recurring';
 import { buildDemoData, DEMO_TODAY, ENV } from '../../db/fixtures';
 
 const data = buildDemoData();
@@ -17,6 +17,12 @@ describe('Schermata Abbonamenti (oggi 19 nov)', () => {
       ['iCloud', 'upcoming'],
     ]);
     expect(rows[4]!.status).toMatchObject({ inDays: 5 });
+  });
+
+  it('Home: prossimo addebito = iCloud € 1 tra 5 giorni; nessuno se è già tutto scalato', () => {
+    const rows = recurringRows(data.recurring, nov, novTxs, DEMO_TODAY);
+    expect(nextUpcomingCharge(rows)).toMatchObject({ recurring: { name: 'iCloud', amount: 100 }, status: { inDays: 5 } });
+    expect(nextUpcomingCharge(rows.filter((r) => r.status.kind !== 'upcoming'))).toBeNull();
   });
 
   it('le voci in pausa vanno in fondo', () => {

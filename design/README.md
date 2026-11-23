@@ -1,4 +1,13 @@
-# Mockup
+# Design
+
+**Riferimento attuale: [`redesign-2026-11/`](redesign-2026-11/)** (Claude Design, novembre 2026). Apri `redesign-2026-11/index.html` nel browser per la galleria delle schermate e `componenti.html` per gli stati; `NOTE.md` spiega le scelte, i cambi di struttura e le interazioni. I token sono in `src/styles/tokens.css`.
+
+`claude-design/` è il pacchetto (brief, screenshot dell'app di prima) dato a Claude Design per il redesign.
+
+---
+
+## Mockup originali (storici)
+
 
 Le 9 schermate disegnate sul canvas di design, come riferimento visivo e di struttura.
 

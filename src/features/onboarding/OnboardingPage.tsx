@@ -10,7 +10,7 @@ import { StepIndicator } from '../../components/StepIndicator';
 import { db } from '../../db/database';
 import { newId, replaceRecurring, setPotBalances, updateSettings } from '../../db/repositories';
 import { nowISO } from '../../domain/clock';
-import { formatEuro, parseEuro } from '../../domain/money';
+import { formatEuro, parseEuro, amountText } from '../../domain/money';
 import { monthlyTotal } from '../../domain/recurring';
 import type { Envelope, Pot, PotId, Recurring } from '../../domain/types';
 import { it } from '../../i18n/it';
@@ -49,7 +49,7 @@ function EnvelopesStep({ envelopes, onNext }: { envelopes: Envelope[]; onNext: (
 type RecurringDraft = { id: string; name: string; amount: string; dayOfMonth: number; active: boolean; base: Recurring | null };
 
 function toDraft(r: Recurring): RecurringDraft {
-  return { id: r.id, name: r.name, amount: formatEuro(r.amount, { decimals: 'always' }).replace('€ ', ''), dayOfMonth: r.dayOfMonth, active: r.active, base: r };
+  return { id: r.id, name: r.name, amount: amountText(r.amount), dayOfMonth: r.dayOfMonth, active: r.active, base: r };
 }
 
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
@@ -152,7 +152,7 @@ function PotsStep({ pots, onBack }: { pots: Pot[]; onBack: () => void }) {
   // Le Pocket da chiedere: tutte tranne Bollette (si riempie con le quote delle bollette).
   const list = pots.filter((p) => p.id !== 'bills').sort((a, b) => (a.id === 'savings' ? -1 : b.id === 'savings' ? 1 : 0));
   const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(list.map((p) => [p.id, p.balance === 0 ? '' : formatEuro(p.balance, { decimals: 'always' }).replace('€ ', '')])),
+    Object.fromEntries(list.map((p) => [p.id, p.balance === 0 ? '' : amountText(p.balance)])),
   );
   const [error, setError] = useState<string | null>(null);
   const valueOf = (id: string) => values[id] ?? '';

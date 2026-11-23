@@ -5,31 +5,45 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  min-height: 52px;
-  padding: 0 16px;
+  min-height: 64px;
+  padding: 10px 16px;
   color: var(--text);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 520;
   text-decoration: none;
 }
-
-.link-row:hover { color: var(--text); }
+.link-row:active { background: var(--surface-press); }
 
 .bill-row {
   width: 100%;
-  min-height: 62px;
-  padding: 10px 0;
+  padding: 14px 16px;
   border: none;
   background: transparent;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
   color: var(--text);
   text-align: left;
 }
+.bill-row:active { background: var(--surface-press); }
+.bill-row__top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.bill-row__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-body); font-weight: 520; }
+.bill-row__name.is-muted { color: var(--text-faint); }
+.bill-row__quota { flex: none; font-size: 17px; font-weight: 640; white-space: nowrap; }
+.bill-row__quota small { font-size: 13px; font-weight: 450; color: var(--text-muted); }
+.bill-row__quota.is-paused { color: var(--text-faint); text-decoration: line-through; }
+.bill-row__detail { font-size: 13px; color: var(--text-muted); }
+.fund__foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.link-row__text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.link-row__title { font-size: var(--fs-body); font-weight: 520; }
+.link-row__detail { font-size: 13px; color: var(--text-muted); }
+.avatar { width: 40px; height: 40px; flex: none; border-radius: 50%; background: var(--bg); display: grid; place-items: center; font-weight: 650; }
+.group-label { margin: 22px 4px 8px; font-size: 13px; font-weight: 600; color: var(--text-muted); letter-spacing: .01em; }
 
-.fund { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
-.fund .bar { max-width: 220px; }
+.fund { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.fund .bar { height: var(--bar-h-sm); margin-top: 0; }
+.fund .bar__fill--ok { background: var(--committed); }
 
 .bill-preview-box {
   display: flex;

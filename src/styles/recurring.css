@@ -2,37 +2,38 @@
 
 .pill-button {
   min-height: var(--touch);
-  padding: 0 14px;
-  border-radius: 22px;
-  border: 1px solid var(--line);
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  border: none;
   background: var(--surface);
   color: var(--text);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
 }
+.pill-button:active { background: var(--surface-press); }
 
-.hero__amount--medium { font-size: 34px; line-height: 1.1; }
+.hero__amount--medium { font-size: var(--fs-hero); letter-spacing: -0.035em; line-height: 1.05; }
 
 .hero__bar {
   display: block;
   height: 6px;
   margin-top: 4px;
   border-radius: 3px;
-  background: #3A3934;
+  background: rgba(255, 255, 255, .14);
   overflow: hidden;
 }
 
-.hero__bar-fill { display: block; height: 100%; border-radius: 3px; background: var(--link-on-dark); }
-.hero__bar-fill.is-over { background: var(--danger-light); }
+.hero__bar-fill { display: block; height: 100%; border-radius: 3px; background: #fff; }
+.hero__bar-fill.is-over { background: var(--state-over); }
 
 .recurring-list-section { display: flex; flex-direction: column; gap: 6px; }
 .recurring-list-section .section-head { margin: 0 2px; }
 
 .recurring-row {
   width: 100%;
-  min-height: 62px;
-  padding: 0;
+  min-height: 64px;
+  padding: 10px 16px;
   border: none;
   background: transparent;
   display: flex;
@@ -48,12 +49,11 @@
 .movement__amount.is-paused { color: var(--neutral-bar); text-decoration: line-through; }
 
 .date-box {
-  width: 40px;
-  height: 44px;
+  width: 44px;
+  height: 48px;
   flex-shrink: 0;
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--bg);
-  box-shadow: inset 0 0 0 1px var(--line);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -61,21 +61,24 @@
   gap: 2px;
 }
 
-.date-box.is-past { background: var(--surface-muted); box-shadow: none; color: var(--text-muted); }
-.date-box__day { font-family: var(--font-display); font-size: 17px; font-weight: 600; line-height: 1; }
-.date-box__month { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+.date-box.is-past { color: var(--text); }
+.date-box__day { font-size: 18px; font-weight: 650; line-height: 1; }
+.date-box__month { margin-top: 1px; font-size: 10.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 
+/* Chip di stato: fatto (verde tenue), in arrivo / da fare (contorno), in pausa / a febbraio (grigio) */
 .chip {
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
-
-.chip--charged { background: var(--accent-soft); color: var(--accent-strong); }
-.chip--upcoming { background: var(--warning-soft); color: var(--warning-text); }
-.chip--paused, .chip--none { background: var(--surface-muted); color: var(--text-muted); }
+.chip--charged, .chip--done { background: var(--money-in-soft); color: var(--done-text); }
+.chip--upcoming { background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+.chip--paused, .chip--none, .chip--later { background: var(--surface-sunk); color: var(--text-muted); }
 
 /* ── Interruttore ─────────────────────────────────────────── */
 

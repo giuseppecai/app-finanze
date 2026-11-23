@@ -1,99 +1,59 @@
-// Icone SVG a tratto copiate dai mockup (design/mockups/Main.dc.html).
-import type { SVGProps } from 'react';
+// Icone Lucide (lucide-react, l'unica dipendenza UI ammessa), tratto 2 e currentColor come nel redesign.
+// I nomi Icon* restano quelli di prima, così i componenti non cambiano.
+import {
+  ArrowDownLeft, ArrowLeftRight, ArrowRight, ArrowUp, ArrowUpRight, Calendar, ChartColumn, Check, ChevronDown, ChevronRight,
+  CircleCheck, Coffee, CreditCard, Delete, Download, HandCoins, House, Info, Lightbulb, List, Minus, Pencil, PiggyBank,
+  Plus, Receipt, Repeat, Settings, Share, ShoppingBag, ShoppingBasket, SlidersHorizontal, TrainFront, Trash2,
+  TriangleAlert, Upload, Wallet, X, type LucideIcon, type LucideProps,
+} from 'lucide-react';
 
-type IconProps = SVGProps<SVGSVGElement> & { size?: number };
+type IconProps = Omit<LucideProps, 'ref'>;
 
-function Svg({ size = 22, strokeWidth = 1.8, children, ...rest }: IconProps) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      focusable="false"
-      {...rest}
-    >
-      {children}
-    </svg>
+function make(Icon: LucideIcon, defaults: { size?: number; strokeWidth?: number } = {}) {
+  const Wrapped = ({ size = defaults.size ?? 22, strokeWidth = defaults.strokeWidth ?? 2, ...rest }: IconProps) => (
+    <Icon size={size} strokeWidth={strokeWidth} aria-hidden="true" focusable="false" {...rest} />
   );
+  return Wrapped;
 }
 
-export const IconEnvelopes = (p: IconProps) => (
-  <Svg {...p}><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 9l9 5 9-5" /></Svg>
-);
+export const IconEnvelopes = make(Wallet);
+export const IconList = make(List);
+export const IconPlus = make(Plus);
+export const IconChart = make(ChartColumn);
+export const IconSettings = make(Settings);
+export const IconClose = make(X);
+export const IconSliders = make(SlidersHorizontal);
+export const IconCalendar = make(Calendar, { size: 20 });
+export const IconChevronRight = make(ChevronRight, { size: 18 });
+export const IconChevronDown = make(ChevronDown, { size: 18 });
+export const IconBackspace = make(Delete, { size: 24 });
+export const IconCheck = make(Check, { size: 18, strokeWidth: 3 });
+export const IconMinus = make(Minus);
+export const IconAlert = make(TriangleAlert, { size: 18 });
+export const IconShare = make(Share, { size: 20 });
+export const IconCompare = make(ArrowLeftRight, { size: 20 });
+export const IconPencil = make(Pencil, { size: 15 });
+export const IconArrowUp = make(ArrowUp, { size: 20 });
+export const IconArrowRight = make(ArrowRight, { size: 18 });
+export const IconArrowDownLeft = make(ArrowDownLeft, { size: 18 });
+export const IconArrowUpRight = make(ArrowUpRight, { size: 16 });
+export const IconPiggyBank = make(PiggyBank, { size: 20 });
+export const IconCard = make(CreditCard, { size: 20 });
+export const IconDownload = make(Download, { size: 20 });
+export const IconUpload = make(Upload, { size: 20 });
+export const IconInfo = make(Info, { size: 18 });
+export const IconLightbulb = make(Lightbulb, { size: 18 });
+export const IconCircleCheck = make(CircleCheck, { size: 18 });
+export const IconTrash = make(Trash2, { size: 18 });
+export const IconRepeat = make(Repeat, { size: 20 });
+export const IconReceipt = make(Receipt, { size: 20 });
+export const IconHandCoins = make(HandCoins, { size: 20 });
 
-export const IconList = (p: IconProps) => (
-  <Svg {...p}><path d="M5 7h14M5 12h14M5 17h9" /></Svg>
-);
-
-export const IconPlus = (p: IconProps) => (
-  <Svg size={28} strokeWidth={2.2} {...p}><path d="M12 5v14M5 12h14" /></Svg>
-);
-
-export const IconChart = (p: IconProps) => (
-  <Svg {...p}><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></Svg>
-);
-
-export const IconSettings = (p: IconProps) => (
-  <Svg {...p}>
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
-  </Svg>
-);
-
-export const IconClose = (p: IconProps) => (
-  <Svg size={16} strokeWidth={2} {...p}><path d="M6 6l12 12M18 6L6 18" /></Svg>
-);
-
-export const IconSliders = (p: IconProps) => (
-  <Svg size={20} {...p}><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></Svg>
-);
-
-export const IconCalendar = (p: IconProps) => (
-  <Svg size={18} {...p}><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16" /></Svg>
-);
-
-export const IconChevronRight = (p: IconProps) => (
-  <Svg size={16} strokeWidth={2} {...p}><path d="M9 6l6 6-6 6" /></Svg>
-);
-
-export const IconChevronDown = (p: IconProps) => (
-  <Svg size={16} strokeWidth={2} {...p}><path d="M6 9l6 6 6-6" /></Svg>
-);
-
-export const IconBackspace = (p: IconProps) => (
-  <Svg size={22} {...p}><path d="M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z" /><path d="M17 9l-5 6M12 9l5 6" /></Svg>
-);
-
-export const IconCheck = (p: IconProps) => (
-  <Svg size={14} strokeWidth={3} {...p}><path d="M5 12l5 5 9-10" /></Svg>
-);
-
-export const IconMinus = (p: IconProps) => (
-  <Svg size={18} strokeWidth={2.2} {...p}><path d="M5 12h14" /></Svg>
-);
-
-export const IconAlert = (p: IconProps) => (
-  <Svg size={20} {...p}><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16v.5" /></Svg>
-);
-
-export const IconShare = (p: IconProps) => (
-  <Svg size={18} {...p}><path d="M12 3v12M8 7l4-4 4 4" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" /></Svg>
-);
-
-export const IconCompare = (p: IconProps) => (
-  <Svg size={16} strokeWidth={2} {...p}><path d="M7 4L3 8l4 4" /><path d="M3 8h13" /><path d="M17 20l4-4-4-4" /><path d="M21 16H8" /></Svg>
-);
-
-export const IconPencil = (p: IconProps) => (
-  <Svg {...p}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></Svg>
-);
-
-export const IconArrowUp = (p: IconProps) => (
-  <Svg {...p}><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></Svg>
-);
+/** Icona di una busta (Movimenti): per nome breve, con un'icona generica per le buste nuove. */
+const ENVELOPE_ICONS: Record<string, LucideIcon> = {
+  trasporti: TrainFront, vita: Coffee, spesa: ShoppingBasket, shopping: ShoppingBag, casa: House, rate: Repeat,
+};
+export function EnvelopeIcon({ shortName, ...rest }: IconProps & { shortName: string }) {
+  const Icon = ENVELOPE_ICONS[shortName.trim().toLowerCase()] ?? Wallet;
+  return <Icon size={20} strokeWidth={2} aria-hidden="true" focusable="false" {...rest} />;
+}

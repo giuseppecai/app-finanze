@@ -18,11 +18,11 @@ export function Keypad({ value, onChange, replaceOnNextDigit = false }: Props) {
     <div className="keypad">
       {KEYS.map((key) =>
         key === 'del' ? (
-          <button key={key} type="button" className="keypad__key" aria-label={it.entry.backspace} onClick={() => onChange(keypadBackspace(value))}>
+          <button key={key} type="button" className="keypad__key keypad__key--fn" aria-label={it.entry.backspace} onClick={() => onChange(keypadBackspace(value))}>
             <IconBackspace />
           </button>
         ) : (
-          <button key={key} type="button" className="keypad__key" onClick={() => onChange(keypadPress(replaceOnNextDigit ? 0 : value, key))}>
+          <button key={key} type="button" className={key === '00' ? 'keypad__key keypad__key--fn' : 'keypad__key'} onClick={() => onChange(keypadPress(replaceOnNextDigit ? 0 : value, key))}>
             {key}
           </button>
         ),

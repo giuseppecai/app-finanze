@@ -61,12 +61,12 @@ Esempio di riferimento (periodo Novembre, oggi 19 nov), da usare come fixture:
 (Casa & Servizi è *da spendere* dalla v4: le bollette hanno la loro Pocket, la busta resta per detersivi e piccole spese di casa.)
 - Totale buste = **€ 251,50**.
 
-Colore della barra (larghezza = speso / tetto, massimo 100%):
-- residuo < 0 → arancione `--danger`, testo importo arancione, etichetta "oltre il tetto";
-- residuo esattamente 0 (con qualcosa messo) → grigio chiaro, importo grigio: la busta è svuotata (vale anche per le impegnate);
+Barra (dal redesign di novembre 2026): **mostra quanto resta**, `larghezza = max(0, residuo / messo)`, e si svuota spendendo come un serbatoio (Trasporti 38 su 100 → 38%). Vale anche per le impegnate e per Bollette in Home. Colore:
+- residuo < 0 → **barra tutta arancione** `--state-over`, testo importo arancione, etichetta "oltre il tetto";
+- residuo esattamente 0 (con qualcosa messo) → barra vuota, nome e importo grigi: la busta è svuotata (vale anche per le impegnate);
 - residuo / tetto < 20% → ambra `--warning`;
-- busta impegnata → grigio `--neutral-bar`;
-- altrimenti → `--accent`.
+- busta impegnata → grigio `--committed`;
+- altrimenti → viola profondo `--state-ok`.
 
 ## R4 · Tipi di movimento
 

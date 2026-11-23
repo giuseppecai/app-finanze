@@ -1,0 +1,132 @@
+/* ==========================================================================
+   App Finanze · Token del redesign
+   Un solo blocco di variabili. Accanto a ogni colore: cosa significa.
+   Il viola è la personalità dell'app: azioni, card principale, buste in
+   salute (viola profondo), Messi da parte (lilla). Ambra, arancione e grigio
+   chiaro sono stati, non decorazione: compaiono solo quando c'è da notare qualcosa.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Geist';
+  src: url('../../../src/styles/fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* --- Superfici ---------------------------------------------------------- */
+  --bg:             #F4F3EF; /* sfondo dell'app, caldo */
+  --surface:        #FFFFFF; /* card e righe */
+  --surface-sunk:   #ECEAE4; /* segmented control, campi, riquadri informativi */
+  --surface-press:  #E4E2DB; /* stato premuto di righe e tasti bianchi */
+  --surface-ink:    #241A33; /* viola notte: card principale (hero), toast, filtro attivo */
+  --scrim:          rgba(36, 26, 51, .45); /* velo dietro i pannelli dal basso */
+
+  /* --- Testo -------------------------------------------------------------- */
+  --text:           #17181B; /* testo e numeri principali (16:1 su bianco) */
+  --text-muted:     #5E5D57; /* etichette e sottotitoli (6,6:1 su bianco, 5,9:1 su --bg) */
+  --text-faint:     #6E6C66; /* busta svuotata, valori "spenti" (5,2:1 su bianco) */
+  --text-on-ink:    #FFFFFF;
+  --text-on-ink-muted: #D3CCE0; /* 10,6:1 su --surface-ink */
+  --link-on-ink:    #CDB8EC; /* link sulla card scura · 9,2:1 */
+
+  /* --- Linee e binari ----------------------------------------------------- */
+  --line:           #E3E1DA; /* bordi di campi e pulsanti secondari */
+  --line-soft:      #EEECE6; /* filetti tra righe nella stessa card */
+  --track:          #E8E6E0; /* binario delle barre (la parte "consumata") */
+
+  /* --- Azione (accento viola) ---------------------------------------------
+     Azione principale, ＋, selezione, link, scheda attiva. Mai per uno stato di allarme. */
+  --accent:         #6B3FA0; /* viola · 7,4:1 con il bianco */
+  --accent-press:   #522C80; /* premuto, testo su --accent-soft (8,5:1) */
+  --accent-soft:    #EEE6F8; /* sfondo dell'elemento selezionato */
+  --focus-ring:     #6B3FA0;
+
+  /* --- Stato delle buste da spendere (barra = quanto RESTA) --------------- */
+  --state-ok:       #3B2363; /* busta in salute: viola profondo (3,4:1 di luminanza contro l'arancione) */
+  --state-low:      #D08C00; /* quasi finita (< 20% del tetto): barra ambra */
+  --state-low-text: #875400; /* testo ambra · 6,4:1 su bianco */
+  --state-low-soft: #FFF1D2; /* chip "quasi finita" */
+  --state-empty:    #6E6C66; /* svuotata (a zero): testo grigio, barra vuota */
+  --state-over:     #E0561F; /* SFORATA (sotto zero): barra arancione. Solo questo! */
+  --state-over-text:#B83F0E; /* testo "− € 8" · 5,6:1 su bianco */
+  --state-over-soft:#FDE9DF; /* riquadro di avviso sforamento */
+  --state-over-strong:#8A2E08; /* testo su --state-over-soft */
+
+  /* --- Impegnate (spese fisse che si scalano da sole) --------------------- */
+  --committed:      #7D7B75; /* barre grigie · 3,4:1 sul binario */
+
+  /* --- Messi da parte (Pocket di risparmio): famiglia lilla -------------- */
+  --save-soft:      #EEE7F8; /* sfondo dell'area Messi da parte */
+  --save-1:         #4B2A7A; /* Risparmi (e testo su --save-soft, 9,1:1) */
+  --save-2:         #8662C0; /* secondo salvadanaio */
+  --save-3:         #B9A0DF; /* terzo salvadanaio (sempre con legenda e importo) */
+
+  /* --- Soldi in entrata (rimborsi, interessi, restituzioni) --------------- */
+  --money-in:       #1C7A4D; /* "+ € 1,12" · 5,3:1 su bianco */
+
+  /* --- Avvisi non gravi (consigli, promemoria): neutri con icona ---------- */
+  --info-bg:        #ECEAE4;
+  --info-text:      #3E3D39;
+
+  /* --- Tipografia ---------------------------------------------------------- */
+  --font: 'Geist', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+
+  --fs-hero:     44px;  /* "Puoi ancora spendere" · 650, tracking −0.035em */
+  --fs-keypad:   56px;  /* importo nel tastierino · 650 */
+  --fs-title:    28px;  /* titolo di schermata · 650, −0.02em */
+  --fs-section:  19px;  /* titolo di sezione · 620 */
+  --fs-amount-l: 22px;  /* importi in card · 620 */
+  --fs-body:     16px;  /* testo di riga · 500 */
+  --fs-amount:   16px;  /* importo di riga · 600 */
+  --fs-small:    13px;  /* sottotitoli, "di € 100" · 450 */
+  --fs-micro:    12px;  /* chip, tab bar, intestazioni di gruppo · 550 */
+
+  --lh-tight: 1.1;
+  --lh-text:  1.35;
+  --track-tight: -0.03em; /* importi grandi */
+
+  /* --- Spaziature (scala da 4) ------------------------------------------- */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px;
+  --gutter: 20px;          /* margini laterali */
+  --section-gap: 28px;     /* tra le aree della Home */
+
+  /* --- Raggi --------------------------------------------------------------- */
+  --r-hero:  24px;
+  --r-card:  18px;
+  --r-row:   14px;
+  --r-key:   16px;
+  --r-btn:   16px;
+  --r-pill:  999px;
+  --r-sheet: 28px;
+
+  /* --- Ombre (solo ＋, pannelli, toast, barra di salvataggio) ------------- */
+  --shadow-fab:   0 6px 16px rgba(107, 63, 160, .35), 0 1px 3px rgba(23,24,27,.12);
+  --shadow-sheet: 0 -8px 32px rgba(23, 24, 27, .16);
+  --shadow-float: 0 8px 24px rgba(23, 24, 27, .18);
+  --shadow-seg:   0 1px 2px rgba(23, 24, 27, .10), 0 1px 1px rgba(23,24,27,.04);
+
+  /* --- Misure fisse -------------------------------------------------------- */
+  --touch:     44px;   /* area di tocco minima */
+  --bar-h:     8px;    /* barra delle buste da spendere */
+  --bar-h-sm:  5px;    /* barre delle impegnate */
+  --tabbar-h:  64px;   /* + safe-area-inset-bottom */
+  --fab:       58px;
+
+  /* --- Movimento ----------------------------------------------------------- */
+  --t-press:  90ms;    /* risposta al tocco: immediata */
+  --t-fast:   150ms;   /* chip, frecce, interruttori */
+  --t-base:   220ms;   /* pannelli dal basso, schermate a tutto schermo */
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-in:  cubic-bezier(.4, 0, 1, 1);
+
+  /* --- Safe area ----------------------------------------------------------- */
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --t-press: 0ms; --t-fast: 0ms; --t-base: 0ms; }
+}

@@ -5,11 +5,12 @@ import { potLines } from '../../domain/pots';
 import { DEFAULT_DESTINATION, fundsDestinations, type FundsDestination } from '../../domain/settings';
 import { AmountField } from '../../components/AmountField';
 import { BottomSheet } from '../../components/BottomSheet';
+import { IconTrash } from '../../components/icons';
 import { ConfirmPanel } from '../../components/ConfirmPanel';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { db } from '../../db/database';
 import { deleteMonthlyItem, newId, saveMonthlyItem } from '../../db/repositories';
-import { formatEuro, parseEuro } from '../../domain/money';
+import { parseEuro, amountText } from '../../domain/money';
 import type { MonthlyItem } from '../../domain/types';
 import { it } from '../../i18n/it';
 
@@ -19,7 +20,7 @@ type Props = {
   onClose: () => void;
 };
 
-const text = (c: number) => formatEuro(c, { decimals: 'always' }).replace('€ ', '');
+const text = (c: number) => amountText(c);
 
 /** Crea o modifica una voce fissa dell'inizio del mese (salvadanaio o uscita, es. affitto). */
 export function MonthlyItemSheet({ target, onClose }: Props) {
@@ -126,7 +127,7 @@ function ItemForm({ item, onDone }: { item: MonthlyItem | null; onDone: () => vo
               {item.archived ? it.items.restore : it.items.archive}
             </button>
             <button type="button" className="sheet-actions__button sheet-actions__button--danger" onClick={() => void askRemove()}>
-              {it.items.delete}
+              <IconTrash />{it.items.delete}
             </button>
           </div>
           <p className="muted-note">{it.items.actionsHint}</p>

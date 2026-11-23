@@ -11,18 +11,21 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
   margin: 0;
   padding: 0;
   border: none;
-  border-radius: 24px 24px 0 0;
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 -8px 32px rgba(26, 26, 24, 0.18);
+  box-shadow: var(--shadow-sheet);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 
-.sheet::backdrop { background: rgba(26, 26, 24, 0.45); }
+.sheet::backdrop { background: var(--scrim); }
 
-.sheet[open] { animation: sheet-in 200ms ease-out; }
-.sheet[open]::backdrop { animation: veil-in 200ms ease-out; }
+.sheet[open] { animation: sheet-in var(--t-base) var(--ease-out); }
+.sheet[open]::backdrop { animation: veil-in var(--t-fast) ease-out; }
+
+/* maniglia in alto */
+.sheet__body::before { content: ""; display: block; width: 36px; height: 5px; margin: -10px auto 0; border-radius: 3px; background: #D6D4CD; }
 
 @keyframes sheet-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes veil-in { from { opacity: 0; } to { opacity: 1; } }
@@ -31,19 +34,21 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 20px calc(var(--gutter) + var(--safe-right)) calc(28px + var(--safe-bottom)) calc(var(--gutter) + var(--safe-left));
+  padding: 18px calc(var(--gutter) + var(--safe-right)) calc(28px + var(--safe-bottom)) calc(var(--gutter) + var(--safe-left));
 }
+.sheet .icon-button { background: var(--surface-sunk); }
 
 .sheet__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .sheet__titles { display: flex; flex-direction: column; gap: 3px; }
 
 .sheet__title {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 600;
+  margin-top: 6px;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
 }
 
-.sheet__subtitle { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+.sheet__subtitle { font-size: 14px; color: var(--text-muted); line-height: 1.4; }
 
 /* ── Confronta ────────────────────────────────────────────── */
 
@@ -73,33 +78,35 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 14px;
-  border-radius: var(--radius-card);
-  font-size: 13px;
-  line-height: 1.4;
+  padding: 12px 14px;
+  border-radius: var(--r-row);
+  font-size: 13.5px;
+  line-height: 1.45;
 }
 
-.outcome__title { font-size: 15px; font-weight: 600; }
-.outcome--ok { background: var(--accent-soft); color: var(--accent-strong); }
-.outcome--missing { background: var(--danger-soft); color: var(--danger-strong); }
-.outcome--extra, .outcome--info { background: var(--surface-muted); color: var(--text); }
+/* esiti del Confronta: riquadri neutri; solo "manca una spesa" resta evidenziato, senza allarme */
+.outcome__title { font-size: 15px; font-weight: 600; color: var(--text); }
+.outcome--ok { background: var(--money-in-soft); color: var(--done-text); }
+.outcome--ok .outcome__title { color: var(--done-text); }
+.outcome--missing, .outcome--extra, .outcome--info { background: var(--info-bg); color: var(--info-text); }
 
 .outcome__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 
 .outcome__button {
   min-height: var(--touch);
-  padding: 0 14px;
-  border-radius: var(--radius-row);
-  border: 1px solid transparent;
-  font-size: 14px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: none;
+  font-size: 15px;
   font-weight: 600;
 }
 
-.outcome__button--dark { background: var(--surface-dark); color: var(--text-on-dark); }
-.outcome__button--accent { background: var(--accent); color: var(--text-on-dark); }
-.outcome__button--danger { background: var(--danger); color: var(--text-on-dark); }
-.outcome__button--secondary { background: var(--surface); color: var(--text); border-color: var(--line); }
-.outcome__button--danger-secondary { background: var(--surface); color: var(--danger-strong); border-color: #C9764B; }
+.outcome__button--dark { background: var(--surface-ink); color: #fff; }
+.outcome__button--accent { background: var(--accent); color: #fff; }
+.outcome__button--danger { background: var(--surface-ink); color: #fff; }
+.outcome__button--secondary { background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+.outcome__button--danger-secondary { background: transparent; color: var(--text-muted); }
+.outcome__button:active { opacity: .85; }
 
 /* Pillola Confronta nella card scura */
 .hero__row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
@@ -124,6 +131,6 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
 /* Conferma dentro il pannello (Elimina, Togli, Importa) */
 .confirm-panel { display: flex; flex-direction: column; gap: 10px; }
 .confirm-panel__message { margin: 0 0 6px; font-size: 16px; line-height: 1.45; color: var(--text); }
-.primary-button--danger { background: var(--danger); }
-.primary-button--danger:active:not(:disabled) { background: var(--danger-strong); }
+.primary-button--danger { background: var(--surface-ink); }
+.primary-button--danger:active:not(:disabled) { background: #3A2C50; }
 .confirm-panel .sheet-actions__button { flex: none; }

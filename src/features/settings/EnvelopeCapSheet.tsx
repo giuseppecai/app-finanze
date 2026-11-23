@@ -5,8 +5,8 @@ import { AmountField } from '../../components/AmountField';
 import { ConfirmPanel } from '../../components/ConfirmPanel';
 import { DestinationPicker } from '../../components/DestinationPicker';
 import { BottomSheet } from '../../components/BottomSheet';
-import { IconChevronRight, IconMinus, IconPlus } from '../../components/icons';
-import { formatEuro, parseEuro, stepCents } from '../../domain/money';
+import { IconChevronRight, IconMinus, IconPlus, IconTrash } from '../../components/icons';
+import { amountText, formatEuro, parseEuro, stepCents } from '../../domain/money';
 import { DEFAULT_DESTINATION, type DestinationOption, type FundsDestination } from '../../domain/settings';
 import type { Cents } from '../../domain/types';
 import { it } from '../../i18n/it';
@@ -29,16 +29,17 @@ type Props = {
   target: CapTarget | null;
   onClose: () => void;
   onApply: (id: string, cap: Cents) => void;
-  onRemove: (id: string, dest: FundsDestination) => void;
-  destinations: DestinationOption[];
-  balances: Record<string, Cents>;
+  /** senza onRemove (Benvenuto) il pannello non offre "Togli la busta" */
+  onRemove?: (id: string, dest: FundsDestination) => void;
+  destinations?: DestinationOption[];
+  balances?: Record<string, Cents>;
 };
 
 const STEP = 500;
-const asText = (c: Cents) => formatEuro(c, { decimals: 'always' }).replace('€ ', '');
+const asText = (c: Cents) => amountText(c);
 
 /** Tetto di una busta: importo esatto da tastiera, ± 5 € per i ritocchi veloci, togli la busta. */
-export function EnvelopeCapSheet({ target, onClose, onApply, onRemove, destinations, balances }: Props) {
+export function EnvelopeCapSheet({ target, onClose, onApply, onRemove, destinations = [], balances = {} }: Props) {
   return (
     <BottomSheet open={target !== null} onClose={onClose} title={target?.name ?? ''} subtitle={target?.detail ?? undefined}>
       {target ? (
@@ -48,7 +49,7 @@ export function EnvelopeCapSheet({ target, onClose, onApply, onRemove, destinati
           destinations={destinations}
           balances={balances}
           onApply={(c) => { onApply(target.id, c); onClose(); }}
-          onRemove={(dest) => { onRemove(target.id, dest); onClose(); }}
+          onRemove={onRemove ? (dest) => { onRemove(target.id, dest); onClose(); } : null}
         />
       ) : null}
     </BottomSheet>
@@ -60,7 +61,7 @@ type FormProps = {
   destinations: DestinationOption[];
   balances: Record<string, Cents>;
   onApply: (c: Cents) => void;
-  onRemove: (dest: FundsDestination) => void;
+  onRemove: ((dest: FundsDestination) => void) | null;
 };
 
 function CapForm({ target, destinations, balances, onApply, onRemove }: FormProps) {
@@ -73,7 +74,7 @@ function CapForm({ target, destinations, balances, onApply, onRemove }: FormProp
 
   if (confirming) {
     return (
-      <ConfirmPanel message={it.settings.removeEnvelopeConfirm(target.name)} confirmLabel={it.settings.removeEnvelope} onConfirm={() => onRemove(dest)} onCancel={() => setConfirming(false)}>
+      <ConfirmPanel message={it.settings.removeEnvelopeConfirm(target.name)} confirmLabel={it.funds.removeAndMove('Togli', formatEuro(target.freed), destinations.find((d) => d.value === dest)?.name ?? '')} onConfirm={() => onRemove?.(dest)} onCancel={() => setConfirming(false)}>
         <DestinationPicker amount={target.freed} options={destinations} balances={balances} value={dest} onChange={setDest} />
       </ConfirmPanel>
     );
@@ -97,11 +98,11 @@ function CapForm({ target, destinations, balances, onApply, onRemove }: FormProp
           {it.settings.recurringDetail(target.recurringCount)}<IconChevronRight size={16} />
         </Link>
       ) : null}
-      {target.recurringCount > 0 ? (
+      {!onRemove ? null : target.recurringCount > 0 ? (
         <p className="muted-note">{it.settings.removeBlocked(target.recurringCount)}</p>
       ) : (
         <div className="sheet-actions">
-          <button type="button" className="sheet-actions__button sheet-actions__button--danger" onClick={() => (target.freed > 0 ? setConfirming(true) : onRemove(DEFAULT_DESTINATION))}>{it.settings.removeEnvelope}</button>
+          <button type="button" className="sheet-actions__button sheet-actions__button--danger" onClick={() => (target.freed > 0 ? setConfirming(true) : onRemove(DEFAULT_DESTINATION))}><IconTrash />{it.settings.removeEnvelope}</button>
         </div>
       )}
     </form>

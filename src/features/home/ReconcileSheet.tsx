@@ -155,8 +155,8 @@ export function ReconcileSheet({ open, onClose, period, envelopesTotal, unassign
             <p className="outcome__title">{it.reconcile.missingTitle(money(-result.diff))}</p>
             <p>{it.reconcile.missingText}</p>
             <div className="outcome__actions">
-              <button type="button" className="outcome__button outcome__button--danger" disabled={saving} onClick={() => void addExpense()}>
-                {it.reconcile.addExpense}
+              <button type="button" className="outcome__button outcome__button--accent" disabled={saving} onClick={() => void addExpense()}>
+                {it.reconcile.addExpenseOf(money(-result.diff))}
               </button>
               <button type="button" className="outcome__button outcome__button--danger-secondary" disabled={saving} onClick={() => void ignore()}>
                 {it.reconcile.ignore}

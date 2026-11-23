@@ -10,7 +10,7 @@ import { nowISO, today } from '../../domain/clock';
 import { isPeriodic, monthlyQuota, planBillPayment, type BillTransfer } from '../../domain/bills';
 import { addMonthsId } from '../../domain/dates';
 import { balanceWith } from '../../domain/loans';
-import { formatEuro, parseEuro } from '../../domain/money';
+import { amountText, formatEuro, parseEuro } from '../../domain/money';
 import type { Bill, BillFrequency, Loan, Person } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { PersonPicker } from '../entry/PersonPicker';
@@ -76,7 +76,7 @@ function transferText(t: BillTransfer): string {
 }
 
 function RegisterForm({ bill, people, loans, hasPeriod, onDone }: { bill: Bill; people: Person[]; loans: Loan[]; hasPeriod: boolean; onDone: () => void }) {
-  const [amountText, setAmountText] = useState(formatEuro(bill.estimate, { decimals: 'always' }).replace('€ ', ''));
+  const [amountValue, setAmountValue] = useState(amountText(bill.estimate));
   const [date, setDate] = useState(today());
   const [payer, setPayer] = useState<Bill['payer']>(bill.payer);
   const [done, setDone] = useState<BillTransfer[] | null>(null);
@@ -84,7 +84,7 @@ function RegisterForm({ bill, people, loans, hasPeriod, onDone }: { bill: Bill; 
   const [saving, setSaving] = useState(false);
   const person = people.find((p) => p.id === bill.personId);
   const name = person?.name ?? it.movements.unknownPerson;
-  const amount = parseEuro(amountText);
+  const amount = parseEuro(amountValue);
   const plan = amount && amount > 0 ? planBillPayment(bill, amount, payer) : null;
   const money = (c: number) => formatEuro(c, { decimals: 'always' });
 
@@ -128,7 +128,7 @@ function RegisterForm({ bill, people, loans, hasPeriod, onDone }: { bill: Bill; 
     <form className="recurring-form" onSubmit={(e) => { e.preventDefault(); void register(); }}>
       {!hasPeriod ? <p className="outcome outcome--info">{it.casa.noPeriod}</p> : null}
       <div className="recurring-form__grid">
-        <AmountField id="bill-amount" label={it.casa.amount} value={amountText} onChange={setAmountText} invalid={amountText !== '' && !plan} />
+        <AmountField id="bill-amount" label={it.casa.amount} value={amountValue} onChange={setAmountValue} invalid={amountValue !== '' && !plan} />
         <div className="select-field">
           <label htmlFor="bill-date">{it.casa.date}</label>
           <input id="bill-date" className="text-input" type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
@@ -205,7 +205,7 @@ function BillForm({ bill, people, loans, defaultPersonId, opening, onDone }: For
   const [confirming, setConfirming] = useState(false);
   const [name, setName] = useState(bill?.name ?? '');
   const [frequency, setFrequency] = useState<BillFrequency>(bill?.frequency ?? 1);
-  const [estimate, setEstimate] = useState(bill ? formatEuro(bill.estimate, { decimals: 'always' }).replace('€ ', '') : '');
+  const [estimate, setEstimate] = useState(bill ? amountText(bill.estimate) : '');
   const [split, setSplit] = useState<Bill['split']>(bill?.split ?? 'half');
   const [personId, setPersonId] = useState<string | null>(bill?.personId ?? defaultPersonId);
   const [payer, setPayer] = useState<Bill['payer']>(bill?.payer ?? 'me');

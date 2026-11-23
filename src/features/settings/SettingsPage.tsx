@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useBills, useCurrentPeriod, useEnvelopes, usePeriods, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { BottomSheet } from '../../components/BottomSheet';
-import { IconChevronRight } from '../../components/icons';
+import { IconChevronRight, IconCompare, IconPlus } from '../../components/icons';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { Stepper } from '../../components/Stepper';
@@ -145,22 +145,35 @@ function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinati
     setRemovedDest({});
   }
 
-  function detailFor(e: Envelope): { text: string; over: boolean } | null {
-    if (e.id === recurringEnvelope) return { text: it.settings.recurringDetail(recurring.length), over: false };
+  type Detail = { text: string; warn?: boolean; was?: string | null };
+
+  function detailFor(e: Envelope): Detail | null {
+    const original = envelopes.find((x) => x.id === e.id)?.cap;
+    const cap = caps[e.id] ?? e.cap;
+    const was = original !== undefined && original !== cap ? it.settings.was(formatEuro(original)) : null;
+    if (e.id === recurringEnvelope) {
+      const monthly = recurring.filter((r) => r.active && r.envelopeId === e.id).reduce((s, r) => s + r.amount, 0);
+      return { text: it.settings.recurringDetailMonthly(recurring.length, formatEuro(monthly)), was };
+    }
     const avg = averages[e.id];
-    if (!avg) return null;
+    if (!avg) return was ? { text: '', was } : null;
     return avg.aboveCap
-      ? { text: it.settings.averageOver(formatEuro(avg.average)), over: true }
-      : { text: it.settings.average(formatEuro(avg.average)), over: false };
+      ? { text: it.settings.averageOver(formatEuro(avg.average)), warn: true, was }
+      : { text: it.settings.average(formatEuro(avg.average)), was };
   }
 
-  function row(id: string, name: string, cap: Cents, detail: { text: string; over: boolean } | null, open: () => void) {
+  function row(id: string, name: string, cap: Cents, detail: Detail | null, open: () => void) {
     return (
       <li key={id}>
         <button type="button" className="list-row list-row--button" aria-label={`${name}: ${formatEuro(cap)}. ${it.settings.tapToEdit}`} onClick={() => { setMessage(null); open(); }}>
           <span className="list-row__text">
             <span className="list-row__title">{name}</span>
-            {detail ? <span className={detail.over ? 'list-row__detail is-over' : 'list-row__detail'}>{detail.text}</span> : null}
+            {detail ? (
+              <span className={detail.warn ? 'list-row__detail is-warn' : 'list-row__detail'}>
+                {detail.text}
+                {detail.was ? <>{detail.text ? ' · ' : ''}<b className="list-row__was">{detail.was}</b></> : null}
+              </span>
+            ) : null}
           </span>
           <span className="list-row__value">{formatEuro(cap)}</span>
           <IconChevronRight className="list-row__chevron" />
@@ -169,43 +182,40 @@ function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinati
     );
   }
 
-  const groups: { title: string; kind: EnvelopeKind }[] = [
-    { title: it.settings.spendable, kind: 'spendable' },
-    { title: it.settings.committed, kind: 'committed' },
-  ];
+  function rowsFor(kind: EnvelopeKind) {
+    const list = active.filter((e) => e.kind === kind && !removed.includes(e.id));
+    const extra = added.filter((a) => a.kind === kind);
+    return [
+      ...list.map((e) => {
+        const cap = caps[e.id] ?? e.cap;
+        const detail = detailFor(e);
+        return row(e.id, e.name, cap, detail, () => setTarget({
+          id: e.id,
+          name: e.name,
+          cap,
+          detail: detail?.text || null,
+          recurringCount: recurringOnEnvelope(e.id, recurring).length,
+          showRecurringLink: e.id === recurringEnvelope,
+          freed: freedBy(e.id),
+        }));
+      }),
+      ...extra.map((a) => row(a.id, a.name, a.cap, { text: it.settings.newBadge }, () => setTarget({
+        id: a.id, name: a.name, cap: a.cap, detail: it.settings.newBadge, recurringCount: 0, showRecurringLink: false, freed: 0,
+      }))),
+    ];
+  }
+
+  const spendableRows = rowsFor('spendable');
+  const committedRows = rowsFor('committed');
 
   return (
     <section className="group" aria-labelledby="envelopes-title">
-      <h2 id="envelopes-title" className="group__title">{it.settings.envelopesTitle}</h2>
+      <h2 id="envelopes-title" className="group__title">{it.settings.spendableTitle}</h2>
+      {spendableRows.length > 0 ? <ul className="card list-card list">{spendableRows}</ul> : null}
+
+      <h3 className="group__title group__title--next">{it.settings.committedTitle}</h3>
       <div className="card list-card">
-        {groups.map((g) => {
-          const list = active.filter((e) => e.kind === g.kind && !removed.includes(e.id));
-          const extra = added.filter((a) => a.kind === g.kind);
-          if (list.length + extra.length === 0) return null;
-          return (
-            <div key={g.kind} className="list-card__block">
-              <p className="list-card__label">{g.title}</p>
-              <ul className="list">
-                {list.map((e) => {
-                  const cap = caps[e.id] ?? e.cap;
-                  const detail = detailFor(e);
-                  return row(e.id, e.name, cap, detail, () => setTarget({
-                    id: e.id,
-                    name: e.name,
-                    cap,
-                    detail: detail?.text ?? null,
-                    recurringCount: recurringOnEnvelope(e.id, recurring).length,
-                    showRecurringLink: e.id === recurringEnvelope,
-                    freed: freedBy(e.id),
-                  }));
-                })}
-                {extra.map((a) => row(a.id, a.name, a.cap, { text: it.settings.newBadge, over: false }, () => setTarget({
-                  id: a.id, name: a.name, cap: a.cap, detail: it.settings.newBadge, recurringCount: 0, showRecurringLink: false, freed: 0,
-                })))}
-              </ul>
-            </div>
-          );
-        })}
+        {committedRows.length > 0 ? <ul className="list">{committedRows}</ul> : null}
         {removed.length > 0 ? (
           <div className="list-card__block">
             <p className="list-card__label">{it.settings.removedTitle}</p>
@@ -226,7 +236,9 @@ function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinati
             </ul>
           </div>
         ) : null}
-        <button type="button" className="list-row list-row--action" onClick={() => setAdding(true)}>{it.settings.newEnvelope}</button>
+        <button type="button" className="list-row list-row--action" onClick={() => setAdding(true)}>
+          <IconPlus size={20} />{it.settings.newEnvelope.replace('+ ', '')}
+        </button>
         <div className="list-row list-row--total">
           <span className="list-row__text">
             <span className="list-row__title">{it.settings.total}</span>
@@ -243,7 +255,8 @@ function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinati
       {dirty ? (
         <div className="save-bar" role="region" aria-label={it.settings.unsaved}>
           <p className="save-bar__text">
-            {transferText(preview, false) || it.settings.unsaved}
+            <IconCompare size={18} />
+            <span>{transferText(preview, false) || it.settings.unsaved}</span>
           </p>
           <div className="save-bar__actions">
             <button type="button" className="save-bar__discard" onClick={discard}>{it.settings.discard}</button>
@@ -348,10 +361,10 @@ function MonthGroup({ settings, bills, opening }: { settings: Settings; bills: B
               <span className="list-row__text">
                 <span className={item.archived ? 'list-row__title is-muted' : 'list-row__title'}>{item.name}</span>
                 <span className="list-row__detail">
-                  {item.kind === 'pot' ? it.items.kindPot : it.items.kindPayment}{item.archived ? ` · ${it.settings.archived}` : ''}
+                  {item.kind === 'pot' ? it.items.toPot : it.items.kindPayment}{item.archived ? ` · ${it.settings.archived}` : ''}
                 </span>
               </span>
-              <span className={item.archived ? 'list-row__value is-muted' : 'list-row__value'}>{formatEuro(item.amount)}</span>
+              <span className={item.archived ? 'list-row__value is-muted' : 'list-row__value'}>{formatEuro(item.amount)}<small>{it.casa.perMonthShort}</small></span>
               <IconChevronRight className="list-row__chevron" />
             </button>
           </li>
@@ -362,12 +375,12 @@ function MonthGroup({ settings, bills, opening }: { settings: Settings; bills: B
               <span className="list-row__title">{it.settings.billsRow}</span>
               <span className="list-row__detail">{it.settings.billsDetail(activeBills.length)}</span>
             </span>
-            <span className="list-row__value">{it.settings.billsAmount(formatEuro(billsQuotaTotal(bills, opening)))}</span>
+            <span className="list-row__value">{formatEuro(billsQuotaTotal(bills, opening))}<small>{it.casa.perMonthShort}</small></span>
             <IconChevronRight className="list-row__chevron" />
           </Link>
         </li>
         <li>
-          <button type="button" className="list-row list-row--action" onClick={() => setTarget('new')}>{it.items.add}</button>
+          <button type="button" className="list-row list-row--action" onClick={() => setTarget('new')}><IconPlus size={20} />{it.items.add.replace('+ ', '')}</button>
         </li>
       </ul>
       <p className="group__footer">{it.settings.monthHint}</p>

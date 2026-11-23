@@ -9,10 +9,11 @@ html, body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-text);
-  font-size: 15px;
-  line-height: 1.4;
+  font-family: var(--font);
+  font-size: var(--fs-body);
+  line-height: 1.35;
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "ss01";
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
@@ -23,7 +24,7 @@ html, body {
 h1, h2, h3, p { margin: 0; }
 
 a { color: var(--accent); }
-a:hover { color: var(--accent-strong); }
+@media (hover: hover) { a:hover { color: var(--accent-strong); } }
 
 button {
   font: inherit;

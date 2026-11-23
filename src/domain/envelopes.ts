@@ -103,9 +103,12 @@ export function barState(balance: Pick<EnvelopeBalance, 'remaining' | 'put'> & {
   return 'ok';
 }
 
-/** Larghezza della barra: speso / messo, tra 0 e 1. */
-export function barFill(balance: Pick<EnvelopeBalance, 'spent' | 'put'>): number {
-  if (balance.spent <= 0) return 0;
-  if (balance.put <= 0) return 1;
-  return Math.min(1, balance.spent / balance.put);
+/**
+ * Larghezza della barra: quanto RESTA, residuo / messo tra 0 e 1. Si svuota spendendo, come un
+ * serbatoio. Una busta sforata ha la barra piena (tutta arancione, vedi barState).
+ */
+export function barFill(balance: Pick<EnvelopeBalance, 'remaining' | 'put'>): number {
+  if (balance.remaining < 0) return 1;
+  if (balance.put <= 0) return 0;
+  return Math.max(0, Math.min(1, balance.remaining / balance.put));
 }

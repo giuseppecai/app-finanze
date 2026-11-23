@@ -10,7 +10,7 @@ import { registerRepayment, undoRepaymentTransaction } from '../../db/repositori
 import { today } from '../../domain/clock';
 import { formatShortDate } from '../../domain/dates';
 import { applyRepayment, personBalances, totalDebt, totalOwed, type PersonBalance } from '../../domain/loans';
-import { formatEuro, parseEuro } from '../../domain/money';
+import { formatEuro, parseEuro, amountText } from '../../domain/money';
 import type { Loan, Person } from '../../domain/types';
 import { it } from '../../i18n/it';
 
@@ -196,7 +196,7 @@ function PersonCard({ balance, person, loans, open, onToggle, onRegistered }: Ca
                 onChange={(e) => setText(e.target.value)}
               />
             </div>
-            <button type="button" className="outcome__button outcome__button--secondary" onClick={() => setText(formatEuro(total, { decimals: 'always' }).replace('€ ', ''))}>
+            <button type="button" className="outcome__button outcome__button--secondary" onClick={() => setText(amountText(total))}>
               {it.loans.all}
             </button>
             <button type="button" className="outcome__button outcome__button--accent" disabled={!preview || busy} onClick={() => void register()}>

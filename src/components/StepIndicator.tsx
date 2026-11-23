@@ -7,7 +7,7 @@ export function StepIndicator({ steps, current, label }: Props) {
       {steps.map((s, i) => (
         <li key={s} className={i <= current ? 'steps__item is-done' : 'steps__item'} aria-current={i === current ? 'step' : undefined}>
           <span className="steps__bar" aria-hidden="true" />
-          <span className="steps__label">{i + 1} · {s}</span>
+          <span className="steps__label">{s}</span>
         </li>
       ))}
     </ol>

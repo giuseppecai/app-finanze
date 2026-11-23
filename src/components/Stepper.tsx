@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { formatEuro, parseEuro, stepCents } from '../domain/money';
+import { formatEuro, parseEuro, stepCents, amountText } from '../domain/money';
 import type { Cents } from '../domain/types';
 import { IconMinus, IconPlus } from './icons';
 
@@ -11,7 +11,7 @@ type Props = {
   min?: Cents;
 };
 
-const asText = (c: Cents) => formatEuro(c, { decimals: 'always' }).replace('€ ', '');
+const asText = (c: Cents) => amountText(c);
 
 /**
  * − € valore + con pulsanti 44 × 44. I pulsanti vanno a passi di 5 €; per un importo esatto
