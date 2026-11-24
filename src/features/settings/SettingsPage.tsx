@@ -11,7 +11,8 @@ import { SegmentedControl } from '../../components/SegmentedControl';
 import { Stepper } from '../../components/Stepper';
 import { db } from '../../db/database';
 import { newId, saveEnvelopes, updateSettings } from '../../db/repositories';
-import { billsQuotaTotal } from '../../domain/bills';
+import { billsQuotaTotal, billsTransfer } from '../../domain/bills';
+import { capsTotal } from '../../domain/opening';
 import { today } from '../../domain/clock';
 import { nextOpeningId } from '../../domain/periods';
 import { formatEuro } from '../../domain/money';
@@ -72,7 +73,7 @@ export function SettingsPage() {
         message={message}
         setMessage={setMessage}
       />
-      <MonthGroup settings={settings} bills={bills} opening={nextOpeningId(periods, today(), settings.periodStartDay)} />
+      <MonthGroup settings={settings} bills={bills} envelopes={envelopes} billsBalance={pots.find((p) => p.id === 'bills')?.balance ?? 0} opening={nextOpeningId(periods, today(), settings.periodStartDay)} />
       <PotsGroup settings={settings} />
       <section className="group" aria-labelledby="data-title">
         <h2 id="data-title" className="group__title">{it.settings.dataTitle}</h2>
@@ -227,9 +228,9 @@ function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinati
     );
   }
 
-  function rowsFor(kind: EnvelopeKind) {
-    const list = active.filter((e) => e.kind === kind && !removed.includes(e.id));
-    const extra = added.filter((a) => a.kind === kind);
+  function allRows() {
+    const list = active.filter((e) => !removed.includes(e.id));
+    const extra = added;
     return [
       ...list.map((e) => {
         const cap = caps[e.id] ?? e.cap;
@@ -252,17 +253,13 @@ function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinati
     ];
   }
 
-  const spendableRows = rowsFor('spendable');
-  const committedRows = rowsFor('committed');
+  const rows = allRows();
 
   return (
     <section className="group" aria-labelledby="envelopes-title">
-      <h2 id="envelopes-title" className="group__title">{it.settings.spendableTitle}</h2>
-      {spendableRows.length > 0 ? <ul className="card list-card list">{spendableRows}</ul> : null}
-
-      <h3 className="group__title group__title--next">{it.settings.committedTitle}</h3>
+      <h2 id="envelopes-title" className="group__title">{it.settings.envelopesListTitle}</h2>
       <div className="card list-card">
-        {committedRows.length > 0 ? <ul className="list">{committedRows}</ul> : null}
+        {rows.length > 0 ? <ul className="list">{rows}</ul> : null}
         {removed.length > 0 ? (
           <div className="list-card__block">
             <p className="list-card__label">{it.settings.removedTitle}</p>
@@ -393,9 +390,13 @@ function NewEnvelopeForm({ onAdd }: { onAdd: (e: NewEnvelope) => void }) {
   );
 }
 
-function MonthGroup({ settings, bills, opening }: { settings: Settings; bills: Bill[]; opening: string }) {
+function MonthGroup({ settings, bills, envelopes, billsBalance, opening }: { settings: Settings; bills: Bill[]; envelopes: Envelope[]; billsBalance: Cents; opening: string }) {
   const [target, setTarget] = useState<MonthlyItem | 'new' | null>(null);
   const activeBills = bills.filter((b) => b.active);
+  // Totale di inizio mese: buste + voci fisse + giroconto Bollette (al netto di quello che c'è già nella Pocket).
+  const transfer = billsTransfer(bills, billsBalance, opening);
+  const itemsTotal = settings.monthlyItems.filter((i) => !i.archived).reduce((s, i) => s + i.amount, 0);
+  const total = capsTotal(envelopes) + itemsTotal + transfer.amount;
   return (
     <section className="group" aria-labelledby="month-title">
       <h2 id="month-title" className="group__title">{it.settings.monthTitle}</h2>
@@ -443,6 +444,13 @@ function MonthGroup({ settings, bills, opening }: { settings: Settings; bills: B
         </li>
         <li>
           <button type="button" className="list-row list-row--action" onClick={() => setTarget('new')}><IconPlus size={20} />{it.items.add.replace('+ ', '')}</button>
+        </li>
+        <li className="list-row list-row--total">
+          <span className="list-row__text">
+            <span className="list-row__title">{it.settings.monthTotal}</span>
+            <span className="list-row__detail">{it.settings.monthTotalNote(transfer.credit > 0 && transfer.quota > 0 ? formatEuro(Math.min(transfer.credit, transfer.quota)) : null)}</span>
+          </span>
+          <span className="list-row__total">{formatEuro(total)}</span>
         </li>
       </ul>
       <p className="group__footer">{it.settings.monthHint}</p>

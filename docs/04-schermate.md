@@ -88,9 +88,9 @@ Movimenti di esempio (periodo Novembre): 19 Pranzo con colleghi (Vita, 22) · 19
 
 Elenco raggruppato come le Impostazioni di iOS: titoletti di gruppo grigi, card bianche con righe separate da filetti, nota sotto ogni gruppo.
 
-- **Buste**: un'unica card con le sottosezioni "Da spendere" e "Impegnate". Riga: nome, sotto "In media € X" (R10, arancione "In media € X: tetto basso" se sopra il tetto), stepper − € tetto + (passo 5 €). Sotto Rate & Abbonamenti il link "5 abbonamenti ›". Poi "+ Nuova busta" (pannello dal basso) e la riga di riepilogo "Totale buste € 700" ("+ € X rispetto a prima"). Nota: "Le modifiche valgono da questo mese."
+- **Buste**: un'unica card con **un solo elenco** di buste (nessuna distinzione tra da spendere e impegnate). Riga: nome, sotto "In media € X" (R10, arancione "In media € X: tetto basso" se sopra il tetto), stepper − € tetto + (passo 5 €). Sotto Rate & Abbonamenti il link "5 abbonamenti ›". Poi "+ Nuova busta" (pannello dal basso) e la riga di riepilogo "Totale buste € 700" ("+ € X rispetto a prima"). Nota: "Le modifiche valgono da questo mese."
 - **Barra di salvataggio**: compare solo con modifiche alle buste, fissa sopra la tab bar: anteprima del giroconto ("Dopo il salvataggio sposta € X da Risparmi a Budget del mese"), **Annulla** e **Salva le buste**.
-- **Inizio del mese**: "Il mese inizia · il 27" (selettore, salva subito), una riga per voce fissa (nome, "Salvadanaio"/"Uscita fissa", importo ›: tocco → pannello per nome, importo, togli/rimetti), riga "Bollette · € 79/mese ›" → `/bollette`, "+ Nuova voce fissa".
+- **Inizio del mese**: "Il mese inizia · il 27" (selettore, salva subito), una riga per voce fissa (nome, "Salvadanaio"/"Uscita fissa", importo ›: tocco → pannello per nome, importo, togli/rimetti), riga "Bollette · € 79/mese ›" → `/bollette`, "+ Nuova voce fissa", e in fondo la riga **"Totale inizio mese"** (buste + voci fisse + giroconto Bollette, quest'ultimo al netto di quello che c'è già nella Pocket).
 - **Salvadanai e carte**: una riga per salvadanaio e la riserva carte, in sola lettura; tocco → pannello per correggere il saldo.
 - **Backup**: "Esporta backup" (con data dell'ultimo) e "Importa backup".
 

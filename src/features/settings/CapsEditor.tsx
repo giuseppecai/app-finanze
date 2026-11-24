@@ -19,10 +19,7 @@ type Props = { envelopes: readonly Envelope[] };
 export function CapsEditor({ envelopes }: Props) {
   const [target, setTarget] = useState<CapTarget | null>(null);
   const active = envelopes.filter((e) => !e.archived);
-  const groups = [
-    { title: it.settings.spendableTitle, list: active.filter((e) => e.kind === 'spendable') },
-    { title: it.settings.committedTitle, list: active.filter((e) => e.kind === 'committed') },
-  ];
+  const groups = [{ title: it.settings.envelopesListTitle, list: active }];
   return (
     <>
       {groups.map((g) =>

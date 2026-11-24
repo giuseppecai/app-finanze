@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  billsAsEnvelope, billsQuotaTotal, billsToRegister, depositsLeft, nextDueAfterPayment, expectedShare, fundStatus, monthlyQuota, myShare, otherShare, planBillPayment,
+  billsAsEnvelope, billsQuotaTotal, billsTransfer, billsToRegister, depositsLeft, nextDueAfterPayment, expectedShare, fundStatus, monthlyQuota, myShare, otherShare, planBillPayment,
 } from '../bills';
 import { planOpening, type ItemQuota } from '../opening';
 import { DEFAULT_MONTHLY_ITEMS } from '../pots';
@@ -171,5 +171,31 @@ describe('Home · bollette da registrare', () => {
     const vecchia = bill({ id: 'vecchia', estimate: 1000, active: false });
     const txs = [{ billId: 'internet', type: 'expense' }];
     expect(billsToRegister([luce, internet, gas, vecchia], txs).map((b) => b.id)).toEqual(['luce']);
+  });
+});
+
+describe('R13 · giroconto Bollette al netto della Pocket', () => {
+  const m1 = bill({ id: 'm1', estimate: 18000, split: 'mine' }); // serve 180 al mese
+
+  it('servono 180 e nella Pocket ce ne sono già 80: ne metti 100', () => {
+    expect(billsTransfer([m1], 8000, '2026-12')).toEqual({ quota: 18000, credit: 8000, amount: 10000 });
+  });
+
+  it('Pocket vuota: giroconto pieno; Pocket più piena del necessario: zero', () => {
+    expect(billsTransfer([m1], 0, '2026-12').amount).toBe(18000);
+    expect(billsTransfer([m1], 25000, '2026-12').amount).toBe(0);
+  });
+
+  it('una mensile costata meno del previsto lascia un fondo: il mese dopo la quota scende', () => {
+    const left = { ...m1, fund: 3000 };
+    expect(monthlyQuota(left)).toBe(15000);
+    // il fondo è già assegnato alla bolletta, non è credito libero: 30 € nella Pocket → 150 da mettere
+    expect(billsTransfer([left], 3000, '2026-12')).toEqual({ quota: 15000, credit: 0, amount: 15000 });
+  });
+
+  it('i fondi delle periodiche restano nella Pocket e non riducono il giroconto', () => {
+    const water = { ...acqua, fund: 12000, nextDue: '2027-11' };
+    // Pocket 120 tutta dell'acqua: nessun credito libero
+    expect(billsTransfer([m1, water], 12000, '2026-12').credit).toBe(0);
   });
 });

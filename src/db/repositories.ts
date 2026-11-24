@@ -2,7 +2,7 @@
 import { nowISO } from '../domain/clock';
 import { planClosing, type ClosingOption, type ClosingPlan } from '../domain/closing';
 import { closingPreview } from '../domain/monthEnd';
-import { billsQuotaTotal, monthlyQuota, nextDueAfterPayment, planBillPayment, type BillPaymentPlan } from '../domain/bills';
+import { billsTransfer, monthlyQuota, nextDueAfterPayment, planBillPayment, type BillPaymentPlan } from '../domain/bills';
 import { addMonthsId } from '../domain/dates';
 import { it } from '../i18n/it';
 import { buildNewPeriod, itemQuotas } from '../domain/opening';
@@ -176,7 +176,7 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
         salary: input.salary,
         envelopes,
         items: itemQuotas(settings.monthlyItems, input.quotas),
-        billsQuota: billsQuotaTotal(bills, target.id),
+        billsQuota: billsTransfer(bills, pots.find((p) => p.id === 'bills')?.balance ?? 0, target.id).amount,
         closing,
       });
       await db.periods.add(period);

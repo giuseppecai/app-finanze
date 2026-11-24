@@ -41,7 +41,9 @@ export function monthlyQuota(
   bill: Pick<Bill, 'estimate' | 'split' | 'frequency'> & Partial<Pick<Bill, 'fund' | 'nextDue'>>,
   nextOpening?: PeriodId,
 ): Cents {
-  if (!isPeriodic(bill) || !bill.nextDue || !nextOpening) return Math.ceil(expectedShare(bill) / bill.frequency);
+  // Mensili: quello che è avanzato dal mese prima (bolletta più bassa del previsto) si sottrae.
+  if (!isPeriodic(bill)) return Math.max(0, expectedShare(bill) - Math.max(0, bill.fund ?? 0));
+  if (!bill.nextDue || !nextOpening) return Math.ceil(expectedShare(bill) / bill.frequency);
   const missing = Math.max(0, expectedShare(bill) - (bill.fund ?? 0));
   return Math.ceil(missing / depositsLeft(bill.nextDue, nextOpening));
 }
@@ -49,6 +51,27 @@ export function monthlyQuota(
 /** Giroconto mensile → Bollette: Σ quote delle bollette attive (`nextOpening` = periodo del giroconto). */
 export function billsQuotaTotal(bills: readonly Bill[], nextOpening?: PeriodId): Cents {
   return bills.reduce((s, b) => (b.active ? s + monthlyQuota(b, nextOpening) : s), 0);
+}
+
+export interface BillsTransfer {
+  /** Σ quote del mese delle bollette attive */
+  quota: Cents;
+  /** soldi già nella Pocket che non appartengono a nessuna bolletta: si tolgono dal giroconto */
+  credit: Cents;
+  /** giroconto → Bollette = quota − credito (mai negativo) */
+  amount: Cents;
+}
+
+/**
+ * Giroconto → Bollette a inizio mese, tenendo conto di quello che c'è già nella Pocket:
+ * servono 180 e ce ne sono 80 → ne metti 100. Il credito è il saldo della Pocket meno i fondi già
+ * assegnati alle singole bollette (quelli delle periodiche restano lì ad accumularsi).
+ */
+export function billsTransfer(bills: readonly Bill[], potBalance: Cents, nextOpening?: PeriodId): BillsTransfer {
+  const quota = billsQuotaTotal(bills, nextOpening);
+  const assigned = bills.reduce((s, b) => s + b.fund, 0);
+  const credit = Math.max(0, potBalance - assigned);
+  return { quota, credit, amount: Math.max(0, quota - credit) };
 }
 
 /** Dopo aver registrato una periodica, la prossima arriva un ciclo dopo il periodo del pagamento. */

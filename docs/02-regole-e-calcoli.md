@@ -135,13 +135,15 @@ A inizio mese l'importo di ogni voce si può cambiare per quel mese (tocco sull'
 ```
 budgetDelMese = Σ tetti attuali delle buste
 voci          = Σ importi delle voci fisse attive (salvadanai e uscite)
-risparmi      = S − budgetDelMese − voci − bollette
+risparmi      = S − budgetDelMese − voci − bollette   // bollette = giroconto netto (R13)
+
+totale inizio mese = budgetDelMese + voci + bollette     // mostrato in Imposta, sotto "Inizio del mese"
 ```
 Checklist dei giroconti su Revolut (spuntabili, l'app non li esegue), in quest'ordine:
 1. (se c'è) il giroconto di chiusura (R6);
 2. → Budget del mese: € budgetDelMese;
 3. una riga per voce fissa: "→ Viaggi: € V" per i salvadanai, "Paga Affitto: € A" per le uscite;
-4. (se ci sono bollette attive) → Bollette: € Σ quote (R13);
+4. (se ci sono bollette attive e il giroconto è > 0) → Bollette: € Σ quote − quanto c'è già nella Pocket (R13);
 5. → Risparmi: € risparmi (se negativo, riga arancione "Lo stipendio non copre le buste: − € X").
 
 Con tutto spuntato il pulsante diventa "Fatto: inizia il mese" → crea il `Period` con `startedAt = today()`, fotografa i tetti in `allocations` e gli importi delle voci in `quotas`, applica i riporti dell'opzione B o il `daAssegnare` dell'opzione C, aggiorna i salvadanai (ogni voce-salvadanaio + il suo importo, Bollette + quote, Risparmi + risparmi). Le uscite non toccano nessun salvadanaio.
@@ -207,7 +209,13 @@ Le bollette **non passano dalle buste**: tutte, mensili comprese, sono soldi da 
 
 - **Tua quota** di una bolletta di importo B: `mine` → B; `half` → `B − floor(B / 2)` (il centesimo dispari è tuo). Parte dell'altra persona = B − tua quota.
 - **Quota mensile** di ogni bolletta: `ceil(tua quota prevista / frequenza)` (al centesimo). Per le mensili è tutta la tua quota prevista. Ogni mese si accantona nella Pocket **Bollette** di Revolut; il salvadanaio `Bollette` dell'app ne è lo specchio: in Home compare tra le **Impegnate** (è per spese fisse), non in "Messi da parte", con lo stesso aspetto di una busta impegnata: importo = saldo della Pocket, "di € X" con X = Σ tue quote previste delle bollette attive (quanto serve se arrivassero tutte adesso), barra = la parte che manca. Esempio: Pocket € 134, quote 40 + 14 + 30 + 120 = 204 → "€ 134 di € 204". Più piena del necessario → barra vuota; sotto zero → arancione. Ogni bolletta ha il suo `fund` (quanto accantonato per lei).
-- **Inizio del mese (R7)**: giroconto "→ Bollette: € Σ quote mensili delle bollette attive". Alla conferma: Bollette + Σ quote, `fund` di ogni bolletta + la sua quota.
+- **Inizio del mese (R7)**: giroconto "→ Bollette" **al netto di quello che c'è già nella Pocket**. Per le bollette mensili la quota è `max(0, tua quota prevista − fund)` (se un mese una bolletta costa meno, l'avanzo resta nel fondo e il mese dopo se ne mette meno). Poi:
+  ```
+  quota    = Σ quote delle bollette attive
+  credito  = max(0, saldo Pocket Bollette − Σ fund di tutte le bollette)   // soldi in Pocket che non sono di nessuna bolletta
+  giroconto = max(0, quota − credito)
+  ```
+  Esempio: servono 180, nella Pocket ce ne sono 80 e nessun fondo → giroconto **€ 100**. I fondi delle periodiche (acqua, gas) restano nella Pocket ad accumularsi e non riducono il giroconto. Alla conferma: Bollette + giroconto, `fund` di ogni bolletta + la sua quota intera.
 - **Prossima bolletta** (`nextDue`, solo periodiche, facoltativa): il periodo `'YYYY-MM'` in cui arriva la prossima. Se c'è, la quota non è più fissa ma serve ad arrivarci pronti:
   ```
   giroconti che restano = max(1, mesi da prossimo "Inizio del mese" a nextDue + 1)
