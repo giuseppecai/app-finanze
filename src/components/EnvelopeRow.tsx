@@ -44,7 +44,7 @@ export function EnvelopeRow({ balance, to, committed = false, meta = null }: Pro
             </span>
             <span className="env-of">{of}</span>
           </span>
-          {committed && meta ? (
+          {meta ? (
             <span className="crow-meta">
               <span>{meta}</span>
               <IconChevronRight size={16} className="chev" />

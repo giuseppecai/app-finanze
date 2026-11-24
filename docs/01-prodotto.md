@@ -41,7 +41,7 @@ Lo stipendio arriva il **27**. Un periodo va dal 27 al 26 del mese dopo e prende
 Totale € 700 → è quanto va nel **Budget del mese** a inizio periodo.
 
 - **Da spendere**: quelle su cui l'utente decide. Solo queste contano in "Puoi ancora spendere".
-- **Impegnate**: soldi già destinati (rate, abbonamenti; in Home ci sono anche le bollette, che hanno la loro Pocket). Gli abbonamenti si scalano da soli nel giorno dell'addebito.
+- Due soli concetti in Home: **Buste** (soldi del Budget del mese, con un tetto, che si consumano) e **Pocket** (soldi messi da parte su Revolut: Risparmi, Viaggi, Regali, **Bollette**…). Rate & Abbonamenti è una busta come le altre, ma si scala da sola nel giorno dell'addebito (internamente `committed`: non conta in "Puoi ancora spendere").
 
 I **buoni pasto** non passano da Revolut e **non si registrano**: la busta Spesa alimentare copre solo la parte che i buoni non coprono.
 

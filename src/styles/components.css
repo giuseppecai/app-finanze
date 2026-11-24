@@ -277,6 +277,7 @@
 .srow .sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
 .srow .v { flex: none; display: flex; align-items: center; gap: 4px; font-weight: 620; white-space: nowrap; }
 .srow .v.is-over { color: var(--state-over-text); }
+.srow__hint { display: block; font-size: 12.5px; font-weight: 400; color: var(--text-muted); }
 .srow--link { color: var(--save-1); font-weight: 600; }
 .srow--link .k { font-weight: 600; }
 .srow--link .v { color: var(--text); }

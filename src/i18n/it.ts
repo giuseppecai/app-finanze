@@ -43,8 +43,8 @@ export const it = {
     closeMonth: 'Stipendio arrivato? Chiudi il mese →',
     lastReconcile: (when: string) => `Confrontato con Revolut ${when}`,
     neverReconciled: 'Mai confrontato con Revolut',
-    envelopes: 'Da spendere',
-    envelopesCaption: 'Le buste per le spese di tutti i giorni',
+    envelopes: 'Buste',
+    envelopesCaption: 'I soldi del Budget del mese',
     envelopesTag: 'quanto resta',
     committedTag: 'si scalano da sole',
     envelopeLabel: (name: string, remaining: string, put: string, over: boolean) =>

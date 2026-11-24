@@ -56,7 +56,7 @@ Esempio di riferimento (periodo Novembre, oggi 19 nov), da usare come fixture:
 | Rate & Abbonamenti | impegnata | 110 | 89,50 | **20,50** |
 
 - **Puoi ancora spendere** = Σ residui delle buste *da spendere* + `daAssegnare` = 38 + 69 − 8 + 75 + 57 + 0 = **€ 231**. I residui negativi riducono il totale.
-- **Impegnate · rimasti** = **€ 20,50** (solo Rate & Abbonamenti).
+- **Rate & Abbonamenti rimasti** = **€ 20,50** (busta `committed`: in Home sta nell'elenco delle buste, ma non conta in "Puoi ancora spendere").
 
 (Casa & Servizi è *da spendere* dalla v4: le bollette hanno la loro Pocket, la busta resta per detersivi e piccole spese di casa.)
 - Totale buste = **€ 251,50**.
@@ -208,7 +208,7 @@ Una bolletta è `Bill { name, frequency (mesi: 1, 2, 3, 6, 12), estimate (import
 Le bollette **non passano dalle buste**: tutte, mensili comprese, sono soldi da mettere da parte. La busta Casa & Servizi resta per le altre spese di casa (detersivi, piccole cose).
 
 - **Tua quota** di una bolletta di importo B: `mine` → B; `half` → `B − floor(B / 2)` (il centesimo dispari è tuo). Parte dell'altra persona = B − tua quota.
-- **Quota mensile** di ogni bolletta: `ceil(tua quota prevista / frequenza)` (al centesimo). Per le mensili è tutta la tua quota prevista. Ogni mese si accantona nella Pocket **Bollette** di Revolut; il salvadanaio `Bollette` dell'app ne è lo specchio: in Home compare tra le **Impegnate** (è per spese fisse), non in "Messi da parte", con lo stesso aspetto di una busta impegnata: importo = saldo della Pocket, "di € X" con X = Σ tue quote previste delle bollette attive (quanto serve se arrivassero tutte adesso), barra = la parte che manca. Esempio: Pocket € 134, quote 40 + 14 + 30 + 120 = 204 → "€ 134 di € 204". Più piena del necessario → barra vuota; sotto zero → arancione. Ogni bolletta ha il suo `fund` (quanto accantonato per lei).
+- **Quota mensile** di ogni bolletta: `ceil(tua quota prevista / frequenza)` (al centesimo). Per le mensili è tutta la tua quota prevista. Ogni mese si accantona nella Pocket **Bollette** di Revolut; il salvadanaio `Bollette` dell'app ne è lo specchio: in Home compare tra i **Messi da parte** (è una Pocket, non una busta): saldo della Pocket, con un tocco si aprono le bollette. Ogni bolletta ha il suo `fund` (quanto accantonato per lei).
 - **Inizio del mese (R7)**: giroconto "→ Bollette" **al netto di quello che c'è già nella Pocket**. Per le bollette mensili la quota è `max(0, tua quota prevista − fund)` (se un mese una bolletta costa meno, l'avanzo resta nel fondo e il mese dopo se ne mette meno). Poi:
   ```
   quota    = Σ quote delle bollette attive

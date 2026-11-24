@@ -8,7 +8,7 @@ import { IconChevronRight } from './icons';
 import { Tile } from './Symbol';
 import { symbolFor } from '../domain/symbols';
 
-type Props = { lines: readonly PotLine[]; loansOwed: Cents; debtsOwed?: Cents };
+type Props = { lines: readonly PotLine[]; loansOwed: Cents; debtsOwed?: Cents; /** righe che aprono una pagina (es. Bollette) */ links?: Readonly<Record<string, string>>; /** nota sotto il nome (es. "2 da registrare") */ hints?: Readonly<Record<string, string | null>> };
 
 /** Tonalità lilla: Risparmi la più scura, gli altri salvadanai alternano due lilla più chiari. */
 function toneOf(id: string, index: number): 'save-1' | 'save-2' | 'save-3' {
@@ -18,7 +18,7 @@ function toneOf(id: string, index: number): 'save-1' | 'save-2' | 'save-3' {
 const tone = (id: string, index: number) => `var(--${toneOf(id, index)})`;
 
 /** "Messi da parte": area lilla con totale nel titolo, barra divisa per salvadanaio, elenco, prestiti da riavere. */
-export function PotsCard({ lines, loansOwed, debtsOwed = 0 }: Props) {
+export function PotsCard({ lines, loansOwed, debtsOwed = 0, links = {}, hints = {} }: Props) {
   const total = potsTotal(lines);
   const positive = lines.reduce((s, p) => s + Math.max(p.balance, 0), 0);
   return (
@@ -34,13 +34,22 @@ export function PotsCard({ lines, loansOwed, debtsOwed = 0 }: Props) {
           ))}
         </div>
         <ul className="save-list">
-          {lines.map((p, i) => (
-            <li key={p.id} className="srow">
-              {/* la tile fa anche da legenda della barra divisa */}
-              <span className="k"><Tile symbol={symbolFor(p)} tone={toneOf(p.id, i)} size="sm" />{p.name}</span>
-              <span className={p.balance < 0 ? 'v is-over' : 'v'}>{formatEuro(p.balance)}</span>
-            </li>
-          ))}
+          {lines.map((p, i) => {
+            const inner = (
+              <>
+                <span className="k">
+                  <Tile symbol={symbolFor(p)} tone={toneOf(p.id, i)} size="sm" />
+                  <span>{p.name}{hints[p.id] ? <small className="srow__hint">{hints[p.id]}</small> : null}</span>
+                </span>
+                <span className={p.balance < 0 ? 'v is-over' : 'v'}>{formatEuro(p.balance)}{links[p.id] ? <IconChevronRight size={16} /> : null}</span>
+              </>
+            );
+            return links[p.id] ? (
+              <li key={p.id}><Link to={links[p.id]!} className="srow">{inner}</Link></li>
+            ) : (
+              <li key={p.id} className="srow">{inner}</li>
+            );
+          })}
           {loansOwed > 0 || debtsOwed > 0 ? (
             <li>
               <Link to={routes.loans} className="srow srow--link">
