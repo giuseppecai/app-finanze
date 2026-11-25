@@ -319,7 +319,6 @@ function BillForm({ bill, people, loans, defaultPersonId, opening, onDone }: For
               {dueOptions(opening, bill?.nextDue ?? null).map((id) => <option key={id} value={id}>{monthLabel(id)}</option>)}
             </select>
           </div>
-          {previewQuota !== null && saving ? <p className="bill-quota-preview">{it.casa.quotaPreview(formatEuro(previewQuota))}</p> : null}
           <p className="muted-note">{it.casa.nextDueHint}</p>
           <Switch
             label={it.saving.switchLabel}

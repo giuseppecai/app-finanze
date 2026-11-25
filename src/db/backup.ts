@@ -61,7 +61,7 @@ export function parseBackup(text: string): BackupFile {
     recurring: arr(d.recurring, 'abbonamenti'),
     people: arr(d.people, 'persone'),
     loans: arr(d.loans, 'prestiti').map((l) => ({ direction: 'lent', offsets: null, ...l })),
-    pots: (pots.some((p) => p.id === 'bills') ? pots : [...pots, { id: 'bills', name: 'Bollette', balance: 0 }]).map(withSymbol),
+    pots: (pots.some((p) => p.id === 'bills') ? pots : [...pots, { id: 'bills', name: 'Spese fisse', balance: 0 }]).map(withSymbol),
     reconciliations: arr(d.reconciliations, 'confronti'),
     bills: d.bills === undefined ? [] : arr(d.bills, 'bollette').map(({ envelopeId: _unused, ...b }) => b),
   } as unknown as DataSet;

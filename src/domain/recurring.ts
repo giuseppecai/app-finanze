@@ -63,31 +63,29 @@ export function nextChargeDate(recurring: Pick<Recurring, 'dayOfMonth' | 'freque
   return from; // non succede: entro 13 mesi c'è sempre un mese di addebito
 }
 
-/**
- * L'addebito di questo periodo si paga dal fondo nella Pocket Bollette (R15)? Sì per i non mensili
- * che si accantonano, dal periodo `saveFrom` in poi; altrimenti si scala dalla busta.
- */
-export function paidFromFund(recurring: Pick<Recurring, 'frequency' | 'anchorMonth' | 'saving' | 'saveFrom'>, periodId: PeriodId): boolean {
-  return frequencyOf(recurring) > 1 && recurring.saving === true && (!recurring.saveFrom || recurring.saveFrom <= periodId);
-}
-
 /** Periodo del primo addebito a partire dal periodo `from` (compreso). */
 export function recurringDuePeriod(recurring: Pick<Recurring, 'dayOfMonth' | 'frequency' | 'anchorMonth'>, from: PeriodId, startDay: number): PeriodId {
   const start = calendarPeriodById(from, startDay).calendarStart;
   return calendarPeriodFor(nextChargeDate(recurring, start), startDay).id;
 }
 
-/** Quota da mettere nella Pocket Bollette all'"Inizio del mese" del periodo `opening` (0 se non si accantona). */
+/**
+ * Quota da mettere nella Pocket Spese fisse all'"Inizio del mese" del periodo `opening` (R16):
+ * - mensili: l'importo (meno quello che è già nel fondo);
+ * - non mensili accantonati: quello che manca diviso per i giroconti prima della scadenza (R15);
+ * - non mensili non accantonati: tutto nel mese della scadenza, 0 negli altri.
+ */
 export function recurringQuota(recurring: Recurring, opening: PeriodId, startDay: number): Cents {
-  if (!recurring.active || frequencyOf(recurring) === 1 || !recurring.saving) return 0;
+  if (!recurring.active) return 0;
+  const freq = frequencyOf(recurring);
   return savingQuota(
     {
       target: recurring.amount,
       fund: recurring.fund ?? 0,
       due: recurringDuePeriod(recurring, opening, startDay),
-      saving: true,
-      saveFrom: recurring.saveFrom ?? null,
-      frequency: frequencyOf(recurring),
+      saving: freq === 1 || recurring.saving === true,
+      saveFrom: freq === 1 ? null : recurring.saveFrom ?? null,
+      frequency: freq,
     },
     opening,
   );
@@ -97,28 +95,12 @@ export function recurringQuotaTotal(recurrings: readonly Recurring[], opening: P
   return recurrings.reduce((s, r) => s + recurringQuota(r, opening, startDay), 0);
 }
 
-/** Quote e fondi degli abbonamenti accantonati, per il giroconto → Bollette (`billsTransfer`). */
+/** Quote e fondi degli abbonamenti (tutti nella Pocket Spese fisse), per il giroconto (`billsTransfer`). */
 export function savedSubscriptions(recurrings: readonly Recurring[], opening: PeriodId, startDay: number): { quota: Cents; funds: Cents } {
   return {
     quota: recurringQuotaTotal(recurrings, opening, startDay),
-    funds: recurrings.reduce((s, r) => s + (r.saving ? r.fund ?? 0 : 0), 0),
+    funds: recurrings.reduce((s, r) => s + (r.fund ?? 0), 0),
   };
-}
-
-/**
- * Abbonamenti non mensili che nel periodo si pagano tutti dalla busta: la busta di quel mese
- * è più alta del loro importo (R15). id abbonamento → { busta, importo }.
- */
-export function lumpExtras(
-  recurrings: readonly Recurring[],
-  period: PeriodRange & Pick<Period, 'id'>,
-): Record<string, { envelopeId: string; amount: Cents }> {
-  const out: Record<string, { envelopeId: string; amount: Cents }> = {};
-  for (const r of recurrings) {
-    if (!r.active || frequencyOf(r) === 1 || paidFromFund(r, period.id)) continue;
-    if (recurringDateInPeriod(r, period) !== null) out[r.id] = { envelopeId: r.envelopeId, amount: r.amount };
-  }
-  return out;
 }
 
 export interface DueCharge {
@@ -157,8 +139,8 @@ export function chargeToTransaction(charge: DueCharge, periodId: string, id: str
     date: charge.date,
     type: 'expense',
     amount: charge.recurring.amount,
-    // Accantonato: si paga dal fondo nella Pocket Bollette, senza busta (come le bollette).
-    envelopeId: paidFromFund(charge.recurring, periodId) ? null : charge.recurring.envelopeId,
+    // Si paga dalla Pocket Spese fisse, senza busta (R16).
+    envelopeId: null,
     note: charge.recurring.name,
     card: charge.recurring.card,
     source: 'recurring',
@@ -173,17 +155,6 @@ export function chargeToTransaction(charge: DueCharge, periodId: string, id: str
 /** Totale mensile delle ricorrenze attive mensili (quelle in pausa e quelle non mensili non contano). */
 export function monthlyTotal(recurrings: readonly Recurring[]): Cents {
   return recurrings.reduce((s, r) => (r.active && frequencyOf(r) === 1 ? s + r.amount : s), 0);
-}
-
-/**
- * Totale che si scala dalla busta in questo periodo: mensili + non mensili di questo mese pagati tutti
- * dalla busta (quelli accantonati si pagano dalla Pocket Bollette e non contano).
- */
-export function periodTotal(rows: readonly RecurringRow[], periodId: PeriodId): Cents {
-  return rows.reduce(
-    (s, r) => (r.recurring.active && r.date !== null && !paidFromFund(r.recurring, periodId) ? s + r.recurring.amount : s),
-    0,
-  );
 }
 
 export type RecurringStatus =

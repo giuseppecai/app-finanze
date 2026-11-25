@@ -12,11 +12,11 @@ import { Stepper } from '../../components/Stepper';
 import { db } from '../../db/database';
 import { newId, saveEnvelopes, updateSettings } from '../../db/repositories';
 import { billsQuotaTotal, billsTransfer } from '../../domain/bills';
-import { capsTotal, extrasTotal } from '../../domain/opening';
+import { capsTotal } from '../../domain/opening';
 import { today } from '../../domain/clock';
-import { calendarPeriodById, nextOpeningId } from '../../domain/periods';
+import { nextOpeningId } from '../../domain/periods';
 import { formatEuro } from '../../domain/money';
-import { lumpExtras, mainRecurringEnvelope, savedSubscriptions } from '../../domain/recurring';
+import { savedSubscriptions } from '../../domain/recurring';
 import { potLines } from '../../domain/pots';
 import { suggestSymbol, symbolFor } from '../../domain/symbols';
 import {
@@ -120,7 +120,8 @@ function EnvelopesGroup({ envelopes, periods, current, txs, recurring, destinati
   const [target, setTarget] = useState<CapTarget | null>(null);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
-  const recurringEnvelope = mainRecurringEnvelope(recurring);
+  // Gli abbonamenti non passano più da una busta (R16): nessuna busta è "degli abbonamenti".
+  const recurringEnvelope: string | null = null;
   // Da Storico/Chiusura: "Porta il tetto a € 60" apre qui il pannello della busta con € 60 già scritto.
   const [params, setParams] = useSearchParams();
   useEffect(() => {
@@ -400,8 +401,7 @@ function MonthGroup({ settings, bills, recurring, envelopes, billsBalance, openi
   const subs = savedSubscriptions(recurring, opening, settings.periodStartDay);
   const transfer = billsTransfer(bills, billsBalance, opening, subs);
   const itemsTotal = settings.monthlyItems.filter((i) => !i.archived).reduce((s, i) => s + i.amount, 0);
-  const extra = extrasTotal(lumpExtras(recurring, { ...calendarPeriodById(opening, settings.periodStartDay) }));
-  const total = capsTotal(envelopes) + extra + itemsTotal + transfer.amount;
+  const total = capsTotal(envelopes) + itemsTotal + transfer.amount;
   return (
     <section className="group" aria-labelledby="month-title">
       <h2 id="month-title" className="group__title">{it.settings.monthTitle}</h2>
@@ -441,7 +441,7 @@ function MonthGroup({ settings, bills, recurring, envelopes, billsBalance, openi
             <Tile symbol="receipt" />
             <span className="list-row__text">
               <span className="list-row__title">{it.settings.billsRow}</span>
-              <span className="list-row__detail">{it.settings.billsDetail(activeBills.length)}</span>
+              <span className="list-row__detail">{it.settings.billsDetail(activeBills.length + recurring.filter((r) => r.active).length)}</span>
             </span>
             <span className="list-row__value">{formatEuro(billsQuotaTotal(bills, opening) + subs.quota)}<small>{it.casa.perMonthShort}</small></span>
             <IconChevronRight className="list-row__chevron" />

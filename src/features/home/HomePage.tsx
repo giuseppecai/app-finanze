@@ -21,9 +21,8 @@ import { it } from '../../i18n/it';
 import { BackupReminder } from './BackupReminder';
 import { ReconcileSheet } from './ReconcileSheet';
 
-/** Rate & Abbonamenti apre Abbonamenti, le altre (Casa & Servizi compresa) i Movimenti filtrati. */
-function envelopeLink(envelope: Envelope, recurringEnvelopes: ReadonlySet<string>): string {
-  if (envelope.kind === 'committed' && recurringEnvelopes.has(envelope.id)) return routes.recurring;
+/** Ogni busta apre i Movimenti filtrati. */
+function envelopeLink(envelope: Envelope): string {
   return `${routes.movements}?busta=${encodeURIComponent(envelope.id)}`;
 }
 
@@ -45,18 +44,28 @@ export function HomePage() {
     <>
       <BackupReminder settings={settings} periods={periods} />
       {period ? <CurrentPeriod period={period} envelopes={envelopes} cardReserve={settings.cardReserve} /> : <NoPeriod />}
-      <PotsSection periodId={period?.id ?? null} lines={lines} bills={bills} loansOwed={totalOwed(loans)} debtsOwed={totalDebt(loans)} />
+      <PotsSection period={period} lines={lines} bills={bills} loansOwed={totalOwed(loans)} debtsOwed={totalDebt(loans)} />
     </>
   );
 }
 
-/** "Messi da parte": Risparmi, salvadanai e Bollette (apre le bollette, con quante ne restano da registrare). */
-function PotsSection({ periodId, lines, bills, loansOwed, debtsOwed }: { periodId: string | null; lines: PotLine[]; bills: Bill[]; loansOwed: number; debtsOwed: number }) {
-  const txs = usePeriodTransactions(periodId);
-  if (!txs) return null;
-  const monthly = bills.filter((b) => b.active && b.frequency === 1).length;
+/**
+ * "Messi da parte": Risparmi, salvadanai e Spese fisse (apre le spese fisse: bollette da registrare,
+ * altrimenti il prossimo addebito automatico).
+ */
+function PotsSection({ period, lines, bills, loansOwed, debtsOwed }: { period: Period | null; lines: PotLine[]; bills: Bill[]; loansOwed: number; debtsOwed: number }) {
+  const txs = usePeriodTransactions(period?.id ?? null);
+  const recurring = useRecurring();
+  if (!txs || !recurring) return null;
   const toRegister = billsToRegister(bills, txs).length;
-  const hint = !periodId || monthly === 0 ? null : toRegister > 0 ? it.home.billsToRegister(toRegister) : it.home.billsAllRegistered;
+  const next = period ? nextUpcomingCharge(recurringRows(recurring, period, txs, today())) : null;
+  const hint = !period
+    ? null
+    : toRegister > 0
+      ? it.home.billsToRegister(toRegister)
+      : next
+        ? it.home.nextCharge(next.recurring.name, formatEuro(next.recurring.amount), next.status.inDays <= 0 ? it.recurring.status.today : next.status.inDays === 1 ? it.recurring.status.tomorrow : it.recurring.status.inDays(next.status.inDays))
+        : bills.some((b) => b.active && b.frequency === 1) ? it.home.billsAllRegistered : null;
   return <PotsCard lines={lines} loansOwed={loansOwed} debtsOwed={debtsOwed} links={{ bills: routes.bills }} hints={{ bills: hint }} />;
 }
 
@@ -100,19 +109,12 @@ function CurrentPeriod({ period, envelopes, cardReserve }: { period: Period; env
   const [reconcileOpen, setReconcileOpen] = useState(false);
   const txs = usePeriodTransactions(period.id);
   const lastReconciliation = useLastReconciliation();
-  const recurring = useRecurring();
-  if (!txs || lastReconciliation === undefined || !recurring) return null;
-  const recurringEnvelopes = new Set(recurring.map((r) => r.envelopeId));
+  if (!txs || lastReconciliation === undefined) return null;
 
   const now = today();
   const summary = summarizePeriod(envelopes, period, txs);
   const timeToClose = isTimeToClose(period, now);
 
-  // Righe di contesto delle Impegnate: il prossimo addebito e le bollette ancora da registrare.
-  const next = nextUpcomingCharge(recurringRows(recurring, period, txs, now));
-  const recurringMeta = next
-    ? it.home.nextCharge(next.recurring.name, formatEuro(next.recurring.amount), next.status.inDays <= 0 ? it.recurring.status.today : next.status.inDays === 1 ? it.recurring.status.tomorrow : it.recurring.status.inDays(next.status.inDays))
-    : recurring.some((r) => r.active) ? it.home.allCharged : null;
 
   return (
     <>
@@ -150,8 +152,8 @@ function CurrentPeriod({ period, envelopes, cardReserve }: { period: Period; env
             <EnvelopeRow
               key={b.envelope.id}
               balance={b}
-              to={envelopeLink(b.envelope, recurringEnvelopes)}
-              meta={recurringEnvelopes.has(b.envelope.id) ? recurringMeta : null}
+              to={envelopeLink(b.envelope)}
+              meta={null}
             />
           ))}
         </ul>

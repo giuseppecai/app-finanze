@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { savingPreview, savingQuota } from '../saving';
 import { monthlyQuota } from '../bills';
-import { chargeToTransaction, dueCharges, lumpExtras, paidFromFund, periodTotal, recurringDuePeriod, recurringQuota, recurringRows } from '../recurring';
+import { chargeToTransaction, dueCharges, recurringDuePeriod, recurringQuota, savedSubscriptions } from '../recurring';
 import { calendarPeriodById } from '../periods';
-import { buildNewPeriod } from '../opening';
-import type { Envelope, Recurring } from '../types';
+import type { Recurring } from '../types';
 import { ENV } from '../../db/fixtures';
 
 // Esempio di R15: Prime Video 49,99 € l'anno, addebito il 23 marzo (startDay 27 → periodo Marzo).
@@ -33,39 +32,34 @@ describe('R15 · scenario 1: accantono da settembre', () => {
     expect(fund).toBe(4999);
   });
 
-  it('il 23 marzo si paga dal fondo (senza busta); poi si riparte per l’anno dopo: 49,99 / 12', () => {
-    expect(paidFromFund(primeSaved, '2027-03')).toBe(true);
+  it('il 23 marzo si paga dalla Pocket (senza busta); poi si riparte per l’anno dopo: 49,99 / 12', () => {
     const marP = { ...mar, id: '2027-03' };
     const [charge] = dueCharges([primeSaved], marP, [], '2027-03-23');
     expect(chargeToTransaction(charge!, '2027-03', 'tx', '')).toMatchObject({ envelopeId: null, amount: 4999, recurringId: 'prime' });
-    // a marzo la busta non si alza e il totale del mese non lo conta
-    expect(lumpExtras([primeSaved], marP)).toEqual({});
-    expect(periodTotal(recurringRows([primeSaved], marP, [], '2027-03-01'), '2027-03')).toBe(0);
     // aprile: fondo 0, prossima scadenza marzo 2028 → 12 giroconti
     expect(recurringQuota({ ...primeSaved, fund: 0 }, '2027-04', 27)).toBe(417);
-  });
-
-  it('prima di saveFrom l’addebito resta dalla busta', () => {
-    expect(paidFromFund(primeSaved, '2026-03')).toBe(false);
   });
 });
 
 describe('R15 · scenario 2: pago tutto alla scadenza', () => {
-  it('nessuna quota; a marzo la busta Rate & Abbonamenti ha 49,99 € in più', () => {
+  it('nessuna quota fino a marzo; a marzo tutti i 49,99 nel giroconto → Spese fisse, e si paga dalla Pocket', () => {
     expect(recurringQuota(prime, '2026-12', 27)).toBe(0);
-    const marP = { ...mar, id: '2027-03' };
-    expect(lumpExtras([prime], marP)).toEqual({ prime: { envelopeId: ENV.rate, amount: 4999 } });
-    expect(lumpExtras([prime], { ...calendarPeriodById('2027-02', 27), id: '2027-02' })).toEqual({});
-    const envelopes: Envelope[] = [{ id: ENV.rate, name: 'Rate & Abbonamenti', shortName: 'Rate', kind: 'committed', cap: 11000, order: 0, archived: false }];
-    const { period, potDeltas } = buildNewPeriod({
-      target: mar, today: '2027-02-27', salary: 150000, envelopes, items: [], closing: null,
-      extras: lumpExtras([prime], marP),
-    });
-    expect(period.allocations[ENV.rate]).toBe(15999);
-    expect(period.extras).toEqual({ prime: 4999 });
-    expect(potDeltas.savings).toBe(150000 - 15999);
-    const [charge] = dueCharges([prime], marP, [], '2027-03-23');
-    expect(chargeToTransaction(charge!, '2027-03', 'tx', '').envelopeId).toBe(ENV.rate);
+    expect(recurringQuota(prime, '2027-02', 27)).toBe(0);
+    expect(recurringQuota(prime, '2027-03', 27)).toBe(4999);
+    const [charge] = dueCharges([prime], { ...mar, id: '2027-03' }, [], '2027-03-23');
+    expect(chargeToTransaction(charge!, '2027-03', 'tx', '').envelopeId).toBeNull();
+  });
+});
+
+describe('R16 · Spese fisse: abbonamenti mensili', () => {
+  const spotify: Recurring = { ...base, id: 'sp', name: 'Spotify', amount: 850, dayOfMonth: 5 };
+  it('ogni mese nel giroconto l’importo (meno quello che è già nel fondo)', () => {
+    expect(recurringQuota(spotify, '2026-12', 27)).toBe(850);
+    expect(recurringQuota({ ...spotify, fund: 300 }, '2026-12', 27)).toBe(550);
+    expect(recurringQuota({ ...spotify, active: false }, '2026-12', 27)).toBe(0);
+  });
+  it('giroconto unico: Spotify 8,50 + Prime accantonato 7,15 (e i loro fondi)', () => {
+    expect(savedSubscriptions([spotify, primeSaved], '2026-09', 27)).toEqual({ quota: 850 + 715, funds: 0 });
   });
 });
 

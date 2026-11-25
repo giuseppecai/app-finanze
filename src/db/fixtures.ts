@@ -230,7 +230,7 @@ function buildDemoDataRaw(): DataSet {
       { id: 'savings', name: 'Risparmi', balance: eur(1240) },
       { id: 'travel', name: 'Viaggi', balance: eur(180) },
       { id: 'gifts', name: 'Regali & Imprevisti', balance: eur(75) },
-      { id: 'bills', name: 'Bollette', balance: eur(134) },
+      { id: 'bills', name: 'Spese fisse', balance: eur(134) },
     ],
     reconciliations: [
       {

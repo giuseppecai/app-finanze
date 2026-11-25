@@ -25,9 +25,9 @@ function monthLabel(id: string): string {
   return `${it.months.long[Number(m) - 1] ?? id} ${y}`;
 }
 
-/** Mesi proponibili per il prossimo addebito: i prossimi 12 a partire da questo. */
+/** Mesi proponibili per il prossimo addebito: i prossimi 24 a partire da questo (un annuale può essere tra 12 mesi). */
 function monthOptions(from: string, selected: string): string[] {
-  const list = Array.from({ length: 12 }, (_, i) => addMonthsId(from, i));
+  const list = Array.from({ length: 24 }, (_, i) => addMonthsId(from, i));
   return list.includes(selected) ? list : [selected, ...list];
 }
 

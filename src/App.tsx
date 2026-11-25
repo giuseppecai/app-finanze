@@ -12,7 +12,6 @@ import { LoansPage } from './features/loans/LoansPage';
 import { MovementsPage } from './features/movements/MovementsPage';
 import { OnboardingPage } from './features/onboarding/OnboardingPage';
 import { OpeningPage } from './features/opening/OpeningPage';
-import { RecurringPage } from './features/recurring/RecurringPage';
 import { BackupPage } from './features/settings/BackupPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 
@@ -31,7 +30,7 @@ export function App() {
           <Route path={routes.closing} element={<ClosingPage />} />
           <Route path={routes.opening} element={<OpeningPage />} />
           <Route path={routes.loans} element={<LoansPage />} />
-          <Route path={routes.recurring} element={<RecurringPage />} />
+          <Route path={routes.recurring} element={<Navigate to={routes.bills} replace />} />
           <Route path={routes.onboarding} element={<OnboardingPage />} />
           <Route path={routes.bills} element={<BillsPage />} />
           <Route path={routes.backup} element={<BackupPage />} />

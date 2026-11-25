@@ -3,6 +3,7 @@
 import Dexie, { type EntityTable } from 'dexie';
 import { DEFAULT_MONTHLY_ITEMS } from '../domain/pots';
 import { symbolFor } from '../domain/symbols';
+import { envelopeInUse } from '../domain/settings';
 import type {
   Bill, Envelope, Loan, Period, Person, Pot, Reconciliation, Recurring, Settings, Transaction,
 } from '../domain/types';
@@ -88,6 +89,28 @@ export function openDatabase(name: string): FinanzeDB {
       await tx.table('envelopes').toCollection().modify((e: Record<string, unknown>) => Object.assign(e, withSymbol(e)));
       await tx.table('pots').toCollection().modify((p: Record<string, unknown>) => Object.assign(p, withSymbol(p)));
       await tx.table('settings').toCollection().modify((s: Record<string, unknown>) => Object.assign(s, migrateSettingsV5(s)));
+    });
+  // v6 (R16 · Spese fisse): bollette e abbonamenti nella stessa Pocket, che si chiama "Spese fisse";
+  // la busta degli abbonamenti non serve più (a mese aperto resta: si toglie da Imposta).
+  db.version(6)
+    .stores({})
+    .upgrade(async (tx) => {
+      await tx.table('pots').toCollection().modify((p: Record<string, unknown>) => {
+        if (p.id === 'bills' && p.name === 'Bollette') p.name = 'Spese fisse';
+      });
+      const periods = (await tx.table('periods').toArray()) as Period[];
+      if (periods.some((p) => p.closedAt === null)) return;
+      const recurring = (await tx.table('recurring').toArray()) as { envelopeId: string }[];
+      const ids = new Set(recurring.map((r) => r.envelopeId));
+      const txs = (await tx.table('transactions').toArray()) as Transaction[];
+      for (const e of (await tx.table('envelopes').toArray()) as { id: string; kind: string; archived: boolean }[]) {
+        if (e.kind !== 'committed' || !ids.has(e.id) || e.archived) continue;
+        if (envelopeInUse(e.id, periods, txs, [])) await tx.table('envelopes').update(e.id, { archived: true });
+        else await tx.table('envelopes').delete(e.id);
+        await tx.table('settings').toCollection().modify((st: Record<string, unknown>) => {
+          if (st.lastEnvelopeId === e.id) st.lastEnvelopeId = null;
+        });
+      }
     });
   return db;
 }

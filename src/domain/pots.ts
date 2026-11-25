@@ -34,7 +34,7 @@ export function potLines(pots: readonly Pot[], items: readonly MonthlyItem[]): P
   // archiviate (già in `items`) restano nascosti quando sono vuoti.
   const itemIds = new Set(items.map((i) => i.id));
   const others = pots.filter((p) => !known.has(p.id) && (!itemIds.has(p.id) || p.balance !== 0)).map((p) => line(p.id, p.name));
-  return [line('savings', 'Risparmi'), ...fromItems, ...others, line('bills', 'Bollette')];
+  return [line('savings', 'Risparmi'), ...fromItems, ...others, line('bills', 'Spese fisse')];
 }
 
 export function potsTotal(lines: readonly PotLine[]): Cents {

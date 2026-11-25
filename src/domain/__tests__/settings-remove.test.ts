@@ -75,8 +75,8 @@ describe('Imposta · togliere una busta', () => {
     expect(envelopeInUse('nuova', data.periods, data.transactions, data.recurring)).toBe(false);
   });
 
-  it('una busta con abbonamenti attivi non si toglie', () => {
-    expect(recurringOnEnvelope(ENV.rate, data.recurring).length).toBeGreaterThan(0);
+  it('R16: gli abbonamenti non tengono legata nessuna busta (si pagano dalla Pocket Spese fisse)', () => {
+    expect(recurringOnEnvelope(ENV.rate, data.recurring)).toEqual([]);
     expect(recurringOnEnvelope(ENV.vita, data.recurring)).toEqual([]);
   });
 });

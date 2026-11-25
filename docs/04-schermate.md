@@ -16,7 +16,7 @@ Barra in basso (solo su Home, Movimenti, Storico, Imposta), alta 84 px con area 
 
 Le altre schermate (Inserimento, Chiusura, Inizio, Prestiti, Abbonamenti) si aprono a tutto schermo con un pulsante indietro/chiudi in alto a sinistra.
 
-Rotte (`HashRouter`): `/`, `/nuovo`, `/movimenti`, `/storico`, `/imposta`, `/chiudi`, `/inizio`, `/prestiti`, `/abbonamenti`, `/bollette` (il vecchio `/casa` rimanda qui), `/benvenuto` (onboarding). `/nuovo` accetta parametri `?tipo=spesa|rimborso|prestito&importo=1240&nota=...&carta=quotidiano|extra` (usati da Confronta e, in futuro, dall'inbox).
+Rotte (`HashRouter`): `/`, `/nuovo`, `/movimenti`, `/storico`, `/imposta`, `/chiudi`, `/inizio`, `/prestiti`, `/bollette` (Spese fisse; `/abbonamenti` e il vecchio `/casa` rimandano qui), `/benvenuto` (onboarding). `/nuovo` accetta parametri `?tipo=spesa|rimborso|prestito&importo=1240&nota=...&carta=quotidiano|extra` (usati da Confronta e, in futuro, dall'inbox).
 
 ---
 
@@ -30,7 +30,7 @@ Dall'alto:
    - riga in basso: se è ora di chiudere (R2) il link "Stipendio arrivato? Chiudi il mese →", altrimenti "Ultimo confronto con Revolut: 3 giorni fa" (o "Mai confrontato").
 Tre sezioni con titolo grande e una riga di spiegazione, ognuna con un aspetto diverso:
 3. **Da spendere** ("Le buste per le spese di tutti i giorni"): una scheda per busta *da spendere* (Casa & Servizi compresa). Ogni riga: nome, residuo, "di € tetto" (o "oltre il tetto"), barra. Tocco → Movimenti filtrati per quella busta.
-4. **Messi da parte** (Pocket): Risparmi, salvadanai delle voci fisse e **Bollette** (riga che apre `/bollette`, con "N da registrare questo mese"). Le Bollette non sono più tra le buste: Home ha solo **Buste** (un unico elenco, Rate & Abbonamenti compresa, con la riga "Prossimo addebito") e **Messi da parte**.
+4. **Messi da parte** (Pocket): Risparmi, salvadanai delle voci fisse e **Spese fisse** (riga che apre `/bollette`, con "N da registrare questo mese" o il prossimo addebito automatico). Bollette e abbonamenti non sono tra le buste (R16): Home ha solo **Buste** e **Messi da parte**.
 5. **Messi da parte** ("Le Pocket su Revolut", totale a destra): riquadro lilla, barra divisa in tonalità (Risparmi in accento, gli altri salvadanai in viola chiaro), elenco con importi; ultima riga "Prestiti da riavere · € 55 ›" → Prestiti (nascosta se 0; con debiti aperti aggiunge "· devi € Y"). Bollette qui non compare.
 
 **Pannello Confronta** (bottom sheet): sottotitolo con la data dell'ultimo confronto, 3 campi importo (Budget del mese, Carta Quotidiano, Carta Extra), riga "Su Revolut € X · Nell'app € Y", riquadro esito secondo R5 con le azioni. Al primo confronto: calibrazione della riserva.
@@ -88,7 +88,7 @@ Movimenti di esempio (periodo Novembre): 19 Pranzo con colleghi (Vita, 22) · 19
 
 Elenco raggruppato come le Impostazioni di iOS: titoletti di gruppo grigi, card bianche con righe separate da filetti, nota sotto ogni gruppo.
 
-- **Buste**: un'unica card con **un solo elenco** di buste (nessuna distinzione tra da spendere e impegnate). Riga: nome, sotto "In media € X" (R10, arancione "In media € X: tetto basso" se sopra il tetto), stepper − € tetto + (passo 5 €). Sotto Rate & Abbonamenti il link "5 abbonamenti ›". Poi "+ Nuova busta" (pannello dal basso) e la riga di riepilogo "Totale buste € 700" ("+ € X rispetto a prima"). Nota: "Le modifiche valgono da questo mese."
+- **Buste**: un'unica card con **un solo elenco** di buste (nessuna distinzione tra da spendere e impegnate). Riga: nome, sotto "In media € X" (R10, arancione "In media € X: tetto basso" se sopra il tetto), stepper − € tetto + (passo 5 €). Poi "+ Nuova busta" (pannello dal basso) e la riga di riepilogo "Totale buste € 700" ("+ € X rispetto a prima"). Nota: "Le modifiche valgono da questo mese."
 - **Barra di salvataggio**: compare solo con modifiche alle buste, fissa sopra la tab bar: anteprima del giroconto ("Dopo il salvataggio sposta € X da Risparmi a Budget del mese"), **Annulla** e **Salva le buste**.
 - **Inizio del mese**: "Il mese inizia · il 27" (selettore, salva subito), una riga per voce fissa (nome, "Salvadanaio"/"Uscita fissa", importo ›: tocco → pannello per nome, importo, togli/rimetti), riga "Bollette · € 79/mese ›" → `/bollette`, "+ Nuova voce fissa", e in fondo la riga **"Totale inizio mese"** (buste + voci fisse + giroconto Bollette, quest'ultimo al netto di quello che c'è già nella Pocket).
 - **Salvadanai e carte**: una riga per salvadanaio e la riserva carte, in sola lettura; tocco → pannello per correggere il saldo.
@@ -108,35 +108,23 @@ Elenco raggruppato come le Impostazioni di iOS: titoletti di gruppo grigi, card 
 - Le voci nate da una bolletta mostrano il nome della bolletta come motivo (es. "Luce · novembre", "Gas · metà tua").
 - "+ Nuovo" apre l'inserimento in modalità Prestito; un debito a mano si registra dalla stessa modalità con l'opzione "Mi ha prestato lei/lui".
 
-## 9 · Abbonamenti (`Abbonamenti.dc.html`)
+## 9 · Spese fisse (bollette e abbonamenti, R16)
 
-- "Abbonamenti" · "Si scalano da soli da Rate & Abbonamenti" · "+ Aggiungi".
-- Card scura: "Ogni mese € 90,50" ("Questo mese" se nel periodo cade un non mensile, R8), "busta € 110", sotto (se ci sono non mensili) "Annuali e altri: in media € X al mese", barra, link "Avanzano € 19,50 al mese · modifica la busta →" (o "Sfori la busta di € X · alza il tetto →").
-- "Questo mese · 27 ott – 26 nov": righe con riquadro data (giorno + mese), nome, "Carta Extra · ogni mese" (o "ogni 2 mesi", "ogni anno"…), importo e stato: **scalato** (accento), **tra N giorni / domani** (giallo), **in pausa** (grigio, importo barrato).
-- "Più avanti": i non mensili che non cadono in questo periodo, con la data del prossimo addebito e "tra N mesi".
-- Tocco → pannello: importo, ogni quanto, giorno del mese, prossimo addebito (solo non mensili), interruttore **Accantona ogni mese** (solo non mensili, apre il popup di R15), carta, interruttore **Attivo**, Elimina, Salva (R8).
-- Righe dei non mensili: seconda riga "+ € 7,15/mese, ne hai € 21" (accantonato) o "tutto nel mese".
-- Nota in fondo: "Il giorno dell'addebito l'app scala l'importo dalla busta… Se un prezzo aumenta, te ne accorgi al Confronta con Revolut e lo aggiorni qui."
+Un'unica schermata (`/bollette`; `/abbonamenti` e `/casa` rimandano qui). Si apre dalla riga **Spese fisse** tra i Messi da parte in Home e da Imposta. Schermo intero con chiudi.
 
-## 9-bis · Bollette (non c'è mockup — stesso stile di Abbonamenti)
-
-Si apre dalla riga Bollette tra i Messi da parte in Home e da Imposta (rotta `/bollette`). Schermo intero con chiudi.
-
-- "Bollette" · "Si pagano dalla Pocket Bollette" · "+ Bolletta".
-- **Card scura** (stessa struttura di Abbonamenti): "Nella Pocket Bollette € X" (= salvadanaio Bollette), a destra "+ € 79 al mese", barra Σ `fund` / Σ tue quote previste delle attive, sotto "Accantonati € X di € Y" (o "Mancano € Z…" se qualche `fund < 0`).
-- **Con Elisa**: riga con il saldo unico ("Elisa ti deve € 24" / "Devi € 6 a Elisa") → Prestiti, card della persona aperta.
-- Righe come quelle di Abbonamenti: riquadro con il **mese** in cui arriva (trattino se non si sa), nome, "a metà · la paghi tu" / "solo tua", per le periodiche una seconda riga "ogni 2 mesi · € 30 di € 30" (arancione se `fund < 0`: "mancano € 1"), a destra "€ 15/mese" e lo stato.
-- **Questo mese · 27 ott – 26 nov**: le mensili ("registrata il 1 nov" / "da registrare") e le periodiche attese in questo periodo o in ritardo ("da registrare" / "in ritardo").
-- **Più avanti**: le altre periodiche ("a febbraio").
-- Se ci sono abbonamenti accantonati, riga "Abbonamenti accantonati · N abbonamenti · € X al mese" → Abbonamenti (stanno nella stessa Pocket, R15).
-- Nel pannello Modifica delle periodiche: interruttore **Accantona ogni mese** con il popup di R15; una non accantonata mostra a destra la tua quota intera e "tutto nel mese".
-- Tocco su una bolletta → pannello con **Registra bolletta** (importo, data, chi l'ha pagata; anteprima live dei movimenti e dei giroconti, R13) e **Modifica** (nome, frequenza, previsto, divisione, chi paga, attiva / in pausa, elimina).
-- Nota in fondo: "Ogni mese metti nella Pocket Bollette la quota di tutte le bollette, mensili comprese… Le altre spese di casa restano nella busta Casa & Servizi."
+- "Spese fisse" · chip "N da registrare" (o "Prossimo: Spotify domani") · "dalla Pocket Spese fisse" · "+ Aggiungi".
+- **Card scura**: "Nella Pocket Spese fisse € X", a destra "+ € Y al mese" (il giroconto di inizio mese), sotto "Abbonamenti € A · bollette € B al mese".
+- **Con Elisa**: riga con il saldo unico → Prestiti.
+- **Questo mese · 27 ott – 26 nov**: abbonamenti con addebito nel periodo (riquadro giorno + mese, "scalato" / "tra N giorni") e bollette del mese (riquadro mese, "registrata il 1 nov" / "da registrare" / "in ritardo"). **Più avanti**: annuali e bollette periodiche dei mesi dopo ("tra N mesi" / "a febbraio").
+- Riga: nome, "Abbonamento · ogni mese" oppure "Bolletta · metà, paghi tu" / "solo tua"; per i non mensili una seconda riga "ogni anno · + € 3,16/mese, ne hai € 12" (accantonato) o "tutto nel mese"; a destra l'importo (tua quota per le bollette).
+- **+ Aggiungi** → scelta "Abbonamento o rata" (importo fisso, si scala da solo) / "Bolletta" (importo che cambia, la registri tu), poi il pannello relativo.
+- Pannello abbonamento: importo, ogni quanto, giorno, prossimo addebito (non mensili, 24 mesi), **Accantona ogni mese** (popup R15), carta, attivo, Elimina, Salva.
+- Pannello bolletta: **Registra bolletta** e **Modifica** come in R13, con **Accantona ogni mese** per le periodiche.
 
 ## 10 · Onboarding (non c'è mockup — stesso stile)
 
 Al primo avvio, 3 passi brevi:
 1. "Le tue buste": conferma tetti (riusa la schermata Imposta).
-2. "Abbonamenti": conferma giorni e importi (riusa Abbonamenti).
+2. "Abbonamenti": conferma giorni e importi (poi si gestiscono in Spese fisse).
 3. "I tuoi salvadanai": saldi attuali di Risparmi e dei salvadanai delle voci fisse (Viaggi, Regali & Imprevisti).
 Poi "Inizio del mese" per creare il primo periodo, e suggerimento di aggiungere l'app alla schermata Home se non è in modalità standalone.

@@ -16,8 +16,8 @@ import { planClosing, type ClosingOption, type ClosingPlan } from '../../domain/
 import { formatLongRange } from '../../domain/dates';
 import { formatEuro, parseEuro, amountText } from '../../domain/money';
 import { closingPreview, transferChecklist, type ChecklistItem } from '../../domain/monthEnd';
-import { activeEnvelopes, extrasTotal, itemQuotas, planOpening, type ItemQuota } from '../../domain/opening';
-import { lumpExtras, recurringQuota, savedSubscriptions } from '../../domain/recurring';
+import { activeEnvelopes, itemQuotas, planOpening, type ItemQuota } from '../../domain/opening';
+import { recurringQuota, savedSubscriptions } from '../../domain/recurring';
 import { nextPeriodToStart } from '../../domain/periods';
 import { billsTransfer } from '../../domain/bills';
 import type { Bill, Cents, Envelope, Period, Recurring, Settings, Transaction } from '../../domain/types';
@@ -96,9 +96,7 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   const quotas = itemQuotas(settings.monthlyItems, overrides);
   const activeBills = bills.filter((b) => b.active);
   const billsInfo = billsTransfer(bills, billsBalance, target.id, savedSubscriptions(recurring, target.id, settings.periodStartDay));
-  // Abbonamenti non mensili pagati tutti questo mese: la loro busta è più alta (R15).
-  const extras = Object.entries(lumpExtras(recurring, target)).map(([id, e]) => ({ name: recurring.find((r) => r.id === id)?.name ?? '', amount: e.amount }));
-  const opening = planOpening(salary ?? 0, envelopes, quotas, billsInfo.amount, extrasTotal(lumpExtras(recurring, target)));
+  const opening = planOpening(salary ?? 0, envelopes, quotas, billsInfo.amount);
   const items = transferChecklist(opening, closing);
   // La spunta vale per quell'importo: se l'importo cambia, la riga torna da fare.
   const keyOf = (i: ChecklistItem) => `${i.key}:${i.amount}`;
@@ -128,9 +126,7 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
       case 'closing':
         return item.to === 'savings' ? it.opening.notes.closingSurplus(closingMonth) : it.opening.notes.closingDeficit(closingMonth);
       case 'budget':
-        return extras.length > 0
-          ? `${it.opening.notes.budget(activeEnvelopes(envelopes).length)} ${it.opening.notes.budgetExtras(extras.map((e) => `${e.name} ${formatEuro(e.amount)}`).join(', '))}`
-          : it.opening.notes.budget(activeEnvelopes(envelopes).length);
+        return it.opening.notes.budget(activeEnvelopes(envelopes).length);
       case 'item':
         return item.item?.kind === 'payment' ? it.opening.notes.payment : it.opening.notes.pot;
       case 'bills':

@@ -12,17 +12,18 @@ const novTxs = data.transactions.filter((t) => t.periodId === nov.id);
 describe('Chiusura di Novembre (fixture)', () => {
   const preview = closingPreview(data.envelopes, nov, novTxs, data.recurring);
 
-  it('conta anche iCloud del 24, non ancora scalato', () => {
+  it('genera anche iCloud del 24, non ancora scalato, ma dalla Pocket Spese fisse (R16): la busta non si muove', () => {
     expect(preview.pending.map((p) => [p.recurring.name, p.date])).toEqual([['iCloud', '2026-11-24']]);
-    expect(preview.leftovers[ENV.rate]).toBe(1950);
+    expect(preview.txs.find((t) => t.note === 'iCloud' && t.date === '2026-11-24')?.envelopeId).toBeNull();
+    expect(preview.leftovers[ENV.rate]).toBe(2050);
   });
 
   it('avanzi per busta e da assegnare', () => {
     expect(preview.leftovers).toEqual({
-      [ENV.trasporti]: 3800, [ENV.vita]: 6900, [ENV.spesa]: -800, [ENV.shopping]: 7500, [ENV.casa]: 5700, [ENV.rate]: 1950,
+      [ENV.trasporti]: 3800, [ENV.vita]: 6900, [ENV.spesa]: -800, [ENV.shopping]: 7500, [ENV.casa]: 5700, [ENV.rate]: 2050,
     });
     expect(preview.unassigned).toBe(112);
-    expect(planClosing(preview.leftovers, preview.unassigned, 'toSavings').net).toBe(25162);
+    expect(planClosing(preview.leftovers, preview.unassigned, 'toSavings').net).toBe(25262); // +1 € di iCloud, ora pagato dalla Pocket
   });
 
   it('senza abbonamenti in sospeso non aggiunge nulla', () => {

@@ -62,3 +62,15 @@
 /* Anteprima della quota mensile nella scheda della bolletta */
 .bill-quota-preview { margin: 4px 0 0; font-size: 15px; font-weight: 600; color: var(--accent-strong); }
 .due-field { display: flex; flex-direction: column; gap: 6px; }
+
+/* Scelta del tipo di spesa fissa (Abbonamento / Bolletta) */
+.choose-kind { display: flex; flex-direction: column; gap: 10px; }
+.choose-kind__option {
+  display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left;
+  min-height: 64px; padding: 14px 16px; border: none; border-radius: var(--radius-card);
+  background: var(--surface-sunk); color: var(--text);
+}
+.choose-kind__option:active { background: var(--surface-press); }
+.choose-kind__title { font-size: var(--fs-body); font-weight: 600; }
+.choose-kind__hint { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+.hero__status.is-over { color: #F3B89E; }

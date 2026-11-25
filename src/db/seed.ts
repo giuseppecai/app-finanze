@@ -45,7 +45,7 @@ export function buildSeed(newId: () => string, now: string): DataSet {
       { id: 'savings', name: 'Risparmi', balance: 0 },
       { id: 'travel', name: 'Viaggi', balance: 0 },
       { id: 'gifts', name: 'Regali & Imprevisti', balance: 0 },
-      { id: 'bills', name: 'Bollette', balance: 0 },
+      { id: 'bills', name: 'Spese fisse', balance: 0 },
     ].map(withDefaultSymbol),
     reconciliations: [],
     bills: [],

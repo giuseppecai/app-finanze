@@ -1,29 +1,36 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useBills, useCurrentPeriod, useLoans, usePeople, usePeriods, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
+import { useBills, useCurrentPeriod, useEnvelopes, useLoans, usePeople, usePeriods, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
+import { BottomSheet } from '../../components/BottomSheet';
 import { IconChevronRight, IconPlus, IconReceipt } from '../../components/icons';
 import { InfoBox } from '../../components/InfoBox';
 import { TopBar } from '../../components/TopBar';
 import { PageHeader } from '../../components/PageHeader';
-import { billsQuotaTotal, billsToRegister, fundStatus, isPeriodic, isSaving, monthlyQuota } from '../../domain/bills';
-import { frequencyOf, recurringQuotaTotal } from '../../domain/recurring';
+import { ScheduleRow } from '../../components/ScheduleRow';
+import { billsQuotaTotal, billsToRegister, expectedShare, fundStatus, isPeriodic, isSaving, monthlyQuota } from '../../domain/bills';
 import { today } from '../../domain/clock';
-import { formatShortDate, formatShortRange, monthsBetween } from '../../domain/dates';
-import { nextOpeningId } from '../../domain/periods';
+import { formatShortDate, formatShortRange, monthsBetween, parseISODate } from '../../domain/dates';
+import { calendarPeriodFor, nextOpeningId } from '../../domain/periods';
 import { balanceWith } from '../../domain/loans';
 import { formatEuro } from '../../domain/money';
-import type { Bill, Person, Transaction } from '../../domain/types';
+import {
+  frequencyOf, mainRecurringEnvelope, nextUpcomingCharge, recurringQuota, recurringQuotaTotal, recurringRows,
+  type RecurringRow, type RecurringStatus,
+} from '../../domain/recurring';
+import type { Bill, Person, Recurring, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
-import { ScheduleRow } from '../../components/ScheduleRow';
+import { RecurringSheet } from '../recurring/RecurringSheet';
 import { BillSheet } from './BillSheet';
 
 /**
- * Bollette (R13): tutte, mensili comprese, si accantonano nella Pocket Bollette con un giroconto
- * a inizio mese e si pagano da lì. Si apre da "Messi da parte" in Home e da Imposta.
+ * Spese fisse (R16): abbonamenti e bollette in un solo elenco, tutti pagati dalla Pocket Spese fisse
+ * con un solo giroconto a inizio mese. Tag: Abbonamento (si scala da solo) o Bolletta (la registri tu).
  */
 export function BillsPage() {
   const bills = useBills();
+  const recurring = useRecurring();
+  const envelopes = useEnvelopes();
   const people = usePeople();
   const loans = useLoans();
   const pots = usePots();
@@ -31,71 +38,68 @@ export function BillsPage() {
   const txs = usePeriodTransactions(period?.id ?? null);
   const periods = usePeriods();
   const settings = useSettings();
-  const recurring = useRecurring();
-  const [target, setTarget] = useState<Bill | 'new' | null>(null);
-  if (!bills || !people || !loans || !pots || period === undefined || !txs || !periods || !settings || !recurring) return null;
+  const [bill, setBill] = useState<Bill | 'new' | null>(null);
+  const [sub, setSub] = useState<Recurring | 'new' | null>(null);
+  const [choosing, setChoosing] = useState(false);
+  if (!bills || !recurring || !envelopes || !people || !loans || !pots || period === undefined || !txs || !periods || !settings) return null;
 
-  const billsPot = pots.find((p) => p.id === 'bills')?.balance ?? 0;
-  const opening = nextOpeningId(periods, today(), settings.periodStartDay);
-  // Nella stessa Pocket ci sono anche gli abbonamenti accantonati (R15).
-  const savedSubs = recurring.filter((r) => r.active && r.saving && frequencyOf(r) > 1);
-  const subsQuota = recurringQuotaTotal(savedSubs, opening, settings.periodStartDay);
-  const quota = billsQuotaTotal(bills, opening) + subsQuota;
+  const now = today();
+  const startDay = settings.periodStartDay;
+  const pot = pots.find((p) => p.id === 'bills')?.balance ?? 0;
+  const opening = nextOpeningId(periods, now, startDay);
+  const subsQuota = recurringQuotaTotal(recurring, opening, startDay);
+  const billsQuota = billsQuotaTotal(bills, opening);
   const toRegister = billsToRegister(bills, txs).length;
-  // Stessa divisione di Abbonamenti: quelle di questo mese (mensili + periodiche in arrivo o in ritardo) e quelle più avanti.
-  const current = period?.id ?? opening;
-  const dueNow = (b: Bill) => !isPeriodic(b) || (!!b.nextDue && b.nextDue <= current);
-  const byDue = (a: Bill, b: Bill) =>
-    (a.active ? 0 : 1) - (b.active ? 0 : 1) || (a.nextDue ?? '9999').localeCompare(b.nextDue ?? '9999') || a.order - b.order;
-  const thisMonth = bills.filter(dueNow).sort((a, b) => (a.active ? 0 : 1) - (b.active ? 0 : 1) || a.order - b.order);
-  const later = bills.filter((b) => !dueNow(b)).sort(byDue);
-  const active = bills.filter((b) => b.active && isSaving(b));
-  const fundTotal = active.reduce((s, b) => s + fundStatus(b).fund, 0) + savedSubs.reduce((s, r) => s + (r.fund ?? 0), 0);
-  const targetTotal = active.reduce((s, b) => s + fundStatus(b).target, 0) + savedSubs.reduce((s, r) => s + r.amount, 0);
-  const missingTotal = active.reduce((s, b) => s + fundStatus(b).missing, 0);
-  const barPct = targetTotal > 0 ? Math.max(0, Math.min(100, (fundTotal / targetTotal) * 100)) : 0;
+  const range = period ?? calendarPeriodFor(now, startDay);
+  const current = range.id;
+  const rows = recurringRows(recurring, range, period ? txs : [], now);
+  const next = period ? nextUpcomingCharge(rows) : null;
   const names = new Map(people.map((p) => [p.id, p]));
   const roommates = [...new Set(bills.map((b) => b.personId).filter((id): id is string => !!id))];
+  const defaultEnvelope = mainRecurringEnvelope(recurring) ?? envelopes.find((e) => !e.archived)?.id ?? '';
+
+  // Questo mese: abbonamenti con addebito nel periodo, bollette mensili e periodiche attese ora (o in ritardo).
+  const billNow = (b: Bill) => !isPeriodic(b) || (!!b.nextDue && b.nextDue <= current);
+  const byActive = <T extends { active: boolean }>(a: T, b: T) => (a.active ? 0 : 1) - (b.active ? 0 : 1);
+  const items: Item[] = [
+    ...rows.map((row): Item => ({ kind: 'sub', row })),
+    ...bills.map((b): Item => ({ kind: 'bill', bill: b })),
+  ];
+  const isNow = (i: Item) => (i.kind === 'sub' ? i.row.date !== null : billNow(i.bill));
+  const sortKey = (i: Item) => (i.kind === 'sub' ? i.row.shownDate : i.bill.nextDue && isPeriodic(i.bill) ? `${i.bill.nextDue}-99` : `${current}-99`);
+  const sort = (a: Item, b: Item) =>
+    byActive(active(a), active(b)) || sortKey(a).localeCompare(sortKey(b)) || nameOf(a).localeCompare(nameOf(b), 'it');
+  const thisMonth = items.filter(isNow).sort(sort);
+  const later = items.filter((i) => !isNow(i)).sort(sort);
+
+  const ctx: RowContext = { names, txs, current, opening, startDay, period: !!period, now };
+  const open = (i: Item) => (i.kind === 'sub' ? setSub(i.row.recurring) : setBill(i.bill));
 
   return (
     <div className="flow">
-      <TopBar right={<button type="button" className="pill-button" onClick={() => setTarget('new')}><IconPlus size={20} />{it.common.add}</button>} />
+      <TopBar right={<button type="button" className="pill-button" onClick={() => setChoosing(true)}><IconPlus size={20} />{it.common.add}</button>} />
       <PageHeader
         full
         title={it.casa.title}
-        chip={toRegister > 0 ? { icon: <IconReceipt />, text: it.casa.toRegisterChip(toRegister) } : null}
+        chip={toRegister > 0
+          ? { icon: <IconReceipt />, text: it.casa.toRegisterChip(toRegister) }
+          : next ? { icon: <IconReceipt />, text: it.fixed.nextCharge(next.recurring.name, statusLabel(next.status, now)) } : null}
         muted={it.casa.fromPocket}
       />
 
-      <section className="hero" aria-label={it.casa.potLabel}>
+      {/* In grande quello che ti serve sapere: quanto ci metti ogni mese. Il saldo della Pocket è secondario. */}
+      <section className="hero" aria-label={it.fixed.heroLabel}>
         <div className="hero__row">
           <div>
-            <p className="hero__label">{it.casa.potLabel}</p>
-            <p className={billsPot < 0 ? 'hero__amount hero__amount--medium is-over' : 'hero__amount hero__amount--medium'}>{formatEuro(billsPot)}</p>
+            <p className="hero__label">{it.fixed.heroLabel}</p>
+            <p className="hero__amount hero__amount--medium">{formatEuro(subsQuota + billsQuota)}</p>
           </div>
-          <span className="hero__status">{quota > 0 ? it.casa.perMonthAside(formatEuro(quota)) : it.casa.noQuotaShort}</span>
+          <span className={pot < 0 ? 'hero__status is-over' : 'hero__status'}>{it.fixed.heroPot(formatEuro(pot))}</span>
         </div>
-        {targetTotal > 0 ? (
-          <>
-            <span className="hero__bar" aria-hidden="true">
-              <span className={missingTotal > 0 ? 'hero__bar-fill is-over' : 'hero__bar-fill'} style={{ width: `${missingTotal > 0 ? 100 : barPct}%` }} />
-            </span>
-            <div className="hero-foot">
-              <span>{missingTotal > 0 ? it.casa.fundMissing(formatEuro(missingTotal)) : it.casa.fundOf(formatEuro(fundTotal), formatEuro(targetTotal))}</span>
-            </div>
-          </>
-        ) : null}
+        <div className="hero-foot">
+          <span>{it.fixed.footSplit(formatEuro(subsQuota), formatEuro(billsQuota))}</span>
+        </div>
       </section>
-
-      {savedSubs.length > 0 ? (
-        <Link to={routes.recurring} className="card link-row">
-          <span className="link-row__text">
-            <span className="link-row__title">{it.saving.subscriptionsRow}</span>
-            <span className="link-row__detail">{it.saving.subscriptionsDetail(savedSubs.length, formatEuro(subsQuota))}</span>
-          </span>
-          <IconChevronRight className="chev" />
-        </Link>
-      ) : null}
 
       {roommates.map((id) => {
         const name = names.get(id)?.name ?? it.movements.unknownPerson;
@@ -115,45 +119,78 @@ export function BillsPage() {
         );
       })}
 
-      {bills.length === 0 ? <p className="card empty-card">{it.casa.empty}</p> : null}
+      {items.length === 0 ? <p className="card empty-card">{it.casa.empty}</p> : null}
 
       {thisMonth.length > 0 ? (
-        <BillList
-          title={period ? `${it.recurring.thisMonth} · ${formatShortRange(period.calendarStart, period.calendarEnd)}` : it.recurring.thisMonth}
-          bills={thisMonth} names={names} txs={txs} current={current} opening={opening} onOpen={setTarget}
+        <ItemList
+          title={`${it.recurring.thisMonth} · ${formatShortRange(range.calendarStart, range.calendarEnd)}`}
+          items={thisMonth} ctx={ctx} onOpen={open}
         />
       ) : null}
-      {later.length > 0 ? (
-        <BillList title={it.recurring.later} bills={later} names={names} txs={txs} current={current} opening={opening} onOpen={setTarget} />
-      ) : null}
+      {later.length > 0 ? <ItemList title={it.recurring.later} items={later} ctx={ctx} onOpen={open} /> : null}
 
       <div className="flow__spacer" />
       <InfoBox>{it.casa.note}</InfoBox>
 
+      <BottomSheet open={choosing} onClose={() => setChoosing(false)} title={it.fixed.chooseTitle}>
+        <div className="choose-kind">
+          <button type="button" className="choose-kind__option" onClick={() => { setChoosing(false); setSub('new'); }}>
+            <span className="choose-kind__title">{it.fixed.chooseSubscription}</span>
+            <span className="choose-kind__hint">{it.fixed.chooseSubscriptionHint}</span>
+          </button>
+          <button type="button" className="choose-kind__option" onClick={() => { setChoosing(false); setBill('new'); }}>
+            <span className="choose-kind__title">{it.fixed.chooseBill}</span>
+            <span className="choose-kind__hint">{it.fixed.chooseBillHint}</span>
+          </button>
+        </div>
+      </BottomSheet>
+
+      <RecurringSheet target={sub} defaultEnvelopeId={defaultEnvelope} opening={opening} periodStartDay={startDay} onClose={() => setSub(null)} />
       <BillSheet
-        target={target}
+        target={bill}
         people={people}
         loans={loans}
         hasPeriod={!!period}
         defaultPersonId={roommates[0] ?? null}
         opening={opening}
-        onClose={() => setTarget(null)}
+        onClose={() => setBill(null)}
       />
     </div>
   );
 }
 
-type ListProps = {
-  title: string;
-  bills: Bill[];
+type Item = { kind: 'sub'; row: RecurringRow } | { kind: 'bill'; bill: Bill };
+
+const active = (i: Item) => (i.kind === 'sub' ? i.row.recurring : i.bill);
+const nameOf = (i: Item) => (i.kind === 'sub' ? i.row.recurring.name : i.bill.name);
+
+type RowContext = {
   names: Map<string, Person>;
   txs: Transaction[];
   /** periodo in corso ('YYYY-MM') */
   current: string;
   /** periodo del prossimo giroconto */
   opening: string;
-  onOpen: (bill: Bill) => void;
+  startDay: number;
+  /** c'è un mese aperto (altrimenti niente stati "scalato" / "da registrare") */
+  period: boolean;
+  now: string;
 };
+
+function statusLabel(status: RecurringStatus, now: string): string {
+  switch (status.kind) {
+    case 'charged':
+      return it.recurring.status.charged;
+    case 'paused':
+      return it.recurring.status.paused;
+    case 'none':
+      return it.recurring.status.none;
+    case 'later':
+      return it.recurring.status.later(monthsBetween(now.slice(0, 7), status.date.slice(0, 7)));
+    case 'upcoming':
+      return status.inDays <= 0 ? it.recurring.status.today : status.inDays === 1 ? it.recurring.status.tomorrow : it.recurring.status.inDays(status.inDays);
+  }
+}
 
 /** "febbraio" (o "febbraio 2028" se non è entro un anno) */
 function dueMonth(id: string, opening: string): string {
@@ -162,64 +199,89 @@ function dueMonth(id: string, opening: string): string {
   return monthsBetween(opening, id) >= 12 ? `${name} ${y}` : name;
 }
 
-function BillList({ title, bills, names, txs, current, opening, onOpen }: ListProps) {
-  const currentYear = current.slice(0, 4);
+function ItemList({ title, items, ctx, onOpen }: { title: string; items: Item[]; ctx: RowContext; onOpen: (i: Item) => void }) {
   return (
     <section className="recurring-list-section">
       <h2 className="group-label">{title}</h2>
       <ul className="card movement-list">
-        {bills.map((b) => {
-          const name = b.personId ? names.get(b.personId)?.name ?? it.movements.unknownPerson : '';
-          const periodic = isPeriodic(b);
-          const detail = b.split === 'half'
-            ? [it.casa.splitHalfShort.toLowerCase(), b.payer === 'me' ? it.casa.payerMe : it.casa.payerRoommate(name)].join(' · ')
-            : it.casa.splitMine;
-          const paid = txs.filter((t) => t.billId === b.id && t.type === 'expense').sort((x, y) => (x.date < y.date ? 1 : -1))[0];
-          const late = periodic && b.nextDue ? b.nextDue < current : false;
-          const quota = monthlyQuota(b, opening);
-          const fund = fundStatus(b);
-          // Riquadro: il mese in cui arriva (mensili: questo mese; senza data: trattino)
-          const month = periodic ? b.nextDue ?? null : current;
-          const [y, m] = month ? month.split('-') : [null, null];
-          const chip = !b.active ? (
-            <span className="chip chip--paused">{it.casa.paused}</span>
-          ) : !periodic ? (
-            paid
-              ? <span className="chip chip--done">{it.casa.registeredOn(formatShortDate(paid.date))}</span>
-              : <span className="chip chip--upcoming">{it.casa.toRegister}</span>
-          ) : b.nextDue ? (
-            late
-              ? <span className="chip chip--upcoming">{it.casa.dueLateChip}</span>
-              : b.nextDue === current
-                ? <span className="chip chip--upcoming">{it.casa.toRegister}</span>
-                : <span className="chip chip--later">{it.casa.dueChip(dueMonth(b.nextDue, opening))}</span>
-          ) : null;
-          return (
-            <li key={b.id}>
-              <ScheduleRow
-                boxTop={m ? it.months.short[Number(m) - 1] ?? '—' : '—'}
-                boxBottom={y && y !== currentYear ? y : null}
-                title={b.name}
-                detail={detail}
-                detail2={periodic ? (
-                  <>
-                    {it.recurring.frequency[b.frequency]} ·{' '}
-                    {isSaving(b) ? (
-                      <span className={fund.missing > 0 ? 'is-over' : undefined}>
-                        {fund.missing > 0 ? it.casa.fundMissingShort(formatEuro(fund.missing)) : it.casa.fundOfShort(formatEuro(fund.fund), formatEuro(fund.target))}
-                      </span>
-                    ) : it.saving.lumpRow}
-                  </>
-                ) : null}
-                amount={isSaving(b) ? <>{formatEuro(quota)}<small>{it.casa.perMonthShort}</small></> : formatEuro(fund.target)}
-                paused={!b.active}
-                chip={chip}
-                onClick={() => onOpen(b)}
-              />
-            </li>
-          );
-        })}
+        {items.map((i) => (
+          <li key={`${i.kind}-${i.kind === 'sub' ? i.row.recurring.id : i.bill.id}`}>
+            {i.kind === 'sub' ? <SubRow row={i.row} ctx={ctx} onOpen={() => onOpen(i)} /> : <BillRow bill={i.bill} ctx={ctx} onOpen={() => onOpen(i)} />}
+          </li>
+        ))}
       </ul>
     </section>
+  );
+}
+
+/** Seconda riga dei non mensili, corta: "ogni anno · € 3,16 al mese" (accantonato) o "ogni anno · tutto nel mese". */
+function savingLine(frequency: number, saving: boolean, quota: number): string {
+  return `${it.recurring.frequency[frequency] ?? ''} · ${saving ? it.fixed.perMonth(formatEuro(quota)) : it.saving.lumpRow}`;
+}
+
+function SubRow({ row, ctx, onOpen }: { row: RecurringRow; ctx: RowContext; onOpen: () => void }) {
+  const { recurring: r, shownDate, status } = row;
+  const { d, m } = parseISODate(shownDate);
+  const freq = frequencyOf(r);
+  const from = r.saveFrom && r.saveFrom > ctx.opening ? r.saveFrom : ctx.opening;
+  const showChip = ctx.period || status.kind === 'paused' || status.kind === 'later';
+  return (
+    <ScheduleRow
+      boxTop={String(d)}
+      boxBottom={it.months.short[m - 1]}
+      title={r.name}
+      detail={it.fixed.tagSubscription}
+      detail2={freq > 1 && r.active ? savingLine(freq, r.saving === true, recurringQuota(r, from, ctx.startDay)) : null}
+      amount={formatEuro(r.amount)}
+      paused={!r.active}
+      chip={showChip ? <span className={`chip chip--${status.kind}`}>{statusLabel(status, ctx.now)}</span> : null}
+      ariaLabel={it.recurring.editLabel(r.name)}
+      onClick={onOpen}
+    />
+  );
+}
+
+function BillRow({ bill: b, ctx, onOpen }: { bill: Bill; ctx: RowContext; onOpen: () => void }) {
+  const name = b.personId ? ctx.names.get(b.personId)?.name ?? it.movements.unknownPerson : '';
+  const periodic = isPeriodic(b);
+  const split = b.split === 'half' ? (b.payer === 'me' ? it.fixed.halfYouPay : it.fixed.halfTheyPay(name)) : it.casa.splitMine;
+  const paid = ctx.txs.filter((t) => t.billId === b.id && t.type === 'expense').sort((x, y) => (x.date < y.date ? 1 : -1))[0];
+  const late = periodic && b.nextDue ? b.nextDue < ctx.current : false;
+  const from = b.saveFrom && b.saveFrom > ctx.opening ? b.saveFrom : ctx.opening;
+  // Riquadro: il mese in cui arriva (mensili: questo mese; senza data: trattino)
+  const month = periodic ? b.nextDue ?? null : ctx.current;
+  const [y, m] = month ? month.split('-') : [null, null];
+  const chip = !b.active ? (
+    <span className="chip chip--paused">{it.casa.paused}</span>
+  ) : !periodic ? (
+    !ctx.period ? null : paid
+      ? <span className="chip chip--done">{it.casa.registeredOn(formatShortDate(paid.date))}</span>
+      : <span className="chip chip--upcoming">{it.casa.toRegister}</span>
+  ) : b.nextDue ? (
+    late
+      ? <span className="chip chip--upcoming">{it.casa.dueLateChip}</span>
+      : b.nextDue === ctx.current
+        ? <span className="chip chip--upcoming">{it.casa.toRegister}</span>
+        : <span className="chip chip--later">{it.casa.dueChip(dueMonth(b.nextDue, ctx.opening))}</span>
+  ) : null;
+  const fund = fundStatus(b);
+  return (
+    <ScheduleRow
+      boxTop={m ? it.months.short[Number(m) - 1] ?? '' : <IconReceipt size={20} aria-label={it.fixed.noDate} />}
+      boxBottom={y && y !== ctx.current.slice(0, 4) ? y : null}
+      title={b.name}
+      detail={`${it.fixed.tagBill} · ${split}`}
+      detail2={periodic ? (
+        <span className={isSaving(b) && fund.missing > 0 ? 'is-over' : undefined}>
+          {isSaving(b) && fund.missing > 0
+            ? `${it.recurring.frequency[b.frequency] ?? ''} · ${it.casa.fundMissingShort(formatEuro(fund.missing))}`
+            : savingLine(b.frequency, isSaving(b), monthlyQuota(b, from))}
+        </span>
+      ) : null}
+      amount={formatEuro(expectedShare(b))}
+      paused={!b.active}
+      chip={chip}
+      onClick={onOpen}
+    />
   );
 }

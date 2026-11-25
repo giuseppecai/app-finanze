@@ -11,7 +11,7 @@ import {
   DEFAULT_DESTINATION, UNASSIGNED, type CapsChange, type FundsDestination, type PotRemoval,
 } from '../domain/settings';
 import { currentPeriod, nextPeriodToStart } from '../domain/periods';
-import { chargeToTransaction, dueCharges, lumpExtras, recurringQuota, savedSubscriptions } from '../domain/recurring';
+import { chargeToTransaction, dueCharges, recurringQuota, savedSubscriptions } from '../domain/recurring';
 import {
   applyRepayment, canDeleteLoan, createLoanEntry, deleteLoanEntry, savingsEffect, undoRepayment as undoLoanAllocations,
 } from '../domain/loans';
@@ -201,7 +201,6 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
           target.id,
           savedSubscriptions(await db.recurring.toArray(), target.id, settings.periodStartDay),
         ).amount,
-        extras: lumpExtras(recurrings, target),
         closing,
       });
       await db.periods.add(period);
@@ -211,7 +210,7 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
         const quota = bill.active ? monthlyQuota(bill, target.id) : 0;
         if (quota > 0) await db.bills.update(bill.id, { fund: bill.fund + quota });
       }
-      // …e ogni abbonamento accantonato la sua (R15).
+      // …e ogni abbonamento la sua (R16: tutti si pagano dalla Pocket Spese fisse).
       for (const r of await db.recurring.toArray()) {
         const quota = recurringQuota(r, target.id, settings.periodStartDay);
         if (quota > 0) await db.recurring.update(r.id, { fund: (r.fund ?? 0) + quota });
@@ -366,8 +365,7 @@ export async function saveRecurring(db: FinanzeDB, recurring: Recurring): Promis
   if (freq > 1 && !/^\d{4}-\d{2}$/.test(recurring.anchorMonth ?? '')) throw new Error('Mese del prossimo addebito mancante');
   const saving = freq > 1 && recurring.saving === true;
   if (saving && recurring.saveFrom && !/^\d{4}-\d{2}$/.test(recurring.saveFrom)) throw new Error('Mese di inizio non valido');
-  if (saving && (!Number.isInteger(recurring.fund ?? 0) || (recurring.fund ?? 0) < 0)) throw new Error('Importo già da parte non valido');
-  // Mensile o non accantonato: niente fondo (quello che c'era resta nella Pocket e riduce il prossimo giroconto).
+  if (!Number.isInteger(recurring.fund ?? 0)) throw new Error('Fondo non valido');
   const clean: Recurring = {
     ...recurring,
     name: recurring.name.trim(),
@@ -375,53 +373,19 @@ export async function saveRecurring(db: FinanzeDB, recurring: Recurring): Promis
     anchorMonth: freq > 1 ? recurring.anchorMonth : null,
     saving,
     saveFrom: saving ? recurring.saveFrom ?? null : null,
-    fund: saving ? recurring.fund ?? 0 : 0,
+    fund: recurring.fund ?? 0,
   };
-  await db.transaction('rw', [db.recurring, db.periods, db.pots], async () => {
+  await db.transaction('rw', [db.recurring, db.pots], async () => {
     const old = await db.recurring.get(clean.id);
     await db.recurring.put(clean);
-    // "Già messo da parte" in più: sono soldi che stanno nella Pocket Bollette (R15).
+    // "Già messo da parte" in più (popup R15): sono soldi che stanno nella Pocket Spese fisse.
     await adjustPot(db, 'bills', Math.max(0, (clean.fund ?? 0) - (old?.fund ?? 0)));
-    await syncPeriodExtras(db);
   });
 }
 
-/** Elimina un abbonamento. I movimenti già creati restano. */
+/** Elimina un abbonamento. I movimenti già creati restano (e i suoi soldi restano nella Pocket). */
 export async function deleteRecurring(db: FinanzeDB, id: string): Promise<void> {
-  await db.transaction('rw', [db.recurring, db.periods, db.pots], async () => {
-    const removed = await db.recurring.get(id);
-    await db.recurring.delete(id);
-    await syncPeriodExtras(db, removed);
-  });
-}
-
-/**
- * Mese aperto: la busta di un abbonamento non mensile pagato tutto in questo periodo deve essere più
- * alta del suo importo (R15). Dopo una modifica allinea `extras` e allocazioni; la differenza esce
- * da (o torna in) Risparmi, come quando si cambia un tetto a mese aperto.
- */
-async function syncPeriodExtras(db: FinanzeDB, removed?: Recurring): Promise<void> {
-  const period = await getCurrentPeriod(db);
-  if (!period) return;
-  const wanted = lumpExtras(await db.recurring.toArray(), period);
-  const old = period.extras ?? {};
-  const allocations = { ...period.allocations };
-  let delta = 0;
-  for (const id of new Set([...Object.keys(old), ...Object.keys(wanted)])) {
-    const before = old[id] ?? 0;
-    const after = wanted[id]?.amount ?? 0;
-    if (before === after) continue;
-    // la busta dell'abbonamento (anche se è appena stato eliminato)
-    const envelopeId = wanted[id]?.envelopeId ?? (await db.recurring.get(id))?.envelopeId ?? (removed?.id === id ? removed.envelopeId : null);
-    if (!envelopeId) continue;
-    allocations[envelopeId] = Math.max(0, (allocations[envelopeId] ?? 0) + after - before);
-    delta += after - before;
-  }
-  const extras: Record<string, Cents> = Object.fromEntries(Object.entries(wanted).map(([id, e]) => [id, e.amount]));
-  const same = Object.keys(extras).length === Object.keys(old).length && Object.entries(extras).every(([id, v]) => old[id] === v);
-  if (same) return;
-  await db.periods.update(period.id, { allocations, extras });
-  await adjustPot(db, 'savings', -delta);
+  await db.recurring.delete(id);
 }
 
 // ── Prestiti e debiti (R9, R9-bis) ───────────────────────────────────────────

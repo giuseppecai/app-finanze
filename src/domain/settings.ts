@@ -101,21 +101,23 @@ export function allocationAfterRemoval(
   return Math.min(allocated, Math.max(0, netSpent(id, txs) - carry));
 }
 
-/** Una busta usata (movimenti, mesi passati, abbonamenti) si archivia; una mai usata si cancella. */
+/** Una busta usata (movimenti, mesi passati) si archivia; una mai usata si cancella. */
 export function envelopeInUse(
   id: string,
   periods: readonly Pick<Period, 'allocations' | 'carryIn' | 'leftovers'>[],
   txs: readonly Pick<Transaction, 'envelopeId'>[],
   recurring: readonly Pick<Recurring, 'envelopeId'>[],
 ): boolean {
+  void recurring; // R16: gli abbonamenti si pagano dalla Pocket Spese fisse, non tengono legata una busta
   return txs.some((t) => t.envelopeId === id)
-    || recurring.some((r) => r.envelopeId === id)
     || periods.some((p) => id in p.allocations || id in p.carryIn || (p.leftovers !== null && id in p.leftovers));
 }
 
-/** Abbonamenti attivi che pagano da questa busta: finché ci sono, la busta non si può togliere. */
+/** Abbonamenti che pagano da questa busta: nessuno da R16 (si pagano dalla Pocket Spese fisse). */
 export function recurringOnEnvelope(id: string, recurring: readonly Recurring[]): Recurring[] {
-  return recurring.filter((r) => r.active && r.envelopeId === id);
+  void id;
+  void recurring;
+  return [];
 }
 
 /** Salvadanai che non si possono togliere: Risparmi riceve il resto dello stipendio, Bollette le quote. */
