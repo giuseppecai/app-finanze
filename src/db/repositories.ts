@@ -328,7 +328,11 @@ export async function saveRecurring(db: FinanzeDB, recurring: Recurring): Promis
   if (!Number.isInteger(recurring.dayOfMonth) || recurring.dayOfMonth < 1 || recurring.dayOfMonth > 31) {
     throw new Error('Giorno non valido');
   }
-  await db.recurring.put({ ...recurring, name: recurring.name.trim() });
+  const freq = recurring.frequency ?? 1;
+  if (![1, 2, 3, 6, 12].includes(freq)) throw new Error('Frequenza non valida');
+  if (freq > 1 && !/^\d{4}-\d{2}$/.test(recurring.anchorMonth ?? '')) throw new Error('Mese del prossimo addebito mancante');
+  const clean: Recurring = freq > 1 ? { ...recurring, frequency: freq } : { ...recurring, frequency: 1, anchorMonth: null };
+  await db.recurring.put({ ...clean, name: recurring.name.trim() });
 }
 
 /** Elimina un abbonamento. I movimenti già creati restano. */

@@ -7,15 +7,18 @@ import { InfoBox } from '../../components/InfoBox';
 import { TopBar } from '../../components/TopBar';
 import { PageHeader } from '../../components/PageHeader';
 import { today } from '../../domain/clock';
-import { formatShortRange, parseISODate } from '../../domain/dates';
+import { formatShortRange, monthsBetween, parseISODate } from '../../domain/dates';
 import { formatEuro } from '../../domain/money';
 import { calendarPeriodFor } from '../../domain/periods';
-import { mainRecurringEnvelope, monthlyTotal, recurringRows, type RecurringStatus, nextUpcomingCharge } from '../../domain/recurring';
+import {
+  frequencyOf, mainRecurringEnvelope, nonMonthlyAverage, periodTotal, recurringRows, type RecurringRow, type RecurringStatus, nextUpcomingCharge,
+} from '../../domain/recurring';
 import type { Recurring } from '../../domain/types';
+import { ScheduleRow } from '../../components/ScheduleRow';
 import { it } from '../../i18n/it';
 import { RecurringSheet } from './RecurringSheet';
 
-function statusLabel(status: RecurringStatus): string {
+function statusLabel(status: RecurringStatus, now: string): string {
   switch (status.kind) {
     case 'charged':
       return it.recurring.status.charged;
@@ -23,6 +26,8 @@ function statusLabel(status: RecurringStatus): string {
       return it.recurring.status.paused;
     case 'none':
       return it.recurring.status.none;
+    case 'later':
+      return it.recurring.status.later(monthsBetween(now.slice(0, 7), status.date.slice(0, 7)));
     case 'upcoming':
       return status.inDays <= 0 ? it.recurring.status.today : status.inDays === 1 ? it.recurring.status.tomorrow : it.recurring.status.inDays(status.inDays);
   }
@@ -44,9 +49,39 @@ export function RecurringPage() {
   const mainId = mainRecurringEnvelope(recurring) ?? envelopes.find((e) => e.kind === 'committed')?.id ?? envelopes[0]?.id ?? '';
   const envelope = envelopes.find((e) => e.id === mainId);
   const cap = envelope ? (period?.allocations[envelope.id] ?? envelope.cap) : 0;
-  const total = monthlyTotal(recurring);
+  // Il totale del mese comprende gli annuali/bimestrali che cadono in questo periodo (si scalano per intero).
+  const total = periodTotal(rows);
+  const hasNonMonthlyNow = rows.some((r) => r.recurring.active && r.date !== null && frequencyOf(r.recurring) > 1);
+  const average = nonMonthlyAverage(recurring);
   const margin = cap - total;
   const next = period ? nextUpcomingCharge(rows) : null;
+  const thisMonth = rows.filter((r) => r.date !== null);
+  const later = rows.filter((r) => r.date === null);
+  const showChip = (r: RecurringRow) => !!period || r.status.kind === 'paused' || r.status.kind === 'later';
+
+  const renderRows = (list: RecurringRow[]) => (
+    <ul className="card movement-list">
+      {list.map((row) => {
+        const { recurring: r, shownDate, status } = row;
+        const { d, m } = parseISODate(shownDate);
+        return (
+          <li key={r.id}>
+            <ScheduleRow
+              boxTop={String(d)}
+              boxBottom={it.months.short[m - 1]}
+              title={r.name}
+              detail={it.recurring.detail(it.cards[r.card], it.recurring.frequency[frequencyOf(r)] ?? '')}
+              amount={formatEuro(r.amount)}
+              paused={!r.active}
+              chip={showChip(row) ? <span className={`chip chip--${status.kind}`}>{statusLabel(status, now)}</span> : null}
+              ariaLabel={it.recurring.editLabel(r.name)}
+              onClick={() => setEditing(r)}
+            />
+          </li>
+        );
+      })}
+    </ul>
+  );
 
   return (
     <div className="flow">
@@ -60,8 +95,9 @@ export function RecurringPage() {
       <section className="hero">
         <div className="hero__row">
           <div>
-            <p className="hero__label">{it.recurring.monthly}</p>
+            <p className="hero__label">{hasNonMonthlyNow ? it.recurring.periodTotal : it.recurring.monthly}</p>
             <p className="hero__amount hero__amount--medium">{formatEuro(total)}</p>
+            {average > 0 ? <p className="hero__sub">{it.recurring.nonMonthly(formatEuro(average))}</p> : null}
           </div>
           {envelope ? <span className="hero__status">{it.recurring.envelopeCap(formatEuro(cap))}</span> : null}
         </div>
@@ -81,35 +117,15 @@ export function RecurringPage() {
 
       <section className="recurring-list-section">
         <h2 className="group-label">{it.recurring.thisMonth} · {formatShortRange(range.calendarStart, range.calendarEnd)}</h2>
-        {rows.length === 0 ? (
-          <p className="placeholder">{it.recurring.empty}</p>
-        ) : (
-          <ul className="card movement-list">
-            {rows.map(({ recurring: r, date, status }) => {
-              const past = status.kind === 'charged';
-              const { d, m } = date ? parseISODate(date) : { d: r.dayOfMonth, m: 0 };
-              return (
-                <li key={r.id}>
-                  <button type="button" className="recurring-row" aria-label={it.recurring.editLabel(r.name)} onClick={() => setEditing(r)}>
-                    <span className={past ? 'date-box is-past' : 'date-box'} aria-hidden="true">
-                      <span className="date-box__day">{d}</span>
-                      {m ? <span className="date-box__month">{it.months.short[m - 1]}</span> : null}
-                    </span>
-                    <span className="movement__text">
-                      <span className={r.active ? 'movement__title' : 'movement__title is-muted'}>{r.name}</span>
-                      <span className="movement__detail">{it.recurring.detail(it.cards[r.card])}</span>
-                    </span>
-                    <span className="recurring-row__right">
-                      <span className={r.active ? 'movement__amount' : 'movement__amount is-paused'}>{formatEuro(r.amount)}</span>
-                      {period || status.kind === 'paused' ? <span className={`chip chip--${status.kind}`}>{statusLabel(status)}</span> : null}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        {rows.length === 0 ? <p className="placeholder">{it.recurring.empty}</p> : thisMonth.length > 0 ? renderRows(thisMonth) : null}
       </section>
+
+      {later.length > 0 ? (
+        <section className="recurring-list-section">
+          <h2 className="group-label">{it.recurring.later}</h2>
+          {renderRows(later)}
+        </section>
+      ) : null}
 
       <div className="flow__spacer" />
       <InfoBox>{it.recurring.note}</InfoBox>

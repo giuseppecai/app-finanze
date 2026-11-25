@@ -69,6 +69,8 @@ interface Recurring {
   name: string;
   amount: Cents;
   dayOfMonth: number;      // 1..31
+  frequency?: 1 | 2 | 3 | 6 | 12;  // ogni quanti mesi; assente = 1 (R8)
+  anchorMonth?: string | null;     // non mensili: 'YYYY-MM' di un addebito; nessuna migrazione (campo opzionale)
   envelopeId: string;      // default Rate & Abbonamenti
   card: 'quotidiano' | 'extra';
   active: boolean;

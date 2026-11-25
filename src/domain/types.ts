@@ -88,11 +88,17 @@ export interface Recurring {
   name: string;
   amount: Cents;
   dayOfMonth: number;
+  /** ogni quanti mesi si paga (assente = 1, ogni mese), R8 */
+  frequency?: RecurringFrequency;
+  /** non mensili: mese di calendario ('YYYY-MM') di un addebito, da cui si contano i cicli */
+  anchorMonth?: string | null;
   envelopeId: string;
   card: Card;
   active: boolean;
   createdAt: string;
 }
+
+export type RecurringFrequency = 1 | 2 | 3 | 6 | 12;
 
 export interface Person {
   id: string;

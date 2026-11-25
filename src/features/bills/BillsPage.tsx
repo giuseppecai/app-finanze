@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useBills, useCurrentPeriod, useLoans, usePeople, usePeriods, usePeriodTransactions, usePots, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
@@ -8,12 +8,13 @@ import { TopBar } from '../../components/TopBar';
 import { PageHeader } from '../../components/PageHeader';
 import { billsQuotaTotal, billsToRegister, fundStatus, isPeriodic, monthlyQuota } from '../../domain/bills';
 import { today } from '../../domain/clock';
-import { formatShortDate, monthsBetween } from '../../domain/dates';
+import { formatShortDate, formatShortRange, monthsBetween } from '../../domain/dates';
 import { nextOpeningId } from '../../domain/periods';
 import { balanceWith } from '../../domain/loans';
 import { formatEuro } from '../../domain/money';
 import type { Bill, Person, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
+import { ScheduleRow } from '../../components/ScheduleRow';
 import { BillSheet } from './BillSheet';
 
 /**
@@ -36,8 +37,18 @@ export function BillsPage() {
   const opening = nextOpeningId(periods, today(), settings.periodStartDay);
   const quota = billsQuotaTotal(bills, opening);
   const toRegister = billsToRegister(bills, txs).length;
-  const monthly = bills.filter((b) => !isPeriodic(b));
-  const periodic = bills.filter(isPeriodic);
+  // Stessa divisione di Abbonamenti: quelle di questo mese (mensili + periodiche in arrivo o in ritardo) e quelle più avanti.
+  const current = period?.id ?? opening;
+  const dueNow = (b: Bill) => !isPeriodic(b) || (!!b.nextDue && b.nextDue <= current);
+  const byDue = (a: Bill, b: Bill) =>
+    (a.active ? 0 : 1) - (b.active ? 0 : 1) || (a.nextDue ?? '9999').localeCompare(b.nextDue ?? '9999') || a.order - b.order;
+  const thisMonth = bills.filter(dueNow).sort((a, b) => (a.active ? 0 : 1) - (b.active ? 0 : 1) || a.order - b.order);
+  const later = bills.filter((b) => !dueNow(b)).sort(byDue);
+  const active = bills.filter((b) => b.active);
+  const fundTotal = active.reduce((s, b) => s + fundStatus(b).fund, 0);
+  const targetTotal = active.reduce((s, b) => s + fundStatus(b).target, 0);
+  const missingTotal = active.reduce((s, b) => s + fundStatus(b).missing, 0);
+  const barPct = targetTotal > 0 ? Math.max(0, Math.min(100, (fundTotal / targetTotal) * 100)) : 0;
   const names = new Map(people.map((p) => [p.id, p]));
   const roommates = [...new Set(bills.map((b) => b.personId).filter((id): id is string => !!id))];
 
@@ -51,10 +62,24 @@ export function BillsPage() {
         muted={it.casa.fromPocket}
       />
 
-      <section className="hero hero--light" aria-label={it.casa.potLabel}>
-        <p className="hero__label">{it.casa.potLabel}</p>
-        <p className={billsPot < 0 ? 'hero__amount hero__amount--medium is-over' : 'hero__amount hero__amount--medium'}>{formatEuro(billsPot)}</p>
-        <p className="hero__status">{quota > 0 ? it.casa.perMonth(formatEuro(quota)) : it.casa.noQuota}</p>
+      <section className="hero" aria-label={it.casa.potLabel}>
+        <div className="hero__row">
+          <div>
+            <p className="hero__label">{it.casa.potLabel}</p>
+            <p className={billsPot < 0 ? 'hero__amount hero__amount--medium is-over' : 'hero__amount hero__amount--medium'}>{formatEuro(billsPot)}</p>
+          </div>
+          <span className="hero__status">{quota > 0 ? it.casa.perMonthAside(formatEuro(quota)) : it.casa.noQuotaShort}</span>
+        </div>
+        {targetTotal > 0 ? (
+          <>
+            <span className="hero__bar" aria-hidden="true">
+              <span className={missingTotal > 0 ? 'hero__bar-fill is-over' : 'hero__bar-fill'} style={{ width: `${missingTotal > 0 ? 100 : barPct}%` }} />
+            </span>
+            <div className="hero-foot">
+              <span>{missingTotal > 0 ? it.casa.fundMissing(formatEuro(missingTotal)) : it.casa.fundOf(formatEuro(fundTotal), formatEuro(targetTotal))}</span>
+            </div>
+          </>
+        ) : null}
       </section>
 
       {roommates.map((id) => {
@@ -77,11 +102,14 @@ export function BillsPage() {
 
       {bills.length === 0 ? <p className="card empty-card">{it.casa.empty}</p> : null}
 
-      {monthly.length > 0 ? (
-        <BillList title={it.casa.monthlyTitle} bills={monthly} names={names} txs={txs} opening={opening} onOpen={setTarget} />
+      {thisMonth.length > 0 ? (
+        <BillList
+          title={period ? `${it.recurring.thisMonth} · ${formatShortRange(period.calendarStart, period.calendarEnd)}` : it.recurring.thisMonth}
+          bills={thisMonth} names={names} txs={txs} current={current} opening={opening} onOpen={setTarget}
+        />
       ) : null}
-      {periodic.length > 0 ? (
-        <BillList title={it.casa.periodicTitle} bills={periodic} names={names} txs={txs} opening={opening} onOpen={setTarget} />
+      {later.length > 0 ? (
+        <BillList title={it.recurring.later} bills={later} names={names} txs={txs} current={current} opening={opening} onOpen={setTarget} />
       ) : null}
 
       <div className="flow__spacer" />
@@ -105,6 +133,8 @@ type ListProps = {
   bills: Bill[];
   names: Map<string, Person>;
   txs: Transaction[];
+  /** periodo in corso ('YYYY-MM') */
+  current: string;
   /** periodo del prossimo giroconto */
   opening: string;
   onOpen: (bill: Bill) => void;
@@ -117,7 +147,8 @@ function dueMonth(id: string, opening: string): string {
   return monthsBetween(opening, id) >= 12 ? `${name} ${y}` : name;
 }
 
-function BillList({ title, bills, names, txs, opening, onOpen }: ListProps) {
+function BillList({ title, bills, names, txs, current, opening, onOpen }: ListProps) {
+  const currentYear = current.slice(0, 4);
   return (
     <section className="recurring-list-section">
       <h2 className="group-label">{title}</h2>
@@ -125,14 +156,16 @@ function BillList({ title, bills, names, txs, opening, onOpen }: ListProps) {
         {bills.map((b) => {
           const name = b.personId ? names.get(b.personId)?.name ?? it.movements.unknownPerson : '';
           const periodic = isPeriodic(b);
-          const detail = [
-            periodic ? it.casa.frequency[b.frequency] : null,
-            b.split === 'half' ? (periodic ? it.casa.splitHalfShort.toLowerCase() : it.casa.splitHalf(name)) : it.casa.splitMine,
-            b.split === 'half' ? (b.payer === 'me' ? it.casa.payerMe : it.casa.payerRoommate(name)) : null,
-          ].filter(Boolean).join(' · ');
+          const detail = b.split === 'half'
+            ? [it.casa.splitHalfShort.toLowerCase(), b.payer === 'me' ? it.casa.payerMe : it.casa.payerRoommate(name)].join(' · ')
+            : it.casa.splitMine;
           const paid = txs.filter((t) => t.billId === b.id && t.type === 'expense').sort((x, y) => (x.date < y.date ? 1 : -1))[0];
-          const late = periodic && b.nextDue ? monthsBetween(opening, b.nextDue) < 0 : false;
+          const late = periodic && b.nextDue ? b.nextDue < current : false;
           const quota = monthlyQuota(b, opening);
+          const fund = fundStatus(b);
+          // Riquadro: il mese in cui arriva (mensili: questo mese; senza data: trattino)
+          const month = periodic ? b.nextDue ?? null : current;
+          const [y, m] = month ? month.split('-') : [null, null];
           const chip = !b.active ? (
             <span className="chip chip--paused">{it.casa.paused}</span>
           ) : !periodic ? (
@@ -142,42 +175,34 @@ function BillList({ title, bills, names, txs, opening, onOpen }: ListProps) {
           ) : b.nextDue ? (
             late
               ? <span className="chip chip--upcoming">{it.casa.dueLateChip}</span>
-              : <span className="chip chip--later">{it.casa.dueChip(dueMonth(b.nextDue, opening))}</span>
+              : b.nextDue === current
+                ? <span className="chip chip--upcoming">{it.casa.toRegister}</span>
+                : <span className="chip chip--later">{it.casa.dueChip(dueMonth(b.nextDue, opening))}</span>
           ) : null;
           return (
             <li key={b.id}>
-              <button type="button" className="bill-row" onClick={() => onOpen(b)}>
-                <span className="bill-row__top">
-                  <span className={b.active ? 'bill-row__name' : 'bill-row__name is-muted'}>{b.name}</span>
-                  <span className={b.active ? 'bill-row__quota' : 'bill-row__quota is-paused'}>
-                    {formatEuro(quota)}<small>{it.casa.perMonthShort}</small>
-                  </span>
-                </span>
-                <span className="bill-row__detail">{detail}</span>
-                <FundBar bill={b} chip={chip} />
-              </button>
+              <ScheduleRow
+                boxTop={m ? it.months.short[Number(m) - 1] ?? '—' : '—'}
+                boxBottom={y && y !== currentYear ? y : null}
+                title={b.name}
+                detail={detail}
+                detail2={periodic ? (
+                  <>
+                    {it.recurring.frequency[b.frequency]} ·{' '}
+                    <span className={fund.missing > 0 ? 'is-over' : undefined}>
+                      {fund.missing > 0 ? it.casa.fundMissingShort(formatEuro(fund.missing)) : it.casa.fundOfShort(formatEuro(fund.fund), formatEuro(fund.target))}
+                    </span>
+                  </>
+                ) : null}
+                amount={<>{formatEuro(quota)}<small>{it.casa.perMonthShort}</small></>}
+                paused={!b.active}
+                chip={chip}
+                onClick={() => onOpen(b)}
+              />
             </li>
           );
         })}
       </ul>
     </section>
-  );
-}
-
-function FundBar({ bill, chip }: { bill: Bill; chip: ReactNode }) {
-  const s = fundStatus(bill);
-  const pct = s.target > 0 ? Math.max(0, Math.min(100, (s.fund / s.target) * 100)) : 0;
-  return (
-    <span className="fund">
-      <span className="bar" aria-hidden="true">
-        <span className={s.missing > 0 ? 'bar__fill bar__fill--over' : 'bar__fill bar__fill--ok'} style={{ width: `${pct}%` }} />
-      </span>
-      <span className="fund__foot">
-        <span className={s.missing > 0 ? 'bill-row__detail is-over' : 'bill-row__detail'}>
-          {s.missing > 0 ? it.casa.fundMissing(formatEuro(s.missing)) : it.casa.fundOf(formatEuro(s.fund), formatEuro(s.target))}
-        </span>
-        {chip}
-      </span>
-    </span>
   );
 }

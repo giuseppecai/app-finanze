@@ -139,3 +139,9 @@
 .recurring-form__actions { display: flex; gap: 8px; }
 .recurring-form__actions .outcome__button { min-height: 52px; }
 .recurring-form__save { flex-grow: 1; min-height: 52px; }
+
+/* Riquadro con il mese al posto del giorno (Bollette) */
+.date-box__day--text { font-size: 14px; text-transform: uppercase; letter-spacing: 0.02em; }
+.movement__amount small { font-size: 12px; font-weight: 450; color: var(--text-muted); }
+.movement__detail .is-over { color: var(--danger); }
+.hero__sub { margin-top: 2px; font-size: 13px; color: var(--text-on-ink-muted); }

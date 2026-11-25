@@ -79,6 +79,8 @@ function RecurringStep({ initial, envelopes, onBack, onNext }: { initial: Recurr
         name: d.name.trim(),
         amount: amount ?? 0,
         dayOfMonth: d.dayOfMonth,
+        frequency: d.base?.frequency ?? 1,
+        anchorMonth: d.base?.anchorMonth ?? null,
         active: d.active,
         envelopeId: d.base?.envelopeId ?? defaultEnvelope,
         card: d.base?.card ?? 'extra',

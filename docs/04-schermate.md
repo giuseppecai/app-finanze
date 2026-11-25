@@ -111,9 +111,10 @@ Elenco raggruppato come le Impostazioni di iOS: titoletti di gruppo grigi, card 
 ## 9 · Abbonamenti (`Abbonamenti.dc.html`)
 
 - "Abbonamenti" · "Si scalano da soli da Rate & Abbonamenti" · "+ Aggiungi".
-- Card scura: "Ogni mese € 90,50", "busta € 110", barra, link "Avanzano € 19,50 al mese · modifica la busta →" (o "Sfori la busta di € X · alza il tetto →").
-- "Questo mese · 27 ott – 26 nov": righe con riquadro data (giorno + mese), nome, "Carta Extra · il 5 di ogni mese", importo e stato: **scalato** (accento), **tra N giorni / domani** (giallo), **in pausa** (grigio, importo barrato).
-- Tocco → pannello: importo, giorno del mese, carta, interruttore **Attivo**, Elimina, Salva (R8).
+- Card scura: "Ogni mese € 90,50" ("Questo mese" se nel periodo cade un non mensile, R8), "busta € 110", sotto (se ci sono non mensili) "Annuali e altri: in media € X al mese", barra, link "Avanzano € 19,50 al mese · modifica la busta →" (o "Sfori la busta di € X · alza il tetto →").
+- "Questo mese · 27 ott – 26 nov": righe con riquadro data (giorno + mese), nome, "Carta Extra · ogni mese" (o "ogni 2 mesi", "ogni anno"…), importo e stato: **scalato** (accento), **tra N giorni / domani** (giallo), **in pausa** (grigio, importo barrato).
+- "Più avanti": i non mensili che non cadono in questo periodo, con la data del prossimo addebito e "tra N mesi".
+- Tocco → pannello: importo, ogni quanto, giorno del mese, prossimo addebito (solo non mensili), carta, interruttore **Attivo**, Elimina, Salva (R8).
 - Nota in fondo: "Il giorno dell'addebito l'app scala l'importo dalla busta… Se un prezzo aumenta, te ne accorgi al Confronta con Revolut e lo aggiorni qui."
 
 ## 9-bis · Bollette (non c'è mockup — stesso stile di Abbonamenti)
@@ -121,10 +122,11 @@ Elenco raggruppato come le Impostazioni di iOS: titoletti di gruppo grigi, card 
 Si apre dalla riga Bollette tra i Messi da parte in Home e da Imposta (rotta `/bollette`). Schermo intero con chiudi.
 
 - "Bollette" · "Si pagano dalla Pocket Bollette" · "+ Bolletta".
-- **Card scura**: "Nella Pocket Bollette € X" (= salvadanaio Bollette) e sotto "+ € 79 ogni mese, a inizio mese".
+- **Card scura** (stessa struttura di Abbonamenti): "Nella Pocket Bollette € X" (= salvadanaio Bollette), a destra "+ € 79 al mese", barra Σ `fund` / Σ tue quote previste delle attive, sotto "Accantonati € X di € Y" (o "Mancano € Z…" se qualche `fund < 0`).
 - **Con Elisa**: riga con il saldo unico ("Elisa ti deve € 24" / "Devi € 6 a Elisa") → Prestiti, card della persona aperta.
-- **Bollette mensili**: righe con nome, "metà con Elisa · la paghi tu", barra `fund` / tua quota prevista, "+ € 40/mese", stato del mese ("registrata il 1 nov" / "da registrare").
-- **Bollette periodiche**: righe con nome, "ogni 2 mesi · la paga Elisa", barra `fund` / tua quota prevista, "Accantonati € 30 di € 30" (arancione solo se `fund < 0`: "Mancano € 1"), "+ € 15/mese".
+- Righe come quelle di Abbonamenti: riquadro con il **mese** in cui arriva (trattino se non si sa), nome, "a metà · la paghi tu" / "solo tua", per le periodiche una seconda riga "ogni 2 mesi · € 30 di € 30" (arancione se `fund < 0`: "mancano € 1"), a destra "€ 15/mese" e lo stato.
+- **Questo mese · 27 ott – 26 nov**: le mensili ("registrata il 1 nov" / "da registrare") e le periodiche attese in questo periodo o in ritardo ("da registrare" / "in ritardo").
+- **Più avanti**: le altre periodiche ("a febbraio").
 - Tocco su una bolletta → pannello con **Registra bolletta** (importo, data, chi l'ha pagata; anteprima live dei movimenti e dei giroconti, R13) e **Modifica** (nome, frequenza, previsto, divisione, chi paga, attiva / in pausa, elimina).
 - Nota in fondo: "Ogni mese metti nella Pocket Bollette la quota di tutte le bollette, mensili comprese… Le altre spese di casa restano nella busta Casa & Servizi."
 

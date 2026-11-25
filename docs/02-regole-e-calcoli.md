@@ -155,7 +155,7 @@ Esempi (S = 1.500, buste 700):
 
 ## R8 · Abbonamenti (ricorrenze)
 
-`Recurring { name, amount, dayOfMonth, envelopeId (default Rate & Abbonamenti), card (default Extra), active }`.
+`Recurring { name, amount, dayOfMonth, frequency (1 · 2 · 3 · 6 · 12 mesi, default 1), anchorMonth, envelopeId (default Rate & Abbonamenti), card (default Extra), active }`.
 
 - **Data dell'addebito nel periodo**: l'unica data nell'intervallo di calendario del periodo con quel giorno del mese (se il mese è più corto, l'ultimo giorno). Con startDay 27: i giorni 27–31 cadono nel primo mese del periodo, i giorni 1–26 nel secondo.
 - **Generazione automatica**: all'avvio e quando cambia la data, per il periodo corrente, per ogni ricorrenza attiva con data addebito `<= today()` e senza movimento con la stessa coppia (`recurringId`, `periodId`) → crea una `expense` con `source: 'recurring'`. Deve essere **idempotente** (eseguirla due volte non duplica).
@@ -172,6 +172,24 @@ Esempio (oggi 19 nov, periodo Novembre):
 | iCloud | 24 | 1,00 | tra 5 giorni |
 
 Scalati 89,50 (= speso Rate & Abbonamenti in R3). Totale mensile attivi **90,50**; margine sulla busta 110 → "Avanzano € 19,50 al mese". Mettendo in pausa iCloud: totale 89,50, margine 20,50.
+
+### Abbonamenti non mensili (bimestrali, trimestrali, semestrali, annuali)
+
+- `frequency` = ogni quanti mesi; `anchorMonth` = mese di calendario (`YYYY-MM`) di un addebito, scelto come "Prossimo addebito". I mesi di addebito sono `anchorMonth ± k·frequency`. Senza `anchorMonth` vale come mensile.
+- **Data nel periodo**: la stessa regola di sopra, ma solo se il mese di calendario di quella data è un mese di addebito; altrimenti nel periodo non c'è addebito.
+- Si scala **per intero** dalla busta nel periodo in cui cade (nessun accantonamento): la generazione automatica e l'idempotenza non cambiano.
+- **Totale mensile** (`monthlyTotal`) = solo i mensili attivi. In schermata la card scura mostra "Questo mese" = Σ addebiti attivi che cadono nel periodo (mensili + non mensili di questo periodo) e il margine si calcola su quello; sotto, "Annuali e altri: in media € X al mese" = Σ importo/frequenza.
+- Fuori dal periodo: gruppo **Più avanti**, con la data del prossimo addebito e lo stato "tra N mesi" / "il mese prossimo".
+
+Esempio (startDay 27, oggi 19 nov 2026, abbonamenti della demo più):
+| Voce | Frequenza | Giorno | Prossimo | Importo |
+|---|---|---|---|---|
+| Dominio | ogni anno | 14 | marzo 2027 | 12,00 |
+| Palestra | ogni 2 mesi | 27 | ottobre 2026 | 30,00 |
+
+- Periodo Novembre (27 ott – 26 nov): Palestra il 27 ott (scalata), Dominio no → "Più avanti · 14 mar". Questo mese **120,50** → sfori la busta 110 di **10,50**. Media non mensili 1 + 15 = **16**.
+- Periodo Dicembre (27 nov – 26 dic): Palestra no (novembre non è mese di addebito), prossimo 27 dic. Periodo Gennaio: Palestra il 27 dic.
+- Periodo Marzo 2027 (27 feb – 26 mar): Dominio il 14 mar, una volta sola.
 
 ## R9 · Prestiti (FIFO)
 
