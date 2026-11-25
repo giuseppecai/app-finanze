@@ -11,7 +11,7 @@ import {
   DEFAULT_DESTINATION, UNASSIGNED, type CapsChange, type FundsDestination, type PotRemoval,
 } from '../domain/settings';
 import { currentPeriod, nextPeriodToStart } from '../domain/periods';
-import { chargeToTransaction, dueCharges } from '../domain/recurring';
+import { chargeToTransaction, dueCharges, lumpExtras, recurringQuota, savedSubscriptions } from '../domain/recurring';
 import {
   applyRepayment, canDeleteLoan, createLoanEntry, deleteLoanEntry, savingsEffect, undoRepayment as undoLoanAllocations,
 } from '../domain/loans';
@@ -83,7 +83,25 @@ export async function updateTransaction(
 }
 
 export async function deleteTransaction(db: FinanzeDB, id: string): Promise<void> {
-  await db.transactions.delete(id);
+  await db.transaction('rw', [db.transactions, db.recurring, db.pots], async () => {
+    const tx = await db.transactions.get(id);
+    // Addebito di un abbonamento accantonato: i soldi tornano nel suo fondo e nella Pocket Bollette (R15).
+    if (tx && tx.type === 'expense' && tx.recurringId && tx.envelopeId === null) await applyFundCharges(db, [tx], +1);
+    await db.transactions.delete(id);
+  });
+}
+
+/**
+ * Addebiti di abbonamenti accantonati (senza busta): escono dal fondo dell'abbonamento e dalla
+ * Pocket Bollette (`sign` = −1). Con `sign` = +1 li rimette (movimento eliminato).
+ */
+async function applyFundCharges(db: FinanzeDB, txs: readonly Transaction[], sign: 1 | -1 = -1): Promise<void> {
+  for (const t of txs) {
+    if (t.type !== 'expense' || !t.recurringId || t.envelopeId !== null) continue;
+    const r = await db.recurring.get(t.recurringId);
+    if (r) await db.recurring.update(r.id, { fund: (r.fund ?? 0) + sign * t.amount });
+    await adjustPot(db, 'bills', sign * t.amount);
+  }
 }
 
 // ── Abbonamenti ───────────────────────────────────────────────────────────────
@@ -94,7 +112,7 @@ export async function deleteTransaction(db: FinanzeDB, id: string): Promise<void
  * Restituisce i movimenti creati.
  */
 export async function runRecurringCharges(db: FinanzeDB, today: ISODate): Promise<Transaction[]> {
-  return db.transaction('rw', [db.periods, db.transactions, db.recurring], async () => {
+  return db.transaction('rw', [db.periods, db.transactions, db.recurring, db.pots], async () => {
     const period = await getCurrentPeriod(db);
     if (!period) return [];
     const [recurrings, periodTxs] = await Promise.all([
@@ -106,6 +124,7 @@ export async function runRecurringCharges(db: FinanzeDB, today: ISODate): Promis
       chargeToTransaction(charge, period.id, newId(), createdAt),
     );
     if (created.length > 0) await db.transactions.bulkAdd(created);
+    await applyFundCharges(db, created);
     return created;
   });
 }
@@ -143,12 +162,11 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
     'rw',
     [db.settings, db.envelopes, db.periods, db.transactions, db.recurring, db.pots, db.bills],
     async () => {
-      const [settings, envelopes, periods, recurrings, pots, bills] = await Promise.all([
+      const [settings, envelopes, periods, recurrings, bills] = await Promise.all([
         getSettings(db),
         db.envelopes.orderBy('order').toArray(),
         db.periods.toArray(),
         db.recurring.toArray(),
-        db.pots.toArray(),
         db.bills.toArray(),
       ]);
       const open = currentPeriod(periods);
@@ -161,6 +179,7 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
         const preview = closingPreview(envelopes, open, periodTxs, recurrings, closedAt);
         const generated = preview.pending.map((c) => chargeToTransaction(c, open.id, newId(), closedAt));
         if (generated.length > 0) await db.transactions.bulkAdd(generated);
+        await applyFundCharges(db, generated);
         closing = planClosing(preview.leftovers, preview.unassigned, input.closingOption);
         closed = { ...open, closedAt, leftoverChoice: closing.choice, leftovers: closing.leftovers };
         await db.periods.put(closed);
@@ -176,7 +195,13 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
         salary: input.salary,
         envelopes,
         items: itemQuotas(settings.monthlyItems, input.quotas),
-        billsQuota: billsTransfer(bills, pots.find((p) => p.id === 'bills')?.balance ?? 0, target.id).amount,
+        billsQuota: billsTransfer(
+          bills,
+          (await db.pots.get('bills'))?.balance ?? 0,
+          target.id,
+          savedSubscriptions(await db.recurring.toArray(), target.id, settings.periodStartDay),
+        ).amount,
+        extras: lumpExtras(recurrings, target),
         closing,
       });
       await db.periods.add(period);
@@ -186,9 +211,15 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
         const quota = bill.active ? monthlyQuota(bill, target.id) : 0;
         if (quota > 0) await db.bills.update(bill.id, { fund: bill.fund + quota });
       }
+      // …e ogni abbonamento accantonato la sua (R15).
+      for (const r of await db.recurring.toArray()) {
+        const quota = recurringQuota(r, target.id, settings.periodStartDay);
+        if (quota > 0) await db.recurring.update(r.id, { fund: (r.fund ?? 0) + quota });
+      }
 
+      const potsNow = await db.pots.toArray(); // la chiusura può aver già toccato la Pocket Bollette
       for (const [id, delta] of Object.entries(potDeltas)) {
-        const pot = pots.find((p) => p.id === id);
+        const pot = potsNow.find((p) => p.id === id);
         if (pot) await db.pots.update(id, { balance: pot.balance + delta });
         else {
           const item = settings.monthlyItems.find((i) => i.id === id);
@@ -200,8 +231,10 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
       await db.settings.update('settings', { monthlyItems });
 
       // Abbonamenti già maturati nel periodo nuovo (es. un addebito il 27).
-      const due = dueCharges(recurrings, period, [], input.today);
-      if (due.length > 0) await db.transactions.bulkAdd(due.map((c) => chargeToTransaction(c, period.id, newId(), closedAt)));
+      const due = dueCharges(await db.recurring.toArray(), period, [], input.today);
+      const dueTxs = due.map((c) => chargeToTransaction(c, period.id, newId(), closedAt));
+      if (dueTxs.length > 0) await db.transactions.bulkAdd(dueTxs);
+      await applyFundCharges(db, dueTxs);
 
       return { closed, started: period };
     },
@@ -331,13 +364,64 @@ export async function saveRecurring(db: FinanzeDB, recurring: Recurring): Promis
   const freq = recurring.frequency ?? 1;
   if (![1, 2, 3, 6, 12].includes(freq)) throw new Error('Frequenza non valida');
   if (freq > 1 && !/^\d{4}-\d{2}$/.test(recurring.anchorMonth ?? '')) throw new Error('Mese del prossimo addebito mancante');
-  const clean: Recurring = freq > 1 ? { ...recurring, frequency: freq } : { ...recurring, frequency: 1, anchorMonth: null };
-  await db.recurring.put({ ...clean, name: recurring.name.trim() });
+  const saving = freq > 1 && recurring.saving === true;
+  if (saving && recurring.saveFrom && !/^\d{4}-\d{2}$/.test(recurring.saveFrom)) throw new Error('Mese di inizio non valido');
+  if (saving && (!Number.isInteger(recurring.fund ?? 0) || (recurring.fund ?? 0) < 0)) throw new Error('Importo già da parte non valido');
+  // Mensile o non accantonato: niente fondo (quello che c'era resta nella Pocket e riduce il prossimo giroconto).
+  const clean: Recurring = {
+    ...recurring,
+    name: recurring.name.trim(),
+    frequency: freq,
+    anchorMonth: freq > 1 ? recurring.anchorMonth : null,
+    saving,
+    saveFrom: saving ? recurring.saveFrom ?? null : null,
+    fund: saving ? recurring.fund ?? 0 : 0,
+  };
+  await db.transaction('rw', [db.recurring, db.periods, db.pots], async () => {
+    const old = await db.recurring.get(clean.id);
+    await db.recurring.put(clean);
+    // "Già messo da parte" in più: sono soldi che stanno nella Pocket Bollette (R15).
+    await adjustPot(db, 'bills', Math.max(0, (clean.fund ?? 0) - (old?.fund ?? 0)));
+    await syncPeriodExtras(db);
+  });
 }
 
 /** Elimina un abbonamento. I movimenti già creati restano. */
 export async function deleteRecurring(db: FinanzeDB, id: string): Promise<void> {
-  await db.recurring.delete(id);
+  await db.transaction('rw', [db.recurring, db.periods, db.pots], async () => {
+    const removed = await db.recurring.get(id);
+    await db.recurring.delete(id);
+    await syncPeriodExtras(db, removed);
+  });
+}
+
+/**
+ * Mese aperto: la busta di un abbonamento non mensile pagato tutto in questo periodo deve essere più
+ * alta del suo importo (R15). Dopo una modifica allinea `extras` e allocazioni; la differenza esce
+ * da (o torna in) Risparmi, come quando si cambia un tetto a mese aperto.
+ */
+async function syncPeriodExtras(db: FinanzeDB, removed?: Recurring): Promise<void> {
+  const period = await getCurrentPeriod(db);
+  if (!period) return;
+  const wanted = lumpExtras(await db.recurring.toArray(), period);
+  const old = period.extras ?? {};
+  const allocations = { ...period.allocations };
+  let delta = 0;
+  for (const id of new Set([...Object.keys(old), ...Object.keys(wanted)])) {
+    const before = old[id] ?? 0;
+    const after = wanted[id]?.amount ?? 0;
+    if (before === after) continue;
+    // la busta dell'abbonamento (anche se è appena stato eliminato)
+    const envelopeId = wanted[id]?.envelopeId ?? (await db.recurring.get(id))?.envelopeId ?? (removed?.id === id ? removed.envelopeId : null);
+    if (!envelopeId) continue;
+    allocations[envelopeId] = Math.max(0, (allocations[envelopeId] ?? 0) + after - before);
+    delta += after - before;
+  }
+  const extras: Record<string, Cents> = Object.fromEntries(Object.entries(wanted).map(([id, e]) => [id, e.amount]));
+  const same = Object.keys(extras).length === Object.keys(old).length && Object.entries(extras).every(([id, v]) => old[id] === v);
+  if (same) return;
+  await db.periods.update(period.id, { allocations, extras });
+  await adjustPot(db, 'savings', -delta);
 }
 
 // ── Prestiti e debiti (R9, R9-bis) ───────────────────────────────────────────
@@ -477,7 +561,13 @@ export async function saveBill(db: FinanzeDB, bill: Bill): Promise<void> {
   if (!Number.isInteger(bill.estimate) || bill.estimate <= 0) throw new Error('Importo previsto non valido');
   if (![1, 2, 3, 6, 12].includes(bill.frequency)) throw new Error('Frequenza non valida');
   if ((bill.split === 'half' || bill.payer === 'roommate') && !bill.personId) throw new Error('Manca la coinquilina');
-  await db.bills.put({ ...bill, name: bill.name.trim() });
+  if (!Number.isInteger(bill.fund)) throw new Error('Fondo non valido');
+  await db.transaction('rw', [db.bills, db.pots], async () => {
+    const old = await db.bills.get(bill.id);
+    await db.bills.put({ ...bill, name: bill.name.trim() });
+    // "Già messo da parte" in più (popup R15): sono soldi che stanno nella Pocket Bollette.
+    await adjustPot(db, 'bills', Math.max(0, bill.fund - (old?.fund ?? 0)));
+  });
 }
 
 /** Elimina una bolletta. I movimenti già registrati e i soldi nella Pocket Bollette restano. */

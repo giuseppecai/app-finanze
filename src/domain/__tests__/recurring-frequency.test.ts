@@ -4,7 +4,6 @@ import {
   isChargeMonth,
   monthlyTotal,
   nextChargeDate,
-  nonMonthlyAverage,
   periodTotal,
   recurringDateInPeriod,
   recurringRows,
@@ -63,15 +62,14 @@ describe('R8 · abbonamenti non mensili', () => {
     expect(recurringStatus(palestra, { ...dic, id: '2026-12' }, [], '2026-12-01')).toEqual({ kind: 'later', date: '2026-12-27' });
   });
 
-  it('totali: ogni mese 90,50 (solo mensili); questo mese 120,50 con la Palestra; media non mensili 1 + 15 = 16', () => {
+  it('totali: ogni mese 90,50 (solo mensili); questo mese 120,50 con la Palestra', () => {
     const data = buildDemoData();
     const list = [...data.recurring, dominio, palestra];
     expect(monthlyTotal(list)).toBe(9050);
     const novP = data.periods.find((p) => p.id === '2026-11')!;
     const rows = recurringRows(list, novP, data.transactions.filter((t) => t.periodId === novP.id), DEMO_TODAY);
-    expect(periodTotal(rows)).toBe(12050);
-    expect(11000 - periodTotal(rows)).toBe(-1050); // sfori la busta di 10,50
-    expect(nonMonthlyAverage(list)).toBe(1600);
+    expect(periodTotal(rows, novP.id)).toBe(12050);
+    expect(11000 - periodTotal(rows, novP.id)).toBe(-1050); // sfori la busta di 10,50
     // Dominio è l'unico fuori dal periodo: in fondo, con la data del prossimo addebito
     const later = rows.filter((r) => r.date === null);
     expect(later.map((r) => [r.recurring.name, r.shownDate])).toEqual([['Dominio', '2027-03-14']]);

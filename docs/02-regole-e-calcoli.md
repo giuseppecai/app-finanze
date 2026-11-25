@@ -177,8 +177,8 @@ Scalati 89,50 (= speso Rate & Abbonamenti in R3). Totale mensile attivi **90,50*
 
 - `frequency` = ogni quanti mesi; `anchorMonth` = mese di calendario (`YYYY-MM`) di un addebito, scelto come "Prossimo addebito". I mesi di addebito sono `anchorMonth ± k·frequency`. Senza `anchorMonth` vale come mensile.
 - **Data nel periodo**: la stessa regola di sopra, ma solo se il mese di calendario di quella data è un mese di addebito; altrimenti nel periodo non c'è addebito.
-- Si scala **per intero** dalla busta nel periodo in cui cade (nessun accantonamento): la generazione automatica e l'idempotenza non cambiano.
-- **Totale mensile** (`monthlyTotal`) = solo i mensili attivi. In schermata la card scura mostra "Questo mese" = Σ addebiti attivi che cadono nel periodo (mensili + non mensili di questo periodo) e il margine si calcola su quello; sotto, "Annuali e altri: in media € X al mese" = Σ importo/frequenza.
+- Si scala dalla busta nel periodo in cui cade, oppure si accantona ogni mese nella Pocket Bollette: vedi **R15**. La generazione automatica e l'idempotenza non cambiano.
+- **Totale mensile** (`monthlyTotal`) = solo i mensili attivi. In schermata la card scura mostra "Questo mese" = Σ addebiti attivi che cadono nel periodo e si scalano dalla busta (mensili + non mensili non accantonati) e il margine si calcola su quello; sotto, se ci sono abbonamenti accantonati, "+ € X/mese da parte".
 - Fuori dal periodo: gruppo **Più avanti**, con la data del prossimo addebito e lo stato "tra N mesi" / "il mese prossimo".
 
 Esempio (startDay 27, oggi 19 nov 2026, abbonamenti della demo più):
@@ -266,6 +266,34 @@ Esempio (coinquilina Elisa):
 - Acqua: dopo 12 mesi `fund` = 120. Bolletta da € 114 → `fund` = **€ 6**, resta per l'anno dopo.
 - Luce da € 80,01 pagata da te con `fund` 40 → tua quota **€ 40,01** dal fondo (`fund` − 0,01: "Mancano € 0,01"), prestito **€ 40** a Elisa.
 - Internet da € 28 pagata da Elisa → spesa 14 dal fondo, debito 14, "Sposta € 14 da Bollette a Risparmi".
+
+## R15 · Accantonare o pagare tutto nel mese (bollette periodiche e abbonamenti non mensili)
+
+Ogni bolletta periodica e ogni abbonamento non mensile ha l'interruttore **Accantona ogni mese**. Accenderlo apre un piccolo popup (*"Iniziamo ad accantonare per Prime Video?"*) con:
+- **Inizio ad accantonare**: un mese dal prossimo "Inizio del mese" fino alla scadenza (`saveFrom`);
+- **Già messo da parte**: soldi già pronti per quella voce (diventano il suo `fund`; l'app li conta nella Pocket Bollette, che sale di quanto il fondo aumenta);
+- anteprima: **"€ Q al mese per N mesi, da ‹inizio› a ‹scadenza›"**;
+- **Sì, iniziamo ad accantonare** (solo allora l'interruttore si accende) oppure **No, pago tutto a ‹mese›**.
+
+Tutti i soldi accantonati stanno nella **Pocket Bollette** (bollette e abbonamenti insieme, un solo giroconto).
+
+```
+giroconti che restano = max(1, mesi da "Inizio del mese" a scadenza + 1)
+accantona:      quota = ceil(max(0, target − fund) / giroconti che restano)   (0 prima di saveFrom)
+non accantona:  quota = 0, tranne nel periodo della scadenza (o dopo, se in ritardo): max(0, target − fund)
+```
+`target` = tua quota prevista (bollette) o importo (abbonamenti). La quota si ricalcola a ogni "Inizio del mese", così l'arrotondamento per eccesso si riassorbe e alla scadenza il fondo è esatto.
+
+**Abbonamenti** (scadenza = periodo del primo addebito dal prossimo "Inizio del mese"):
+- *accantonato* (dal periodo `saveFrom` in poi): la quota va nel giroconto → Bollette e nel `fund`; l'addebito del giorno è una spesa **senza busta** pagata dal fondo (`fund − importo`, Bollette − importo), come le bollette. Dopo l'addebito si riparte per il ciclo dopo (importo ÷ frequenza).
+- *non accantonato*: nel periodo dell'addebito la busta dell'abbonamento è **più alta dell'importo** (`Period.extras[id] = importo`, sommato ad `allocations`); all'"Inizio del mese" il Budget del mese sale di tanto e Risparmi scende di tanto. Se l'abbonamento si crea o si cambia a mese aperto, la busta del mese si allinea subito e la differenza esce da (o torna in) Risparmi.
+
+**Bollette periodiche**: *accantonata* è il comportamento di R13 (default). *Non accantonata*: nessuna quota fino al mese in cui arriva, poi tutta la tua quota nel giroconto → Bollette di quel mese; serve sapere quando arriva.
+
+Esempio: **Prime Video € 49,99 l'anno, addebito il 23 marzo** (startDay 27 → periodo Marzo).
+- Scenario 1, accantono da settembre: giroconti set, ott, nov, dic, gen, feb, mar = **7** → popup "€ 7,15 al mese per 7 mesi". Quote mese per mese: 7,15 · 7,14 · 7,14 · 7,14 · 7,14 · 7,14 · 7,14 → fondo **49,99** al 23 marzo, pagato dalla Pocket Bollette (la busta non si muove). Da aprile: 49,99 / 12 → € 4,17 al mese. Con € 20 già da parte: 29,99 / 7 → € 4,29.
+- Scenario 2, pago tutto alla scadenza: nessuna quota; nel periodo Marzo la busta Rate & Abbonamenti è **110 + 49,99 = 159,99** e l'addebito del 23 marzo si scala da lì.
+- Acqua € 120 tutta tua, arriva a febbraio, oggi novembre: accantonata → 40 al mese (dic, gen, feb); da gennaio → 0 a dicembre, poi 60; non accantonata → 0, 0, **120** nel giroconto di febbraio.
 
 ## R14 · Promemoria backup
 

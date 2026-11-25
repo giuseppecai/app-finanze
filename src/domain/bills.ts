@@ -1,5 +1,6 @@
 // R13 · Bollette: tutte accantonate nella Pocket Bollette (mensili comprese), divisione con la coinquilina.
-import { addMonthsId, monthsBetween } from './dates';
+import { addMonthsId } from './dates';
+import { savingQuota } from './saving';
 import type { EnvelopeBalance } from './envelopes';
 import type { Bill, Cents, LoanDirection, PeriodId, PotId } from './types';
 
@@ -22,12 +23,11 @@ export function expectedShare(bill: Pick<Bill, 'estimate' | 'split'>): Cents {
   return myShare(bill.estimate, bill.split);
 }
 
-/**
- * Giroconti mensili che restano prima della prossima bolletta, contando quello di `nextOpening`
- * (il prossimo "Inizio del mese"). Minimo 1: se la bolletta è già in ritardo, tutto al prossimo.
- */
-export function depositsLeft(nextDue: PeriodId, nextOpening: PeriodId): number {
-  return Math.max(1, monthsBetween(nextOpening, nextDue) + 1);
+export { depositsLeft } from './saving';
+
+/** Periodica che si accantona (default sì); false = tutta la quota nel mese in cui arriva (R15). */
+export function isSaving(bill: Pick<Bill, 'frequency'> & Partial<Pick<Bill, 'saving'>>): boolean {
+  return !isPeriodic(bill) || bill.saving !== false;
 }
 
 /**
@@ -38,14 +38,23 @@ export function depositsLeft(nextDue: PeriodId, nextOpening: PeriodId): number {
  * - periodiche senza data: la tua quota divisa per i mesi del ciclo.
  */
 export function monthlyQuota(
-  bill: Pick<Bill, 'estimate' | 'split' | 'frequency'> & Partial<Pick<Bill, 'fund' | 'nextDue'>>,
+  bill: Pick<Bill, 'estimate' | 'split' | 'frequency'> & Partial<Pick<Bill, 'fund' | 'nextDue' | 'saving' | 'saveFrom'>>,
   nextOpening?: PeriodId,
 ): Cents {
   // Mensili: quello che è avanzato dal mese prima (bolletta più bassa del previsto) si sottrae.
   if (!isPeriodic(bill)) return Math.max(0, expectedShare(bill) - Math.max(0, bill.fund ?? 0));
-  if (!bill.nextDue || !nextOpening) return Math.ceil(expectedShare(bill) / bill.frequency);
-  const missing = Math.max(0, expectedShare(bill) - (bill.fund ?? 0));
-  return Math.ceil(missing / depositsLeft(bill.nextDue, nextOpening));
+  if (!nextOpening) return isSaving(bill) ? Math.ceil(expectedShare(bill) / bill.frequency) : 0;
+  return savingQuota(
+    {
+      target: expectedShare(bill),
+      fund: bill.fund ?? 0,
+      due: bill.nextDue ?? null,
+      saving: isSaving(bill),
+      saveFrom: bill.saveFrom ?? null,
+      frequency: bill.frequency,
+    },
+    nextOpening,
+  );
 }
 
 /** Giroconto mensile → Bollette: Σ quote delle bollette attive (`nextOpening` = periodo del giroconto). */
@@ -67,9 +76,15 @@ export interface BillsTransfer {
  * servono 180 e ce ne sono 80 → ne metti 100. Il credito è il saldo della Pocket meno i fondi già
  * assegnati alle singole bollette (quelli delle periodiche restano lì ad accumularsi).
  */
-export function billsTransfer(bills: readonly Bill[], potBalance: Cents, nextOpening?: PeriodId): BillsTransfer {
-  const quota = billsQuotaTotal(bills, nextOpening);
-  const assigned = bills.reduce((s, b) => s + b.fund, 0);
+export function billsTransfer(
+  bills: readonly Bill[],
+  potBalance: Cents,
+  nextOpening?: PeriodId,
+  /** abbonamenti accantonati nella stessa Pocket (R15): le loro quote e i loro fondi */
+  subscriptions: { quota: Cents; funds: Cents } = { quota: 0, funds: 0 },
+): BillsTransfer {
+  const quota = billsQuotaTotal(bills, nextOpening) + subscriptions.quota;
+  const assigned = bills.reduce((s, b) => s + b.fund, 0) + subscriptions.funds;
   const credit = Math.max(0, potBalance - assigned);
   return { quota, credit, amount: Math.max(0, quota - credit) };
 }

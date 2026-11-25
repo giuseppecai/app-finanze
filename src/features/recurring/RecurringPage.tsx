@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useCurrentPeriod, useEnvelopes, usePeriodTransactions, useRecurring, useSettings } from '../../app/data';
+import { useCurrentPeriod, useEnvelopes, usePeriods, usePeriodTransactions, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { IconArrowRight, IconCalendar, IconPlus } from '../../components/icons';
 import { InfoBox } from '../../components/InfoBox';
@@ -9,9 +9,9 @@ import { PageHeader } from '../../components/PageHeader';
 import { today } from '../../domain/clock';
 import { formatShortRange, monthsBetween, parseISODate } from '../../domain/dates';
 import { formatEuro } from '../../domain/money';
-import { calendarPeriodFor } from '../../domain/periods';
+import { calendarPeriodFor, nextOpeningId } from '../../domain/periods';
 import {
-  frequencyOf, mainRecurringEnvelope, nonMonthlyAverage, periodTotal, recurringRows, type RecurringRow, type RecurringStatus, nextUpcomingCharge,
+  frequencyOf, mainRecurringEnvelope, paidFromFund, periodTotal, recurringQuota, recurringQuotaTotal, recurringRows, type RecurringRow, type RecurringStatus, nextUpcomingCharge,
 } from '../../domain/recurring';
 import type { Recurring } from '../../domain/types';
 import { ScheduleRow } from '../../components/ScheduleRow';
@@ -39,8 +39,9 @@ export function RecurringPage() {
   const period = useCurrentPeriod();
   const txs = usePeriodTransactions(period?.id ?? null);
   const settings = useSettings();
+  const periods = usePeriods();
   const [editing, setEditing] = useState<Recurring | 'new' | null>(null);
-  if (!recurring || !envelopes || period === undefined || !txs || !settings) return null;
+  if (!recurring || !envelopes || period === undefined || !txs || !settings || !periods) return null;
 
   const now = today();
   // Senza un mese aperto mostra comunque il periodo di calendario di oggi (senza movimenti).
@@ -50,9 +51,11 @@ export function RecurringPage() {
   const envelope = envelopes.find((e) => e.id === mainId);
   const cap = envelope ? (period?.allocations[envelope.id] ?? envelope.cap) : 0;
   // Il totale del mese comprende gli annuali/bimestrali che cadono in questo periodo (si scalano per intero).
-  const total = periodTotal(rows);
-  const hasNonMonthlyNow = rows.some((r) => r.recurring.active && r.date !== null && frequencyOf(r.recurring) > 1);
-  const average = nonMonthlyAverage(recurring);
+  const total = periodTotal(rows, range.id);
+  const hasNonMonthlyNow = rows.some((r) => r.recurring.active && r.date !== null && frequencyOf(r.recurring) > 1 && !paidFromFund(r.recurring, range.id));
+  // Accantonati (R15): quanto va nella Pocket Bollette al prossimo "Inizio del mese".
+  const opening = nextOpeningId(periods, now, settings.periodStartDay);
+  const savedQuota = recurringQuotaTotal(recurring, opening, settings.periodStartDay);
   const margin = cap - total;
   const next = period ? nextUpcomingCharge(rows) : null;
   const thisMonth = rows.filter((r) => r.date !== null);
@@ -71,6 +74,9 @@ export function RecurringPage() {
               boxBottom={it.months.short[m - 1]}
               title={r.name}
               detail={it.recurring.detail(it.cards[r.card], it.recurring.frequency[frequencyOf(r)] ?? '')}
+              detail2={frequencyOf(r) > 1 && r.active ? (r.saving
+                ? it.saving.savedRow(formatEuro(recurringQuota(r, r.saveFrom && r.saveFrom > opening ? r.saveFrom : opening, settings.periodStartDay)), formatEuro(r.fund ?? 0))
+                : it.saving.lumpRow) : null}
               amount={formatEuro(r.amount)}
               paused={!r.active}
               chip={showChip(row) ? <span className={`chip chip--${status.kind}`}>{statusLabel(status, now)}</span> : null}
@@ -97,7 +103,7 @@ export function RecurringPage() {
           <div>
             <p className="hero__label">{hasNonMonthlyNow ? it.recurring.periodTotal : it.recurring.monthly}</p>
             <p className="hero__amount hero__amount--medium">{formatEuro(total)}</p>
-            {average > 0 ? <p className="hero__sub">{it.recurring.nonMonthly(formatEuro(average))}</p> : null}
+            {savedQuota > 0 ? <p className="hero__sub">{it.recurring.savedHero(formatEuro(savedQuota))}</p> : null}
           </div>
           {envelope ? <span className="hero__status">{it.recurring.envelopeCap(formatEuro(cap))}</span> : null}
         </div>
@@ -130,7 +136,13 @@ export function RecurringPage() {
       <div className="flow__spacer" />
       <InfoBox>{it.recurring.note}</InfoBox>
 
-      <RecurringSheet target={editing} defaultEnvelopeId={mainId} onClose={() => setEditing(null)} />
+      <RecurringSheet
+        target={editing}
+        defaultEnvelopeId={mainId}
+        opening={opening}
+        periodStartDay={settings.periodStartDay}
+        onClose={() => setEditing(null)}
+      />
     </div>
   );
 }

@@ -7,7 +7,8 @@ import { Switch } from '../../components/Switch';
 import { db } from '../../db/database';
 import { deleteBill, newId, registerBill, saveBill } from '../../db/repositories';
 import { nowISO, today } from '../../domain/clock';
-import { isPeriodic, monthlyQuota, planBillPayment, type BillTransfer } from '../../domain/bills';
+import { expectedShare, isPeriodic, monthlyQuota, planBillPayment, type BillTransfer } from '../../domain/bills';
+import { SavingPrompt } from '../../components/SavingPrompt';
 import { addMonthsId } from '../../domain/dates';
 import { balanceWith } from '../../domain/loans';
 import { amountText, formatEuro, parseEuro } from '../../domain/money';
@@ -211,18 +212,30 @@ function BillForm({ bill, people, loans, defaultPersonId, opening, onDone }: For
   const [payer, setPayer] = useState<Bill['payer']>(bill?.payer ?? 'me');
   const [active, setActive] = useState(bill?.active ?? true);
   const [nextDue, setNextDue] = useState<string | null>(bill?.nextDue ?? null);
+  const [saving, setSaving] = useState(bill?.saving !== false);
+  const [saveFrom, setSaveFrom] = useState<string | null>(bill?.saveFrom ?? null);
+  const [fund, setFund] = useState(bill?.fund ?? 0);
+  const [prompting, setPrompting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cents = parseEuro(estimate);
   const periodic = isPeriodic({ frequency });
+  // Quota del primo mese in cui si accantona (da saveFrom, o dal prossimo giroconto).
+  const quotaFrom = saving && saveFrom && saveFrom > opening ? saveFrom : opening;
   const previewQuota = cents !== null && cents > 0
-    ? monthlyQuota({ estimate: cents, split, frequency, fund: bill?.fund ?? 0, nextDue: periodic ? nextDue : null }, opening)
+    ? monthlyQuota({ estimate: cents, split, frequency, fund, nextDue: periodic ? nextDue : null, saving, saveFrom }, quotaFrom)
     : null;
+  const share = cents !== null && cents > 0 ? expectedShare({ estimate: cents, split }) : 0;
+  const dueName = nextDue ? it.months.long[Number(nextDue.slice(5, 7)) - 1] ?? nextDue : '';
   const needsPerson = split === 'half' || payer === 'roommate';
   const valid = name.trim() !== '' && cents !== null && cents > 0 && (!needsPerson || !!personId);
 
   async function save() {
     if (!valid || cents === null) {
       setError(it.casa.invalid);
+      return;
+    }
+    if (periodic && !saving && !nextDue) {
+      setError(it.saving.needsDue);
       return;
     }
     try {
@@ -234,8 +247,10 @@ function BillForm({ bill, people, loans, defaultPersonId, opening, onDone }: For
         split,
         payer: split === 'mine' ? 'me' : payer,
         personId: needsPerson ? personId : null,
-        fund: bill?.fund ?? 0,
+        fund,
         nextDue: periodic ? nextDue : null,
+        saving: !periodic || saving,
+        saveFrom: periodic && saving ? saveFrom : null,
         active,
         order: bill?.order ?? Date.now(),
         createdAt: bill?.createdAt ?? nowISO(),
@@ -251,6 +266,29 @@ function BillForm({ bill, people, loans, defaultPersonId, opening, onDone }: For
     if (!bill) return;
     await deleteBill(db, bill.id);
     onDone();
+  }
+
+  if (prompting && cents !== null && cents > 0) {
+    return (
+      <SavingPrompt
+        name={name.trim() || it.casa.sheetNew}
+        target={share}
+        due={nextDue}
+        frequency={frequency}
+        opening={opening}
+        initial={{ saveFrom: saveFrom ?? undefined, fund }}
+        onYes={(c) => {
+          setSaving(true);
+          setSaveFrom(c.saveFrom);
+          setFund(c.fund);
+          setPrompting(false);
+        }}
+        onNo={() => {
+          setSaving(false);
+          setPrompting(false);
+        }}
+      />
+    );
   }
 
   if (confirming) {
@@ -281,8 +319,20 @@ function BillForm({ bill, people, loans, defaultPersonId, opening, onDone }: For
               {dueOptions(opening, bill?.nextDue ?? null).map((id) => <option key={id} value={id}>{monthLabel(id)}</option>)}
             </select>
           </div>
-          {previewQuota !== null ? <p className="bill-quota-preview">{it.casa.quotaPreview(formatEuro(previewQuota))}</p> : null}
+          {previewQuota !== null && saving ? <p className="bill-quota-preview">{it.casa.quotaPreview(formatEuro(previewQuota))}</p> : null}
           <p className="muted-note">{it.casa.nextDueHint}</p>
+          <Switch
+            label={it.saving.switchLabel}
+            hint={saving
+              ? `${it.saving.onHint(formatEuro(previewQuota ?? 0), it.months.long[Number(quotaFrom.slice(5, 7)) - 1] ?? quotaFrom)} · ${it.saving.onFundHint(formatEuro(fund), formatEuro(share))}`
+              : nextDue ? it.saving.offHintBill(dueName, formatEuro(share)) : it.saving.offHintBillUnknown}
+            checked={saving}
+            onChange={(on) => {
+              if (!on) setSaving(false);
+              else if (cents === null || cents <= 0) setError(it.casa.invalid);
+              else setPrompting(true);
+            }}
+          />
         </div>
       ) : null}
       <div className="recurring-form__card">

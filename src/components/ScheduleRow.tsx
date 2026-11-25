@@ -28,7 +28,7 @@ export function ScheduleRow({ boxTop, boxBottom, title, detail, detail2, amount,
       <span className="movement__text">
         <span className={paused ? 'movement__title is-muted' : 'movement__title'}>{title}</span>
         <span className="movement__detail">{detail}</span>
-        {detail2 ? <span className="movement__detail">{detail2}</span> : null}
+        {detail2 ? <span className="movement__detail movement__detail--wrap">{detail2}</span> : null}
       </span>
       <span className="recurring-row__right">
         <span className={paused ? 'movement__amount is-paused' : 'movement__amount'}>{amount}</span>

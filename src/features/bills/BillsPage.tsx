@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useBills, useCurrentPeriod, useLoans, usePeople, usePeriods, usePeriodTransactions, usePots, useSettings } from '../../app/data';
+import { useBills, useCurrentPeriod, useLoans, usePeople, usePeriods, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { IconChevronRight, IconPlus, IconReceipt } from '../../components/icons';
 import { InfoBox } from '../../components/InfoBox';
 import { TopBar } from '../../components/TopBar';
 import { PageHeader } from '../../components/PageHeader';
-import { billsQuotaTotal, billsToRegister, fundStatus, isPeriodic, monthlyQuota } from '../../domain/bills';
+import { billsQuotaTotal, billsToRegister, fundStatus, isPeriodic, isSaving, monthlyQuota } from '../../domain/bills';
+import { frequencyOf, recurringQuotaTotal } from '../../domain/recurring';
 import { today } from '../../domain/clock';
 import { formatShortDate, formatShortRange, monthsBetween } from '../../domain/dates';
 import { nextOpeningId } from '../../domain/periods';
@@ -30,12 +31,16 @@ export function BillsPage() {
   const txs = usePeriodTransactions(period?.id ?? null);
   const periods = usePeriods();
   const settings = useSettings();
+  const recurring = useRecurring();
   const [target, setTarget] = useState<Bill | 'new' | null>(null);
-  if (!bills || !people || !loans || !pots || period === undefined || !txs || !periods || !settings) return null;
+  if (!bills || !people || !loans || !pots || period === undefined || !txs || !periods || !settings || !recurring) return null;
 
   const billsPot = pots.find((p) => p.id === 'bills')?.balance ?? 0;
   const opening = nextOpeningId(periods, today(), settings.periodStartDay);
-  const quota = billsQuotaTotal(bills, opening);
+  // Nella stessa Pocket ci sono anche gli abbonamenti accantonati (R15).
+  const savedSubs = recurring.filter((r) => r.active && r.saving && frequencyOf(r) > 1);
+  const subsQuota = recurringQuotaTotal(savedSubs, opening, settings.periodStartDay);
+  const quota = billsQuotaTotal(bills, opening) + subsQuota;
   const toRegister = billsToRegister(bills, txs).length;
   // Stessa divisione di Abbonamenti: quelle di questo mese (mensili + periodiche in arrivo o in ritardo) e quelle più avanti.
   const current = period?.id ?? opening;
@@ -44,9 +49,9 @@ export function BillsPage() {
     (a.active ? 0 : 1) - (b.active ? 0 : 1) || (a.nextDue ?? '9999').localeCompare(b.nextDue ?? '9999') || a.order - b.order;
   const thisMonth = bills.filter(dueNow).sort((a, b) => (a.active ? 0 : 1) - (b.active ? 0 : 1) || a.order - b.order);
   const later = bills.filter((b) => !dueNow(b)).sort(byDue);
-  const active = bills.filter((b) => b.active);
-  const fundTotal = active.reduce((s, b) => s + fundStatus(b).fund, 0);
-  const targetTotal = active.reduce((s, b) => s + fundStatus(b).target, 0);
+  const active = bills.filter((b) => b.active && isSaving(b));
+  const fundTotal = active.reduce((s, b) => s + fundStatus(b).fund, 0) + savedSubs.reduce((s, r) => s + (r.fund ?? 0), 0);
+  const targetTotal = active.reduce((s, b) => s + fundStatus(b).target, 0) + savedSubs.reduce((s, r) => s + r.amount, 0);
   const missingTotal = active.reduce((s, b) => s + fundStatus(b).missing, 0);
   const barPct = targetTotal > 0 ? Math.max(0, Math.min(100, (fundTotal / targetTotal) * 100)) : 0;
   const names = new Map(people.map((p) => [p.id, p]));
@@ -81,6 +86,16 @@ export function BillsPage() {
           </>
         ) : null}
       </section>
+
+      {savedSubs.length > 0 ? (
+        <Link to={routes.recurring} className="card link-row">
+          <span className="link-row__text">
+            <span className="link-row__title">{it.saving.subscriptionsRow}</span>
+            <span className="link-row__detail">{it.saving.subscriptionsDetail(savedSubs.length, formatEuro(subsQuota))}</span>
+          </span>
+          <IconChevronRight className="chev" />
+        </Link>
+      ) : null}
 
       {roommates.map((id) => {
         const name = names.get(id)?.name ?? it.movements.unknownPerson;
@@ -189,12 +204,14 @@ function BillList({ title, bills, names, txs, current, opening, onOpen }: ListPr
                 detail2={periodic ? (
                   <>
                     {it.recurring.frequency[b.frequency]} ·{' '}
-                    <span className={fund.missing > 0 ? 'is-over' : undefined}>
-                      {fund.missing > 0 ? it.casa.fundMissingShort(formatEuro(fund.missing)) : it.casa.fundOfShort(formatEuro(fund.fund), formatEuro(fund.target))}
-                    </span>
+                    {isSaving(b) ? (
+                      <span className={fund.missing > 0 ? 'is-over' : undefined}>
+                        {fund.missing > 0 ? it.casa.fundMissingShort(formatEuro(fund.missing)) : it.casa.fundOfShort(formatEuro(fund.fund), formatEuro(fund.target))}
+                      </span>
+                    ) : it.saving.lumpRow}
                   </>
                 ) : null}
-                amount={<>{formatEuro(quota)}<small>{it.casa.perMonthShort}</small></>}
+                amount={isSaving(b) ? <>{formatEuro(quota)}<small>{it.casa.perMonthShort}</small></> : formatEuro(fund.target)}
                 paused={!b.active}
                 chip={chip}
                 onClick={() => onOpen(b)}

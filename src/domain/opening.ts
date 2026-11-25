@@ -10,7 +10,10 @@ export interface ItemQuota {
 }
 
 export interface OpeningPlan {
+  /** Σ tetti + abbonamenti non mensili pagati tutti questo mese (R15) */
   budget: Cents;
+  /** parte del budget dovuta agli abbonamenti non mensili di questo mese */
+  extra: Cents;
   /** voci fisse (salvadanai e uscite) nell'ordine di Imposta */
   items: ItemQuota[];
   /** giroconto mensile → Bollette (R13), 0 se non ci sono bollette */
@@ -34,11 +37,18 @@ export function itemQuotas(items: readonly MonthlyItem[], amounts: Readonly<Reco
   return items.filter((i) => !i.archived).map((item) => ({ item, amount: amounts[item.id] ?? item.amount }));
 }
 
-export function planOpening(salary: Cents, envelopes: readonly Envelope[], items: readonly ItemQuota[], bills: Cents = 0): OpeningPlan {
-  const budget = capsTotal(envelopes);
+export function planOpening(salary: Cents, envelopes: readonly Envelope[], items: readonly ItemQuota[], bills: Cents = 0, extra: Cents = 0): OpeningPlan {
+  const budget = capsTotal(envelopes) + extra;
   const fixed = items.reduce((s, q) => s + q.amount, 0);
   const savings = salary - budget - fixed - bills;
-  return { budget, items: [...items], bills, savings, short: savings < 0 };
+  return { budget, extra, items: [...items], bills, savings, short: savings < 0 };
+}
+
+/** Abbonamenti pagati tutti nel mese: id → { busta, importo } (vedi `lumpExtras`). */
+export type PeriodExtras = Readonly<Record<string, { envelopeId: string; amount: Cents }>>;
+
+export function extrasTotal(extras: PeriodExtras = {}): Cents {
+  return Object.values(extras).reduce((s, e) => s + e.amount, 0);
 }
 
 export interface NewPeriodInput {
@@ -49,6 +59,8 @@ export interface NewPeriodInput {
   items: readonly ItemQuota[];
   /** giroconto mensile → Bollette (R13) */
   billsQuota?: Cents;
+  /** abbonamenti non mensili pagati tutti questo mese: la loro busta sale dell'importo (R15) */
+  extras?: PeriodExtras;
   /** piano di chiusura del periodo precedente (null per il primo periodo) */
   closing: Pick<ClosingPlan, 'nextCarryIn' | 'nextUnassigned' | 'savingsDelta'> | null;
 }
@@ -62,8 +74,10 @@ export interface NewPeriodResult {
 /** Crea il periodo: fotografa i tetti, applica riporti / da assegnare della chiusura. */
 export function buildNewPeriod(input: NewPeriodInput): NewPeriodResult {
   const billsQuota = input.billsQuota ?? 0;
-  const plan = planOpening(input.salary, input.envelopes, input.items, billsQuota);
-  const allocations = Object.fromEntries(activeEnvelopes(input.envelopes).map((e) => [e.id, e.cap]));
+  const extras = input.extras ?? {};
+  const plan = planOpening(input.salary, input.envelopes, input.items, billsQuota, extrasTotal(extras));
+  const allocations: Record<string, Cents> = Object.fromEntries(activeEnvelopes(input.envelopes).map((e) => [e.id, e.cap]));
+  for (const e of Object.values(extras)) allocations[e.envelopeId] = (allocations[e.envelopeId] ?? 0) + e.amount;
   const period: Period = {
     ...input.target,
     startedAt: input.today,
@@ -76,6 +90,7 @@ export function buildNewPeriod(input: NewPeriodInput): NewPeriodResult {
     leftoverChoice: null,
     leftovers: null,
     billsQuota,
+    ...(Object.keys(extras).length > 0 ? { extras: Object.fromEntries(Object.entries(extras).map(([id, e]) => [id, e.amount])) } : {}),
   };
   const potDeltas: Record<PotId, Cents> = {
     savings: plan.savings + (input.closing?.savingsDelta ?? 0),

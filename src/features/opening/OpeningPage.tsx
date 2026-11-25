@@ -16,7 +16,8 @@ import { planClosing, type ClosingOption, type ClosingPlan } from '../../domain/
 import { formatLongRange } from '../../domain/dates';
 import { formatEuro, parseEuro, amountText } from '../../domain/money';
 import { closingPreview, transferChecklist, type ChecklistItem } from '../../domain/monthEnd';
-import { activeEnvelopes, itemQuotas, planOpening, type ItemQuota } from '../../domain/opening';
+import { activeEnvelopes, extrasTotal, itemQuotas, planOpening, type ItemQuota } from '../../domain/opening';
+import { lumpExtras, recurringQuota, savedSubscriptions } from '../../domain/recurring';
 import { nextPeriodToStart } from '../../domain/periods';
 import { billsTransfer } from '../../domain/bills';
 import type { Bill, Cents, Envelope, Period, Recurring, Settings, Transaction } from '../../domain/types';
@@ -94,8 +95,10 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   const salaryOk = salary !== null && salary > 0;
   const quotas = itemQuotas(settings.monthlyItems, overrides);
   const activeBills = bills.filter((b) => b.active);
-  const billsInfo = billsTransfer(bills, billsBalance, target.id);
-  const opening = planOpening(salary ?? 0, envelopes, quotas, billsInfo.amount);
+  const billsInfo = billsTransfer(bills, billsBalance, target.id, savedSubscriptions(recurring, target.id, settings.periodStartDay));
+  // Abbonamenti non mensili pagati tutti questo mese: la loro busta è più alta (R15).
+  const extras = Object.entries(lumpExtras(recurring, target)).map(([id, e]) => ({ name: recurring.find((r) => r.id === id)?.name ?? '', amount: e.amount }));
+  const opening = planOpening(salary ?? 0, envelopes, quotas, billsInfo.amount, extrasTotal(lumpExtras(recurring, target)));
   const items = transferChecklist(opening, closing);
   // La spunta vale per quell'importo: se l'importo cambia, la riga torna da fare.
   const keyOf = (i: ChecklistItem) => `${i.key}:${i.amount}`;
@@ -125,11 +128,17 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
       case 'closing':
         return item.to === 'savings' ? it.opening.notes.closingSurplus(closingMonth) : it.opening.notes.closingDeficit(closingMonth);
       case 'budget':
-        return it.opening.notes.budget(activeEnvelopes(envelopes).length);
+        return extras.length > 0
+          ? `${it.opening.notes.budget(activeEnvelopes(envelopes).length)} ${it.opening.notes.budgetExtras(extras.map((e) => `${e.name} ${formatEuro(e.amount)}`).join(', '))}`
+          : it.opening.notes.budget(activeEnvelopes(envelopes).length);
       case 'item':
         return item.item?.kind === 'payment' ? it.opening.notes.payment : it.opening.notes.pot;
       case 'bills':
-        return it.opening.notes.bills(activeBills.length, billsInfo.credit > 0 && billsInfo.quota > 0 ? formatEuro(Math.min(billsInfo.credit, billsInfo.quota)) : null);
+        return it.opening.notes.bills(
+          activeBills.length,
+          billsInfo.credit > 0 && billsInfo.quota > 0 ? formatEuro(Math.min(billsInfo.credit, billsInfo.quota)) : null,
+          recurring.filter((r) => recurringQuota(r, target.id, settings.periodStartDay) > 0).length,
+        );
       case 'savings':
         return item.warn && salaryOk ? it.opening.notes.short : it.opening.notes.savings;
     }

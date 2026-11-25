@@ -12,11 +12,11 @@ import { Stepper } from '../../components/Stepper';
 import { db } from '../../db/database';
 import { newId, saveEnvelopes, updateSettings } from '../../db/repositories';
 import { billsQuotaTotal, billsTransfer } from '../../domain/bills';
-import { capsTotal } from '../../domain/opening';
+import { capsTotal, extrasTotal } from '../../domain/opening';
 import { today } from '../../domain/clock';
-import { nextOpeningId } from '../../domain/periods';
+import { calendarPeriodById, nextOpeningId } from '../../domain/periods';
 import { formatEuro } from '../../domain/money';
-import { mainRecurringEnvelope } from '../../domain/recurring';
+import { lumpExtras, mainRecurringEnvelope, savedSubscriptions } from '../../domain/recurring';
 import { potLines } from '../../domain/pots';
 import { suggestSymbol, symbolFor } from '../../domain/symbols';
 import {
@@ -73,7 +73,7 @@ export function SettingsPage() {
         message={message}
         setMessage={setMessage}
       />
-      <MonthGroup settings={settings} bills={bills} envelopes={envelopes} billsBalance={pots.find((p) => p.id === 'bills')?.balance ?? 0} opening={nextOpeningId(periods, today(), settings.periodStartDay)} />
+      <MonthGroup settings={settings} bills={bills} recurring={recurring} envelopes={envelopes} billsBalance={pots.find((p) => p.id === 'bills')?.balance ?? 0} opening={nextOpeningId(periods, today(), settings.periodStartDay)} />
       <PotsGroup settings={settings} />
       <section className="group" aria-labelledby="data-title">
         <h2 id="data-title" className="group__title">{it.settings.dataTitle}</h2>
@@ -390,13 +390,18 @@ function NewEnvelopeForm({ onAdd }: { onAdd: (e: NewEnvelope) => void }) {
   );
 }
 
-function MonthGroup({ settings, bills, envelopes, billsBalance, opening }: { settings: Settings; bills: Bill[]; envelopes: Envelope[]; billsBalance: Cents; opening: string }) {
+type MonthGroupProps = { settings: Settings; bills: Bill[]; recurring: Recurring[]; envelopes: Envelope[]; billsBalance: Cents; opening: string };
+
+function MonthGroup({ settings, bills, recurring, envelopes, billsBalance, opening }: MonthGroupProps) {
   const [target, setTarget] = useState<MonthlyItem | 'new' | null>(null);
   const activeBills = bills.filter((b) => b.active);
-  // Totale di inizio mese: buste + voci fisse + giroconto Bollette (al netto di quello che c'è già nella Pocket).
-  const transfer = billsTransfer(bills, billsBalance, opening);
+  // Totale di inizio mese: buste (+ abbonamenti pagati tutti quel mese) + voci fisse + giroconto Bollette
+  // (al netto di quello che c'è già nella Pocket, abbonamenti accantonati compresi).
+  const subs = savedSubscriptions(recurring, opening, settings.periodStartDay);
+  const transfer = billsTransfer(bills, billsBalance, opening, subs);
   const itemsTotal = settings.monthlyItems.filter((i) => !i.archived).reduce((s, i) => s + i.amount, 0);
-  const total = capsTotal(envelopes) + itemsTotal + transfer.amount;
+  const extra = extrasTotal(lumpExtras(recurring, { ...calendarPeriodById(opening, settings.periodStartDay) }));
+  const total = capsTotal(envelopes) + extra + itemsTotal + transfer.amount;
   return (
     <section className="group" aria-labelledby="month-title">
       <h2 id="month-title" className="group__title">{it.settings.monthTitle}</h2>
@@ -438,7 +443,7 @@ function MonthGroup({ settings, bills, envelopes, billsBalance, opening }: { set
               <span className="list-row__title">{it.settings.billsRow}</span>
               <span className="list-row__detail">{it.settings.billsDetail(activeBills.length)}</span>
             </span>
-            <span className="list-row__value">{formatEuro(billsQuotaTotal(bills, opening))}<small>{it.casa.perMonthShort}</small></span>
+            <span className="list-row__value">{formatEuro(billsQuotaTotal(bills, opening) + subs.quota)}<small>{it.casa.perMonthShort}</small></span>
             <IconChevronRight className="list-row__chevron" />
           </Link>
         </li>

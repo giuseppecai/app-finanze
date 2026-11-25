@@ -9,11 +9,15 @@ import { deleteRecurring, newId, runRecurringCharges, saveRecurring } from '../.
 import { nowISO, today } from '../../domain/clock';
 import { addMonthsId } from '../../domain/dates';
 import { parseEuro, amountText } from '../../domain/money';
-import { frequencyOf, nextChargeDate, RECURRING_FREQUENCIES } from '../../domain/recurring';
+import { formatEuro } from '../../domain/money';
+import { frequencyOf, nextChargeDate, RECURRING_FREQUENCIES, recurringDuePeriod, recurringQuota } from '../../domain/recurring';
+import { SavingPrompt } from '../../components/SavingPrompt';
 import type { Card, Recurring, RecurringFrequency } from '../../domain/types';
 import { it } from '../../i18n/it';
 
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
+
+const monthName = (id: string) => it.months.long[Number(id.slice(5, 7)) - 1] ?? id;
 
 /** "marzo 2027" */
 function monthLabel(id: string): string {
@@ -31,11 +35,16 @@ type Props = {
   /** abbonamento da modificare, oppure 'new' per crearne uno; null = pannello chiuso */
   target: Recurring | 'new' | null;
   defaultEnvelopeId: string;
+  /** prossimo "Inizio del mese" (primo mese in cui si può accantonare) */
+  opening: string;
+  periodStartDay: number;
   onClose: () => void;
 };
 
+type FormProps = { target: Recurring | 'new'; defaultEnvelopeId: string; opening: string; periodStartDay: number; onDone: () => void };
+
 /** Pannello di modifica: importo, giorno, carta, attivo; Elimina / Salva (R8). */
-export function RecurringSheet({ target, defaultEnvelopeId, onClose }: Props) {
+export function RecurringSheet({ target, defaultEnvelopeId, opening, periodStartDay, onClose }: Props) {
   return (
     <BottomSheet
       open={target !== null}
@@ -43,13 +52,20 @@ export function RecurringSheet({ target, defaultEnvelopeId, onClose }: Props) {
       title={target === 'new' ? it.recurring.sheetNew : target?.name ?? ''}
     >
       {target !== null ? (
-        <RecurringForm key={target === 'new' ? 'new' : target.id} target={target} defaultEnvelopeId={defaultEnvelopeId} onDone={onClose} />
+        <RecurringForm
+          key={target === 'new' ? 'new' : target.id}
+          target={target}
+          defaultEnvelopeId={defaultEnvelopeId}
+          opening={opening}
+          periodStartDay={periodStartDay}
+          onDone={onClose}
+        />
       ) : null}
     </BottomSheet>
   );
 }
 
-function RecurringForm({ target, defaultEnvelopeId, onDone }: { target: Recurring | 'new'; defaultEnvelopeId: string; onDone: () => void }) {
+function RecurringForm({ target, defaultEnvelopeId, opening, periodStartDay, onDone }: FormProps) {
   const existing = target === 'new' ? null : target;
   const [confirming, setConfirming] = useState(false);
   const [name, setName] = useState(existing?.name ?? '');
@@ -62,18 +78,30 @@ function RecurringForm({ target, defaultEnvelopeId, onDone }: { target: Recurrin
   );
   const [card, setCard] = useState<Card>(existing?.card ?? 'extra');
   const [active, setActive] = useState(existing?.active ?? true);
+  const [saving, setSaving_] = useState(existing?.saving === true);
+  const [saveFrom, setSaveFrom] = useState<string | null>(existing?.saveFrom ?? null);
+  const [fund, setFund] = useState(existing?.fund ?? 0);
+  const [prompting, setPrompting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const cents = parseEuro(amount);
   const valid = name.trim() !== '' && cents !== null && cents > 0;
+  // Scadenza per cui si accantona: il primo addebito dal prossimo "Inizio del mese".
+  const draft = { dayOfMonth: day, frequency, anchorMonth: nextMonth };
+  const due = frequency > 1 ? recurringDuePeriod(draft, opening, periodStartDay) : null;
+  // Quota del primo mese in cui si accantona (da saveFrom, o dal prossimo "Inizio del mese").
+  const quotaFrom = saveFrom && saveFrom > opening ? saveFrom : opening;
+  const quota = cents && cents > 0 && saving
+    ? recurringQuota({ ...draft, id: '', name, amount: cents, envelopeId: '', card, active: true, createdAt: '', saving, saveFrom, fund }, quotaFrom, periodStartDay)
+    : 0;
 
   async function save() {
     if (!valid || cents === null) {
       setError(it.recurring.invalid);
       return;
     }
-    setSaving(true);
+    setBusy(true);
     try {
       await saveRecurring(db, {
         id: existing?.id ?? newId(),
@@ -82,6 +110,9 @@ function RecurringForm({ target, defaultEnvelopeId, onDone }: { target: Recurrin
         dayOfMonth: day,
         frequency,
         anchorMonth: frequency > 1 ? nextMonth : null,
+        saving: frequency > 1 && saving,
+        saveFrom: frequency > 1 && saving ? saveFrom : null,
+        fund: frequency > 1 && saving ? fund : 0,
         envelopeId: existing?.envelopeId ?? defaultEnvelopeId,
         card,
         active,
@@ -93,7 +124,7 @@ function RecurringForm({ target, defaultEnvelopeId, onDone }: { target: Recurrin
     } catch (e) {
       console.error(e);
       setError(it.recurring.error);
-      setSaving(false);
+      setBusy(false);
     }
   }
 
@@ -101,6 +132,29 @@ function RecurringForm({ target, defaultEnvelopeId, onDone }: { target: Recurrin
     if (!existing) return;
     await deleteRecurring(db, existing.id);
     onDone();
+  }
+
+  if (prompting && cents !== null && cents > 0 && due) {
+    return (
+      <SavingPrompt
+        name={name.trim() || it.recurring.sheetNew}
+        target={cents}
+        due={due}
+        frequency={frequency}
+        opening={opening}
+        initial={{ saveFrom: saveFrom ?? undefined, fund }}
+        onYes={(c) => {
+          setSaving_(true);
+          setSaveFrom(c.saveFrom);
+          setFund(c.fund);
+          setPrompting(false);
+        }}
+        onNo={() => {
+          setSaving_(false);
+          setPrompting(false);
+        }}
+      />
+    );
   }
 
   if (confirming) {
@@ -141,6 +195,20 @@ function RecurringForm({ target, defaultEnvelopeId, onDone }: { target: Recurrin
         ) : null}
       </div>
       {frequency > 1 ? <p className="muted-note">{it.recurring.nextMonthHint}</p> : null}
+      {frequency > 1 ? (
+        <Switch
+          label={it.saving.switchLabel}
+          hint={saving
+            ? `${it.saving.onHint(formatEuro(quota), monthName(quotaFrom))} · ${it.saving.onFundHint(formatEuro(fund), formatEuro(cents ?? 0))}`
+            : it.saving.offHintRecurring(monthName(nextMonth), formatEuro(cents ?? 0))}
+          checked={saving}
+          onChange={(on) => {
+            if (!on) setSaving_(false);
+            else if (cents === null || cents <= 0) setError(it.recurring.invalid);
+            else setPrompting(true);
+          }}
+        />
+      ) : null}
       <div className="recurring-form__card">
         <span className="entry__label">{it.recurring.card}</span>
         <SegmentedControl
@@ -159,7 +227,7 @@ function RecurringForm({ target, defaultEnvelopeId, onDone }: { target: Recurrin
         {existing ? (
           <button type="button" className="outcome__button outcome__button--secondary" onClick={() => setConfirming(true)}>{it.recurring.delete}</button>
         ) : null}
-        <button type="submit" className="primary-button recurring-form__save" disabled={saving}>{it.recurring.save}</button>
+        <button type="submit" className="primary-button recurring-form__save" disabled={busy}>{it.recurring.save}</button>
       </div>
     </form>
   );

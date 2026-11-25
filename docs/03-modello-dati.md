@@ -71,6 +71,9 @@ interface Recurring {
   dayOfMonth: number;      // 1..31
   frequency?: 1 | 2 | 3 | 6 | 12;  // ogni quanti mesi; assente = 1 (R8)
   anchorMonth?: string | null;     // non mensili: 'YYYY-MM' di un addebito; nessuna migrazione (campo opzionale)
+  saving?: boolean;                // non mensili: accantona nella Pocket Bollette (R15)
+  saveFrom?: PeriodId | null;      // primo periodo in cui si accantona
+  fund?: Cents;                    // accantonato finora
   envelopeId: string;      // default Rate & Abbonamenti
   card: 'quotidiano' | 'extra';
   active: boolean;

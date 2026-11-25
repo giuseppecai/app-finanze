@@ -145,3 +145,4 @@
 .movement__amount small { font-size: 12px; font-weight: 450; color: var(--text-muted); }
 .movement__detail .is-over { color: var(--danger); }
 .hero__sub { margin-top: 2px; font-size: 13px; color: var(--text-on-ink-muted); }
+.movement__detail--wrap { white-space: normal; }

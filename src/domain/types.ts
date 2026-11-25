@@ -53,6 +53,8 @@ export interface Period {
   leftovers: Record<string, Cents> | null;
   /** giroconto → Bollette fatto a inizio periodo (R13, v2) */
   billsQuota: Cents;
+  /** abbonamenti non mensili pagati tutti nel mese: id abbonamento → importo aggiunto alla sua busta (R15) */
+  extras?: Record<string, Cents>;
 }
 
 export type TxType = 'expense' | 'refund' | 'income' | 'loan' | 'loanRepayment' | 'debt' | 'debtRepayment';
@@ -92,6 +94,12 @@ export interface Recurring {
   frequency?: RecurringFrequency;
   /** non mensili: mese di calendario ('YYYY-MM') di un addebito, da cui si contano i cicli */
   anchorMonth?: string | null;
+  /** non mensili: si accantona ogni mese nella Pocket Bollette (R15); assente/false = si paga tutto nel mese */
+  saving?: boolean;
+  /** primo periodo in cui si accantona ('YYYY-MM'); null = da subito */
+  saveFrom?: PeriodId | null;
+  /** accantonato finora nella Pocket Bollette (solo se `saving`) */
+  fund?: Cents;
   envelopeId: string;
   card: Card;
   active: boolean;
@@ -178,6 +186,10 @@ export interface Bill {
   fund: Cents;
   /** periodiche: periodo ('YYYY-MM') in cui arriva la prossima bolletta; null = non si sa (quota fissa) */
   nextDue?: PeriodId | null;
+  /** periodiche: false = niente accantonamento, tutta la quota nel giroconto del mese in cui arriva (R15); assente = true */
+  saving?: boolean;
+  /** periodiche: primo periodo in cui si accantona; null = da subito */
+  saveFrom?: PeriodId | null;
   active: boolean;
   order: number;
   createdAt: string;
