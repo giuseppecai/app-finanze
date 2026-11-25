@@ -89,3 +89,15 @@ describe('R15 · bollette periodiche', () => {
     expect(savingQuota({ target: 12000, fund: 0, due: null, saving: false, frequency: 12 }, '2026-12')).toBe(0);
   });
 });
+
+describe('R15 · prossimo addebito tra un anno (Prime il 22 novembre, prossimo novembre 2027)', () => {
+  const p27: Recurring = { ...base, id: 'p27', name: 'Prime', amount: 4990, dayOfMonth: 22, frequency: 12, anchorMonth: '2027-11', saving: true, saveFrom: '2026-11', fund: 1200 };
+  it('il 22 novembre 2026 è già passato: la scadenza è novembre 2027, non quella di quest’anno', () => {
+    expect(recurringDuePeriod(p27, '2026-11', 27)).toBe('2027-11');
+    expect(dueCharges([p27], { ...calendarPeriodById('2026-11', 27), id: '2026-11' }, [], '2026-11-26')).toEqual([]);
+  });
+  it('con € 12 già da parte: 37,90 / 13 giroconti (nov 2026 → nov 2027) = € 2,92, non € 37,90', () => {
+    expect(recurringQuota(p27, '2026-11', 27)).toBe(292);
+    expect(recurringQuota(p27, '2026-12', 27)).toBe(316); // 37,90 / 12
+  });
+});

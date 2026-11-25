@@ -175,7 +175,7 @@ Scalati 89,50 (= speso Rate & Abbonamenti in R3). Totale mensile attivi **90,50*
 
 ### Abbonamenti non mensili (bimestrali, trimestrali, semestrali, annuali)
 
-- `frequency` = ogni quanti mesi; `anchorMonth` = mese di calendario (`YYYY-MM`) di un addebito, scelto come "Prossimo addebito". I mesi di addebito sono `anchorMonth ± k·frequency`. Senza `anchorMonth` vale come mensile.
+- `frequency` = ogni quanti mesi; `anchorMonth` = mese di calendario (`YYYY-MM`) di un addebito, scelto come "Prossimo addebito". I mesi di addebito sono `anchorMonth + k·frequency` (k ≥ 0, solo in avanti: i mesi prima del "Prossimo addebito" sono addebiti già passati, che l'app non genera). Senza `anchorMonth` vale come mensile.
 - **Data nel periodo**: la stessa regola di sopra, ma solo se il mese di calendario di quella data è un mese di addebito; altrimenti nel periodo non c'è addebito.
 - Si scala dalla busta nel periodo in cui cade, oppure si accantona ogni mese nella Pocket Bollette: vedi **R15**. La generazione automatica e l'idempotenza non cambiano.
 - **Totale mensile** (`monthlyTotal`) = solo i mensili attivi. In schermata la card scura mostra "Questo mese" = Σ addebiti attivi che cadono nel periodo e si scalano dalla busta (mensili + non mensili non accantonati) e il margine si calcola su quello; sotto, se ci sono abbonamenti accantonati, "+ € X/mese da parte".

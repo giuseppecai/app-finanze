@@ -24,9 +24,10 @@ const gen = calendarPeriodById('2027-01', 27); // 27 dic – 26 gen
 const mar = calendarPeriodById('2027-03', 27); // 27 feb – 26 mar
 
 describe('R8 · abbonamenti non mensili', () => {
-  it('mesi di addebito: ogni N mesi dal mese di riferimento, anche all’indietro', () => {
+  it('mesi di addebito: ogni N mesi dal mese di riferimento, solo in avanti', () => {
     expect(isChargeMonth(dominio, '2027-03')).toBe(true);
-    expect(isChargeMonth(dominio, '2026-03')).toBe(true);
+    expect(isChargeMonth(dominio, '2028-03')).toBe(true);
+    expect(isChargeMonth(dominio, '2026-03')).toBe(false); // prima del prossimo addebito: già passato
     expect(isChargeMonth(dominio, '2027-02')).toBe(false);
     expect(isChargeMonth(palestra, '2026-12')).toBe(true);
     expect(isChargeMonth(palestra, '2026-11')).toBe(false);

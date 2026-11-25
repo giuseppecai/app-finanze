@@ -26,12 +26,15 @@ export function frequencyOf(recurring: Pick<Recurring, 'frequency' | 'anchorMont
   return recurring.frequency && recurring.frequency > 1 && recurring.anchorMonth ? recurring.frequency : 1;
 }
 
-/** Il mese di calendario 'YYYY-MM' è un mese di addebito? (ogni N mesi a partire da `anchorMonth`) */
+/**
+ * Il mese di calendario 'YYYY-MM' è un mese di addebito? Ogni N mesi a partire da `anchorMonth`
+ * (il "Prossimo addebito" scelto), solo in avanti: i mesi prima sono addebiti già passati, fuori dall'app.
+ */
 export function isChargeMonth(recurring: Pick<Recurring, 'frequency' | 'anchorMonth'>, month: string): boolean {
   const freq = frequencyOf(recurring);
   if (freq === 1) return true;
   const diff = monthsBetween(recurring.anchorMonth!, month);
-  return ((diff % freq) + freq) % freq === 0;
+  return diff >= 0 && diff % freq === 0;
 }
 
 /**
@@ -49,6 +52,8 @@ export function recurringDateInPeriod(
 /** Primo addebito con data ≥ `from` (per mostrare quando arriva un annuale). */
 export function nextChargeDate(recurring: Pick<Recurring, 'dayOfMonth' | 'frequency' | 'anchorMonth'>, from: ISODate): ISODate {
   let month = from.slice(0, 7);
+  // Prima del mese di riferimento non ci sono addebiti: si parte da lì.
+  if (frequencyOf(recurring) > 1 && recurring.anchorMonth! > month) month = recurring.anchorMonth!;
   for (let i = 0; i <= 12; i++, month = addMonthsId(month, 1)) {
     if (!isChargeMonth(recurring, month)) continue;
     const [y, m] = month.split('-').map(Number) as [number, number];
