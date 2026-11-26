@@ -1,7 +1,7 @@
 // R7 · Inizio del mese.
 import type { ClosingPlan } from './closing';
 import type { CalendarPeriod } from './periods';
-import type { Cents, Envelope, ISODate, MonthlyItem, Period, PotId } from './types';
+import type { Cents, Envelope, ISODate, MonthlyItem, Period, PotId, SalarySplit } from './types';
 
 /** Una voce fissa con l'importo scelto per questo mese. */
 export interface ItemQuota {
@@ -49,6 +49,28 @@ export function itemQuotas(items: readonly MonthlyItem[], amounts: Readonly<Reco
   return items.filter((i) => !i.archived).map((item) => ({ item, amount: amounts[item.id] ?? item.amount }));
 }
 
+export interface SavingsGoalCheck {
+  /** restano per le buste = disponibile − obiettivo */
+  forEnvelopes: Cents;
+  /** Risparmi = disponibile − Σ tetti (l'obiettivo è dentro) */
+  savings: Cents;
+  /** quanto dell'obiettivo si mangiano le buste (0 se Risparmi < 0: lì vale l'avviso "superano lo stipendio") */
+  eroded: Cents;
+}
+
+/** R21 · Prima i risparmi: `available` = stipendio − Spese fisse − voci (availableForEnvelopes). */
+export function savingsGoalCheck(available: Cents, goal: Cents, capsTotal: Cents): SavingsGoalCheck {
+  const g = Math.max(0, goal);
+  const savings = available - capsTotal;
+  return { forEnvelopes: available - g, savings, eroded: savings >= 0 ? Math.max(0, g - savings) : 0 };
+}
+
+/** R18 · Lo stipendio diviso in cinque parti, come deciso a "Inizia il mese". */
+export function splitOf(plan: OpeningPlan): SalarySplit {
+  const sum = (kind: MonthlyItem['kind']) => plan.items.filter((q) => q.item.kind === kind).reduce((s, q) => s + q.amount, 0);
+  return { fixed: plan.bills + plan.other, payments: sum('payment'), pots: sum('pot'), envelopes: plan.budget, savings: plan.savings };
+}
+
 export function planOpening(salary: Cents, envelopes: readonly Envelope[], items: readonly ItemQuota[], bills: Cents = 0, other: Cents = 0): OpeningPlan {
   const budget = capsTotal(envelopes);
   const fixed = items.reduce((s, q) => s + q.amount, 0);
@@ -68,6 +90,10 @@ export interface NewPeriodInput {
   otherAccounts?: Cents;
   /** tetti scelti all'"Inizio del mese" (id busta → tetto); assenti = quelli di Imposta */
   caps?: Readonly<Record<string, Cents>>;
+  /** R21: obiettivo di risparmio di questo mese (0/assente = nessuno) */
+  savingsGoal?: Cents;
+  /** R24: il proposito per questo mese */
+  intention?: string | null;
   /** piano di chiusura del periodo precedente (null per il primo periodo) */
   closing: Pick<ClosingPlan, 'nextCarryIn' | 'nextUnassigned' | 'savingsDelta'> | null;
 }
@@ -96,6 +122,10 @@ export function buildNewPeriod(input: NewPeriodInput): NewPeriodResult {
     leftoverChoice: null,
     leftovers: null,
     billsQuota,
+    split: splitOf(plan),
+    otherAccounts: input.otherAccounts ?? 0,
+    savingsGoal: Math.max(0, input.savingsGoal ?? 0),
+    ...(input.intention ? { intention: input.intention } : {}),
   };
   const potDeltas: Record<PotId, Cents> = {
     savings: plan.savings + (input.closing?.savingsDelta ?? 0),

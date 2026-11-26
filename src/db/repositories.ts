@@ -13,11 +13,12 @@ import {
 import { currentPeriod, nextPeriodToStart } from '../domain/periods';
 import { chargeToTransaction, dueCharges, recurringQuota, savedSubscriptions } from '../domain/recurring';
 import { otherAccountsRecurring } from '../domain/accounts';
+import { cleanIntention } from '../domain/insights';
 import {
   applyRepayment, canDeleteLoan, createLoanEntry, deleteLoanEntry, savingsEffect, undoRepayment as undoLoanAllocations,
 } from '../domain/loans';
 import type {
-  Bill, Card, Cents, Envelope, ISODate, Loan, LoanDirection, MonthlyItem, OtherAccount, Period, Person, Pot, PotId, Reconciliation, Recurring, Settings, Transaction,
+  Bill, Card, Cents, Envelope, IntentionOutcome, ISODate, Loan, LoanDirection, MonthlyItem, OtherAccount, Period, Person, Pot, PotId, Reconciliation, Recurring, Settings, Transaction,
 } from '../domain/types';
 import type { FinanzeDB } from './schema';
 
@@ -144,6 +145,14 @@ export interface StartPeriodInput {
   caps?: Record<string, Cents>;
   /** saldi delle Pocket ricopiati da Revolut prima dei giroconti (id salvadanaio → saldo) */
   potBalances?: Record<string, Cents>;
+  /** R21: obiettivo di risparmio di questo mese; diventa quello proposto il mese dopo */
+  savingsGoal?: Cents;
+  /** R24: proposito per il mese nuovo (scritto alla chiusura) */
+  intention?: string | null;
+  /** R24: com'è andato il proposito del mese che si chiude */
+  intentionOutcome?: IntentionOutcome | null;
+  /** R25: buste per cui alla chiusura si è scelto "Tieni il tetto" */
+  keepCaps?: string[];
   today: ISODate;
 }
 
@@ -171,6 +180,9 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
   for (const v of Object.values(input.potBalances ?? {})) {
     if (!Number.isInteger(v)) throw new Error('Saldo di una Pocket non valido');
   }
+  if (input.savingsGoal !== undefined && (!Number.isInteger(input.savingsGoal) || input.savingsGoal < 0)) {
+    throw new Error('Obiettivo di risparmio non valido');
+  }
   return db.transaction(
     'rw',
     [db.settings, db.envelopes, db.periods, db.transactions, db.recurring, db.pots, db.bills],
@@ -194,7 +206,14 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
         if (generated.length > 0) await db.transactions.bulkAdd(generated);
         await applyFundCharges(db, generated);
         closing = planClosing(preview.leftovers, preview.unassigned, input.closingOption);
-        closed = { ...open, closedAt, leftoverChoice: closing.choice, leftovers: closing.leftovers };
+        closed = {
+          ...open,
+          closedAt,
+          leftoverChoice: closing.choice,
+          leftovers: closing.leftovers,
+          closingSavings: closing.savingsDelta,
+          ...(input.intentionOutcome && open.intention ? { intentionOutcome: input.intentionOutcome } : {}),
+        };
         await db.periods.put(closed);
       }
 
@@ -217,6 +236,8 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
         envelopes: envelopesNow,
         items: itemQuotas(settings.monthlyItems, input.quotas),
         otherAccounts: otherAccountsRecurring(await db.recurring.toArray(), target),
+        savingsGoal: input.savingsGoal ?? settings.savingsGoal ?? 0,
+        intention: cleanIntention(input.intention),
         billsQuota: billsTransfer(
           bills,
           (await db.pots.get('bills'))?.balance ?? 0,
@@ -249,7 +270,12 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
       }
       // L'importo usato diventa quello proposto il mese prossimo.
       const monthlyItems = settings.monthlyItems.map((i) => (input.quotas[i.id] !== undefined ? { ...i, amount: input.quotas[i.id]! } : i));
-      await db.settings.update('settings', { monthlyItems });
+      const patch: Partial<Settings> = { monthlyItems };
+      if (input.savingsGoal !== undefined) patch.savingsGoal = input.savingsGoal;
+      if (closed && input.keepCaps && input.keepCaps.length > 0) {
+        patch.capKept = { ...(settings.capKept ?? {}), ...Object.fromEntries(input.keepCaps.map((id) => [id, closed!.id])) };
+      }
+      await db.settings.update('settings', patch);
 
       // Abbonamenti già maturati nel periodo nuovo (es. un addebito il 27).
       const due = dueCharges(await db.recurring.toArray(), period, [], input.today);
@@ -830,4 +856,25 @@ export async function removePot(db: FinanzeDB, id: string, to: FundsDestination 
 export async function setCardReserve(db: FinanzeDB, cardReserve: Cents | null): Promise<void> {
   if (cardReserve !== null && !Number.isInteger(cardReserve)) throw new Error('Riserva non valida');
   await db.settings.update('settings', { cardReserve });
+}
+
+// ── M10 · Capire dove vanno i soldi ───────────────────────────────────────────
+
+/** R23 · "Sì, li uso tutti": il prossimo controllo degli abbonamenti tra 6 mesi. */
+export async function markFixedReviewed(db: FinanzeDB, today: ISODate): Promise<void> {
+  await db.settings.update('settings', { fixedReviewedAt: today });
+}
+
+/** R25 · "Tieni il tetto" dallo Storico: il suggerimento torna solo dopo la prossima chiusura. */
+export async function keepCap(db: FinanzeDB, envelopeId: string, latestClosedId: string): Promise<void> {
+  await db.transaction('rw', [db.settings], async () => {
+    const settings = await getSettings(db);
+    await db.settings.update('settings', { capKept: { ...(settings.capKept ?? {}), [envelopeId]: latestClosedId } });
+  });
+}
+
+/** R24 · Cambia il proposito del mese aperto (vuoto = toglierlo). */
+export async function setIntention(db: FinanzeDB, periodId: string, text: string): Promise<void> {
+  const intention = cleanIntention(text);
+  await db.periods.update(periodId, { intention: intention ?? undefined });
 }

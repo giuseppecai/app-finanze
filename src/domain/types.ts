@@ -22,6 +22,12 @@ export interface Settings {
   accounts?: OtherAccount[];
   /** conto dove arriva lo stipendio; null/assente = Revolut */
   salaryAccountId?: string | null;
+  /** R21: obiettivo di risparmio proposto a inizio mese (0/assente = nessuno) */
+  savingsGoal?: Cents;
+  /** R23: data dell'ultimo controllo degli abbonamenti ("Li usi ancora tutti?") */
+  fixedReviewedAt?: ISODate | null;
+  /** R25: busta → id del periodo chiuso in cui si è scelto "Tieni il tetto" */
+  capKept?: Record<string, PeriodId>;
 }
 
 /** Conto fuori da Revolut: ci arriva lo stipendio e/o da lì escono dei pagamenti fissi (affitto, rata). */
@@ -70,7 +76,34 @@ export interface Period {
   leftovers: Record<string, Cents> | null;
   /** giroconto → Bollette fatto a inizio periodo (R13, v2) */
   billsQuota: Cents;
+  /** R18: lo stipendio diviso a "Inizia il mese" (assente nei periodi creati prima di M10) */
+  split?: SalarySplit;
+  /** abbonamenti del mese pagati da altri conti (parte di split.fixed) */
+  otherAccounts?: Cents;
+  /** R18: variazione di Risparmi alla chiusura di questo periodo */
+  closingSavings?: Cents;
+  /** R21: obiettivo di risparmio scelto per questo mese */
+  savingsGoal?: Cents;
+  /** R24: il proposito per questo mese e com'è andata */
+  intention?: string;
+  intentionOutcome?: IntentionOutcome;
 }
+
+/** R18 · Dove va lo stipendio, deciso a "Inizia il mese". */
+export interface SalarySplit {
+  /** giroconto → Spese fisse + abbonamenti da altri conti */
+  fixed: Cents;
+  /** pagamenti (affitto) */
+  payments: Cents;
+  /** quote delle Pocket (Viaggi, Regali…) */
+  pots: Cents;
+  /** Budget del mese */
+  envelopes: Cents;
+  /** a Risparmi a inizio mese (negativo se lo stipendio non copre) */
+  savings: Cents;
+}
+
+export type IntentionOutcome = 'done' | 'partly' | 'no';
 
 export type TxType = 'expense' | 'refund' | 'income' | 'loan' | 'loanRepayment' | 'debt' | 'debtRepayment';
 export type Card = 'quotidiano' | 'extra';
@@ -100,6 +133,8 @@ export interface Transaction {
   /** pagato da un altro conto (es. rata iPhone da Isybank) e, se il conto ne ha più di una, con quale carta */
   accountId?: string | null;
   accountCardId?: string | null;
+  /** R22: spesa d'impulso */
+  impulse?: boolean;
   createdAt: string;
 }
 
