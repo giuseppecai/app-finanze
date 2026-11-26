@@ -91,7 +91,7 @@ Elenco raggruppato come le Impostazioni di iOS: titoletti di gruppo grigi, card 
 
 - **Buste**: un'unica card con **un solo elenco** di buste (nessuna distinzione tra da spendere e impegnate). Riga: nome, sotto "In media € X" (R10, arancione "In media € X: tetto basso" se sopra il tetto), stepper − € tetto + (passo 5 €). Poi "+ Nuova busta" (pannello dal basso) e la riga di riepilogo "Totale buste € 700" ("+ € X rispetto a prima"). Nota: "Le modifiche valgono da questo mese."
 - **Barra di salvataggio**: compare solo con modifiche alle buste, fissa sopra la tab bar: anteprima del giroconto ("Dopo il salvataggio sposta € X da Risparmi a Budget del mese"), **Annulla** e **Salva le buste**.
-- **Inizio del mese**: "Il mese inizia · il 27" (selettore, salva subito), una riga per voce fissa (nome, "Salvadanaio"/"Uscita fissa", importo ›: tocco → pannello per nome, importo, togli/rimetti), riga "Bollette · € 79/mese ›" → `/bollette`, "+ Nuova voce fissa", e in fondo la riga **"Totale inizio mese"** (buste + voci fisse + giroconto Bollette, quest'ultimo al netto di quello che c'è già nella Pocket).
+- **Il mese**: "Il mese inizia · il 27" (selettore, salva subito) e la riga **"Chiudi novembre e inizia dicembre ›"** (o "Inizia dicembre ›" senza un mese aperto) che apre "Inizia il mese" in qualsiasi giorno. Voci fisse, spese fisse e buste del mese non si ripetono qui: si decidono dentro "Inizia il mese" (dove le voci fisse hanno anche "Modifica" per rinominarle o toglierle).
 - **Salvadanai e carte**: una riga per salvadanaio e la riserva carte, in sola lettura; tocco → pannello per correggere il saldo.
 - **Backup**: "Esporta backup" (con data dell'ultimo) e "Importa backup".
 

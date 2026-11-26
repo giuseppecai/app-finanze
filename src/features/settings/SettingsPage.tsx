@@ -11,12 +11,9 @@ import { SegmentedControl } from '../../components/SegmentedControl';
 import { Stepper } from '../../components/Stepper';
 import { db } from '../../db/database';
 import { newId, saveEnvelopes, updateSettings } from '../../db/repositories';
-import { billsQuotaTotal, billsTransfer } from '../../domain/bills';
-import { capsTotal } from '../../domain/opening';
 import { today } from '../../domain/clock';
-import { nextOpeningId } from '../../domain/periods';
+import { nextOpeningId, periodName } from '../../domain/periods';
 import { formatEuro } from '../../domain/money';
-import { savedSubscriptions } from '../../domain/recurring';
 import { potLines } from '../../domain/pots';
 import { suggestSymbol, symbolFor } from '../../domain/symbols';
 import {
@@ -24,13 +21,12 @@ import {
   type CapsChange, type DestinationOption, type FundsDestination,
 } from '../../domain/settings';
 import { averageSpending } from '../../domain/stats';
-import type { Bill, Cents, Envelope, EnvelopeKind, MonthlyItem, Period, Recurring, Settings, Transaction } from '../../domain/types';
+import type { Cents, Envelope, EnvelopeKind, Period, Recurring, Settings, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { PotsGroup } from './DataSection';
 import { daysAgo } from '../../domain/movements';
 import { localISODate } from '../../domain/dates';
 import { EnvelopeCapSheet, type CapTarget } from './EnvelopeCapSheet';
-import { MonthlyItemSheet } from './MonthlyItemSheet';
 
 type NewEnvelope = { id: string; name: string; shortName: string; kind: EnvelopeKind; cap: Cents; icon: string };
 
@@ -73,7 +69,7 @@ export function SettingsPage() {
         message={message}
         setMessage={setMessage}
       />
-      <MonthGroup settings={settings} bills={bills} recurring={recurring} envelopes={envelopes} billsBalance={pots.find((p) => p.id === 'bills')?.balance ?? 0} opening={nextOpeningId(periods, today(), settings.periodStartDay)} />
+      <MonthGroup settings={settings} current={current} nextName={periodName(nextOpeningId(periods, today(), settings.periodStartDay)).toLowerCase()} />
       <PotsGroup settings={settings} />
       <section className="group" aria-labelledby="data-title">
         <h2 id="data-title" className="group__title">{it.settings.dataTitle}</h2>
@@ -391,17 +387,12 @@ function NewEnvelopeForm({ onAdd }: { onAdd: (e: NewEnvelope) => void }) {
   );
 }
 
-type MonthGroupProps = { settings: Settings; bills: Bill[]; recurring: Recurring[]; envelopes: Envelope[]; billsBalance: Cents; opening: string };
-
-function MonthGroup({ settings, bills, recurring, envelopes, billsBalance, opening }: MonthGroupProps) {
-  const [target, setTarget] = useState<MonthlyItem | 'new' | null>(null);
-  const activeBills = bills.filter((b) => b.active);
-  // Totale di inizio mese: buste (+ abbonamenti pagati tutti quel mese) + voci fisse + giroconto Bollette
-  // (al netto di quello che c'è già nella Pocket, abbonamenti accantonati compresi).
-  const subs = savedSubscriptions(recurring, opening, settings.periodStartDay);
-  const transfer = billsTransfer(bills, billsBalance, opening, subs);
-  const itemsTotal = settings.monthlyItems.filter((i) => !i.archived).reduce((s, i) => s + i.amount, 0);
-  const total = capsTotal(envelopes) + itemsTotal + transfer.amount;
+/**
+ * "Il mese": quando inizia e l'ingresso a "Inizia il mese". Voci fisse, spese fisse e buste del mese
+ * si decidono dentro "Inizia il mese", passo per passo: qui non si ripetono.
+ */
+function MonthGroup({ settings, current, nextName }: { settings: Settings; current: Period | null; nextName: string }) {
+  const to = current ? routes.closing : `${routes.opening}`;
   return (
     <section className="group" aria-labelledby="month-title">
       <h2 id="month-title" className="group__title">{it.settings.monthTitle}</h2>
@@ -421,45 +412,17 @@ function MonthGroup({ settings, bills, recurring, envelopes, billsBalance, openi
             </select>
           </span>
         </li>
-        {settings.monthlyItems.map((item) => (
-          <li key={item.id}>
-            <button type="button" className="list-row list-row--button" onClick={() => setTarget(item)}>
-              <Tile symbol={symbolFor(item)} />
-              <span className="list-row__text">
-                <span className={item.archived ? 'list-row__title is-muted' : 'list-row__title'}>{item.name}</span>
-                <span className="list-row__detail">
-                  {item.kind === 'pot' ? it.items.toPot : it.items.kindPayment}{item.archived ? ` · ${it.settings.archived}` : ''}
-                </span>
-              </span>
-              <span className={item.archived ? 'list-row__value is-muted' : 'list-row__value'}>{formatEuro(item.amount)}<small>{it.casa.perMonthShort}</small></span>
-              <IconChevronRight className="list-row__chevron" />
-            </button>
-          </li>
-        ))}
         <li>
-          <Link to={routes.bills} className="list-row list-row--button">
-            <Tile symbol="receipt" />
+          <Link to={to} className="list-row list-row--button">
+            <Tile symbol="wallet" />
             <span className="list-row__text">
-              <span className="list-row__title">{it.settings.billsRow}</span>
-              <span className="list-row__detail">{it.settings.billsDetail(activeBills.length + recurring.filter((r) => r.active).length)}</span>
+              <span className="list-row__title">{current ? it.settings.closeAndStart(current.name.toLowerCase(), nextName) : it.settings.startMonth(nextName)}</span>
+              <span className="list-row__detail">{it.settings.startMonthDetail}</span>
             </span>
-            <span className="list-row__value">{formatEuro(billsQuotaTotal(bills, opening) + subs.quota)}<small>{it.casa.perMonthShort}</small></span>
             <IconChevronRight className="list-row__chevron" />
           </Link>
         </li>
-        <li>
-          <button type="button" className="list-row list-row--action" onClick={() => setTarget('new')}><IconPlus size={20} />{it.items.add.replace('+ ', '')}</button>
-        </li>
-        <li className="list-row list-row--total">
-          <span className="list-row__text">
-            <span className="list-row__title">{it.settings.monthTotal}</span>
-            <span className="list-row__detail">{it.settings.monthTotalNote(transfer.credit > 0 && transfer.quota > 0 ? formatEuro(Math.min(transfer.credit, transfer.quota)) : null)}</span>
-          </span>
-          <span className="list-row__total">{formatEuro(total)}</span>
-        </li>
       </ul>
-      <p className="group__footer">{it.settings.monthHint}</p>
-      <MonthlyItemSheet target={target} onClose={() => setTarget(null)} />
     </section>
   );
 }

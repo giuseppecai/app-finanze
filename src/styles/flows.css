@@ -422,3 +422,7 @@
 }
 .opening-nav .outcome__button { min-height: 52px; }
 .opening-nav__next { flex-grow: 1; }
+.opening-item { display: flex; flex-direction: column; gap: 4px; }
+.opening-item .opening-edit { align-self: flex-end; }
+.opening-pot__head .opening-edit { margin-left: auto; }
+.opening-edit { min-height: 44px; padding: 0 4px; border: none; background: none; font-size: 14px; font-weight: 600; color: var(--accent); }

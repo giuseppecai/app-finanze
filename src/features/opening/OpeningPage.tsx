@@ -23,7 +23,7 @@ import { nextPeriodToStart } from '../../domain/periods';
 import { potLines, type PotLine } from '../../domain/pots';
 import { symbolFor } from '../../domain/symbols';
 import { frequencyOf, recurringQuota, savedSubscriptions } from '../../domain/recurring';
-import type { Bill, Cents, Envelope, Period, Recurring, Settings, Transaction } from '../../domain/types';
+import type { Bill, Cents, Envelope, MonthlyItem, Period, Recurring, Settings, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { MonthlyItemSheet } from '../settings/MonthlyItemSheet';
 
@@ -97,7 +97,8 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   const [balanceTexts, setBalanceTexts] = useState<Record<string, string>>(() => Object.fromEntries(pots.map((p) => [p.id, amountText(p.balance)])));
   /** tetti delle buste scelti per questo mese (id → centesimi), partono da quelli di Imposta */
   const [caps, setCaps] = useState<Record<string, Cents>>(() => Object.fromEntries(activeEnvelopes(envelopes).map((e) => [e.id, e.cap])));
-  const [newItem, setNewItem] = useState(false);
+  /** voce fissa da creare o modificare (rinominare, togliere): si gestiscono qui, non più in Imposta */
+  const [itemTarget, setItemTarget] = useState<MonthlyItem | 'new' | null>(null);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -205,6 +206,15 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
     }
   }
 
+  const editButton = (id: string, name: string) => {
+    const item = settings.monthlyItems.find((i) => i.id === id);
+    return item ? (
+      <button type="button" className="text-link opening-edit" aria-label={it.opening.editItem(name)} onClick={() => setItemTarget(item)}>
+        {it.opening.edit}
+      </button>
+    ) : null;
+  };
+
   const amountInput = (id: string, label: string, value: Cents) => (
     <AmountField
       id={`item-${id}`}
@@ -266,7 +276,12 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
             <>
               <h3 className="group-label">{it.opening.paymentsTitle}</h3>
               <div className="card opening-fields">
-                {payments.map((q) => <div key={q.item.id}>{amountInput(q.item.id, q.item.name, q.amount)}</div>)}
+                {payments.map((q) => (
+                  <div key={q.item.id} className="opening-item">
+                    {amountInput(q.item.id, q.item.name, q.amount)}
+                    {editButton(q.item.id, q.item.name)}
+                  </div>
+                ))}
               </div>
             </>
           ) : null}
@@ -286,6 +301,7 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
                   <span className="opening-pot__head">
                     <Tile symbol={symbolFor(p)} tone={p.id === "savings" ? "save-1" : "save-2"} size="sm" />
                     <span className="opening-list__name">{p.name}</span>
+                    {q ? editButton(q.item.id, p.name) : null}
                   </span>
                   <div className="recurring-form__grid">
                     <AmountField
@@ -316,7 +332,7 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
               );
             })}
           </ul>
-          <button type="button" className="list-row list-row--action" onClick={() => setNewItem(true)}>
+          <button type="button" className="list-row list-row--action" onClick={() => setItemTarget('new')}>
             <IconPlus size={20} />{it.opening.addItem}
           </button>
         </section>
@@ -382,7 +398,7 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
       ) : null}
 
       {error ? <InfoBox>{error}</InfoBox> : null}
-      <MonthlyItemSheet target={newItem ? 'new' : null} onClose={() => setNewItem(false)} />
+      <MonthlyItemSheet target={itemTarget} onClose={() => setItemTarget(null)} />
       <div className="flow__spacer" />
       <div className="opening-nav">
         {index > 0 ? (
