@@ -533,7 +533,7 @@ export const it = {
     evenTitle: 'Pari: niente avanzi e niente sforamenti.',
     suggestion: (env: string, over: number, months: number, avg: string) =>
       `${env} ha sforato in ${over} mesi su ${months}, in media di ${avg}. Forse il tetto è basso.`,
-    raiseCap: (amount: string) => `Porta il tetto a ${amount}`,
+    raiseCap: (amount: string) => `Alza a ${amount}`,
     capRaised: (env: string, amount: string) => `Tetto di ${env} portato a ${amount} dal prossimo mese.`,
     continue: 'Continua: assegna lo stipendio',
   },
@@ -682,7 +682,7 @@ export const it = {
     oftenOver: (name: string) => `${name} sfora spesso`,
     oftenOverText: (over: number, months: number, avg: string, cap: string) =>
       `${over} mesi su ${months}, in media di ${avg}. Con un tetto di ${cap} sarebbe realistica.`,
-    raiseCap: (amount: string) => `Porta il tetto a ${amount}`,
+    raiseCap: (amount: string) => `Alza a ${amount}`,
   },
 
   funds: {
@@ -809,8 +809,13 @@ export const it = {
     todayNothing: 'Niente da spendere fino allo stipendio',
     todayDays: (n: number) => (n === 1 ? 'ultimo giorno' : `mancano ${n} giorni`),
     week: (amount: string) => `Questa settimana ${amount}`,
-    lastWeek: (amount: string) => `la scorsa ${amount}`,
+    lastWeek: (amount: string) => `la scorsa a oggi ${amount}`,
     paceLabel: 'Il ritmo',
+    todayLabel: 'Oggi puoi spendere',
+    todayOverLabel: 'Oggi sei oltre di',
+    todayNothingShort: 'fino allo stipendio',
+    todaySpentOf: (spent: string, quota: string) => `spesi ${spent} di ${quota}`,
+    weekLabel: 'Questa settimana',
     // R24 · proposito
     intentionOf: (month: string) => `Il proposito di ${month}`,
     intentionQuestion: (month: string) => `Una cosa da fare diversamente a ${month}?`,
@@ -832,8 +837,10 @@ export const it = {
     wholeLabel: (month: string) => `Come hai diviso lo stipendio di ${month}`,
     parts: { fixed: 'Spese fisse', payments: 'Pagamenti', pots: 'Pocket', envelopes: 'Buste', savings: 'Risparmi' } as Record<string, string>,
     saved: (amount: string) => `Risparmiato ${amount}`,
+    savedLabel: 'Risparmiato',
+    ofSalary: 'dello stipendio',
     savedRate: (rate: number) => `${rate}% dello stipendio`,
-    savedNothing: 'Questo mese non hai messo niente da parte.',
+    savedNothing: 'Niente, questo mese',
     savedClosing: (amount: string) => `alla chiusura ${amount}`,
     savedInProgress: 'più l’avanzo, se ci sarà',
     goal: (goal: string, put: string) => `Obiettivo ${goal} · messi ${put}`,
@@ -856,8 +863,8 @@ export const it = {
     searchEmpty: (q: string) => `Nessun movimento con “${q}”.`,
     searchShort: 'Scrivi almeno 2 lettere.',
     // R23 · in un anno
-    yearTitle: 'In un anno',
-    yearText: (subs: string, bills: string) => `Abbonamenti ${subs} · bollette ${bills}`,
+    yearTitle: 'Quanto costano in un anno',
+    yearText: (subs: string, bills: string) => `abbonamenti ${subs} · bollette ${bills}`,
     yearItem: (amount: string) => `${amount} l’anno`,
     reviewTitle: 'Li usi ancora tutti?',
     reviewText: (amount: string) => `Gli abbonamenti ti costano ${amount} l’anno. Tocca quelli che non usi più per metterli in pausa o eliminarli.`,

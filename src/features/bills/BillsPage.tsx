@@ -183,26 +183,34 @@ export function BillsPage() {
 function YearCard({ recurring, bills, onOpen }: { recurring: Recurring[]; bills: Bill[]; onOpen: (r: Recurring) => void }) {
   const a = annualCost(recurring, bills);
   if (a.total === 0) return null;
+  const max = a.list[0]?.yearly ?? 0;
   return (
-    <section className="sec" aria-labelledby="year-title">
-      <div className="sec-head">
-        <h2 id="year-title">{it.insights.yearTitle}</h2>
-        <span className="sec-total">{formatEuro(a.total)}</span>
+    <section className="recurring-list-section" aria-labelledby="year-title">
+      <h2 id="year-title" className="group-label">{it.insights.yearTitle}</h2>
+      <div className="card year-card">
+        <div className="year-card__head">
+          <span className="year-card__total">{formatEuro(a.total)}</span>
+          <span className="year-card__split">{it.insights.yearText(formatEuro(a.subscriptions), formatEuro(a.bills))}</span>
+        </div>
+        {a.list.length > 0 ? (
+          <ul className="year-list">
+            {a.list.map(({ recurring: r, yearly }) => (
+              <li key={r.id}>
+                <button type="button" className="year-list__row" onClick={() => onOpen(r)} aria-label={`${r.name}: ${it.insights.yearItem(formatEuro(yearly))}`}>
+                  <span className="year-list__body">
+                    <span className="year-list__top">
+                      <span className="year-list__name">{r.name}</span>
+                      <span className="year-list__amount">{formatEuro(yearly)}</span>
+                    </span>
+                    <span className="year-list__bar" aria-hidden="true"><i style={{ width: `${max > 0 ? (yearly / max) * 100 : 0}%` }} /></span>
+                  </span>
+                  <IconChevronRight className="chev" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
-      <p className="muted-note">{it.insights.yearText(formatEuro(a.subscriptions), formatEuro(a.bills))}</p>
-      {a.list.length > 0 ? (
-        <ul className="card year-list">
-          {a.list.map(({ recurring: r, yearly }) => (
-            <li key={r.id}>
-              <button type="button" className="year-list__row" onClick={() => onOpen(r)}>
-                <span className="year-list__name">{r.name}</span>
-                <span className="year-list__amount">{it.insights.yearItem(formatEuro(yearly))}</span>
-                <IconChevronRight className="chev" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
     </section>
   );
 }

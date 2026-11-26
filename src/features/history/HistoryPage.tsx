@@ -141,7 +141,7 @@ export function HistoryPage() {
             periodIds={lastClosed}
             // Un solo modo per cambiare un tetto: il pannello di Imposta, con il tetto suggerito già scritto
             raise={
-              <Link to={`${routes.settings}?busta=${encodeURIComponent(envelope.id)}&tetto=${s.suggestedCap}`} className="insight__action">
+              <Link to={`${routes.settings}?busta=${encodeURIComponent(envelope.id)}&tetto=${s.suggestedCap}`} className="insight__action insight__action--primary">
                 {it.history.raiseCap(formatEuro(s.suggestedCap))}
               </Link>
             }

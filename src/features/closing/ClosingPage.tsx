@@ -161,7 +161,7 @@ function Closing({ period, envelopes, periods, recurring, txs }: Props) {
             suggestion={s}
             periodIds={keepPeriods}
             raise={
-              <button type="button" className="insight__action" onClick={() => void raiseCap(envelope, s.suggestedCap)}>
+              <button type="button" className="insight__action insight__action--primary" onClick={() => void raiseCap(envelope, s.suggestedCap)}>
                 {it.closing.raiseCap(formatEuro(s.suggestedCap))}
               </button>
             }

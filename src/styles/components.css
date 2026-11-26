@@ -671,14 +671,19 @@
 .insight__action:active { background: var(--surface-press); }
 
 /* M10 · Il ritmo (Home) e il proposito del mese */
-.pace-strip { margin-top: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
-.pace-strip__today { margin: 0; font-size: 17px; font-weight: 640; }
-.pace-strip__today.is-over { color: var(--state-over-text); }
-.pace-strip__days, .pace-strip__muted { font-weight: 450; color: var(--text-muted); font-size: 14px; }
-.pace-strip__week { margin: 0; font-size: 15px; }
-.intention-card { margin-top: 12px; padding: 14px 16px; background: var(--save-soft); box-shadow: none; }
-.intention-card__label { margin: 0; font-size: 13px; font-weight: 600; color: var(--save-1); }
-.intention-card__text { margin: 4px 0 0; font-size: 16px; line-height: 1.35; color: var(--text); }
+.pace-strip { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pace-tile { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: var(--radius-card); background: var(--surface); min-width: 0; }
+.pace-tile__k { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+.pace-tile__v { font-size: var(--fs-amount-l); font-weight: 680; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.pace-tile__n { font-size: 12.5px; color: var(--text-muted); }
+.pace-tile.is-over { background: var(--state-over-soft); }
+.pace-tile.is-over .pace-tile__k, .pace-tile.is-over .pace-tile__v { color: var(--state-over-text); }
+.pace-tile__n.is-more { color: var(--state-low-text); }
+.intention-card { margin-top: 12px; padding: 14px 16px; background: var(--save-soft); }
+.intention-card--row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.intention-card--row > span:last-child { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.intention-card__label { display: block; margin: 0; font-size: 12.5px; font-weight: 600; color: var(--save-1); }
+.intention-card__text { display: block; margin: 2px 0 0; font-size: 15.5px; font-weight: 560; line-height: 1.35; color: var(--text); }
 
 /* R22 · D'impulso, accanto alla nota */
 .entry__note-row { display: flex; flex-direction: row; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -686,6 +691,7 @@
 .entry__note-row .text-input { flex: 1; min-width: 0; }
 .impulse-toggle {
   flex: none; min-height: var(--touch); padding: 0 14px; border: none; border-radius: 12px;
+  display: inline-flex; align-items: center; gap: 6px;
   background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); color: var(--text-muted);
   font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
 }
@@ -702,7 +708,10 @@
 .search-field__hint { margin: 6px 0 0; font-size: 13px; color: var(--text-muted); }
 
 /* R25 · Tetto: alzare o tenere */
-.insight__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.insight__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.insight__actions .insight__action { margin-top: 0; }
+.insight__action--primary { background: var(--accent); box-shadow: none; color: #fff; }
+.insight__action--primary:active { background: var(--accent-press); }
 .keep-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .keep-list li { display: flex; align-items: baseline; gap: 8px; font-size: 15px; }
 .keep-list__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

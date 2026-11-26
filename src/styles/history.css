@@ -143,13 +143,22 @@
 .whole__value { font-weight: 640; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .whole__value.is-over { color: var(--state-over-text); }
 .whole__pct { display: inline-block; min-width: 40px; margin-left: 8px; text-align: right; font-weight: 450; font-size: 13px; color: var(--text-muted); }
-.whole__saved { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--money-in-soft); }
-.whole__saved-main { margin: 0; font-weight: 640; color: var(--money-in); }
-.whole__saved-main span { font-weight: 500; }
-.whole__saved-note { margin: 2px 0 0; font-size: 13.5px; color: var(--text-muted); }
+.whole__saved { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--money-in-soft); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.whole__saved-body { min-width: 0; }
+.whole__saved-k { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--money-in); }
+.whole__saved-main { margin: 1px 0 0; font-size: var(--fs-amount-l); font-weight: 680; letter-spacing: -0.02em; color: var(--money-in); font-variant-numeric: tabular-nums; }
+.whole__saved-note { margin: 2px 0 0; font-size: 12.5px; color: var(--text-muted); }
 .whole__saved-note:empty { display: none; }
+.whole__rate { margin: 0; flex: none; display: flex; flex-direction: column; align-items: flex-end; }
+.whole__rate-v { font-size: 30px; font-weight: 720; letter-spacing: -0.03em; line-height: 1; color: var(--money-in); font-variant-numeric: tabular-nums; }
+.whole__rate-k { margin-top: 3px; font-size: 12px; color: var(--text-muted); }
 .whole__saved.is-over { background: var(--state-over-soft); }
-.whole__saved.is-over .whole__saved-main { color: var(--state-over-text); }
+.whole__saved.is-over .whole__saved-k, .whole__saved.is-over .whole__saved-main, .whole__saved.is-over .whole__rate-v { color: var(--state-over-text); }
+.whole__saved.is-zero { background: var(--surface-sunk); }
+.whole__saved.is-zero .whole__saved-k, .whole__saved.is-zero .whole__saved-main { color: var(--text-muted); }
+.whole__goal { margin: 8px 2px 0; font-size: 13px; color: var(--text-muted); }
+.whole__goal strong { color: var(--state-low-text); font-weight: 600; }
+.whole__goal.is-reached strong { color: var(--money-in); }
 
 .rate-trend { margin-top: 16px; }
 .rate-trend__title { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
@@ -175,6 +184,7 @@
 .is-top .when__label { color: var(--text); font-weight: 600; }
 
 /* R24 · Esito del proposito */
+.intention-card--row .outcome-chip { margin: 0 0 0 auto; flex: none; }
 .outcome-chip { display: inline-block; margin-top: 8px; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: var(--surface); }
 .outcome-chip--done { color: var(--done-text); }
 .outcome-chip--partly { color: var(--state-low-text); }

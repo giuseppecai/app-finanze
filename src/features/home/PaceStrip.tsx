@@ -29,30 +29,29 @@ export function PaceStrip({ period, txs, balances, spendable, today }: Props) {
   const a = todayAllowance({ spendable, spentToday, today, calendarEnd: period.calendarEnd });
   const week = weekSpending(recent, today);
 
-  let main: string;
-  let tone = '';
-  if (a.nothing) {
-    main = it.insights.todayNothing;
-    tone = ' is-over';
-  } else if (a.left < 0) {
-    main = it.insights.todayOver(formatEuro(-a.left, { decimals: 'always' }));
-    tone = ' is-over';
-  } else if (a.spentToday > 0) {
-    main = it.insights.todayProgress(formatEuro(a.spentToday, { decimals: 'always' }), formatEuro(a.quota, { decimals: 'always' }));
-  } else {
-    main = it.insights.todayQuota(formatEuro(a.quota, { decimals: 'always' }));
-  }
+  // Riquadro "Oggi": il numero è quanto resta oggi; sotto, su quanto e per quanti giorni.
+  const over = a.nothing || a.left < 0;
+  const todayValue = a.nothing ? formatEuro(0) : formatEuro(Math.abs(a.left), { decimals: 'always' });
+  const todayLabel = a.nothing ? it.insights.todayLabel : a.left < 0 ? it.insights.todayOverLabel : it.insights.todayLabel;
+  const todayNote = a.nothing
+    ? it.insights.todayNothingShort
+    : a.spentToday > 0
+      ? it.insights.todaySpentOf(formatEuro(a.spentToday), formatEuro(a.quota))
+      : it.insights.todayDays(a.daysLeft);
+  const diff = week.thisWeek - week.lastWeek;
 
   return (
-    <section className="card pace-strip" aria-label={it.insights.paceLabel}>
-      <p className={`pace-strip__today${tone}`}>
-        {main}
-        {!a.nothing ? <span className="pace-strip__days"> · {it.insights.todayDays(a.daysLeft)}</span> : null}
-      </p>
-      <p className="pace-strip__week">
-        {it.insights.week(formatEuro(week.thisWeek))}
-        <span className="pace-strip__muted"> · {it.insights.lastWeek(formatEuro(week.lastWeek))}</span>
-      </p>
+    <section className="pace-strip" aria-label={it.insights.paceLabel}>
+      <div className={over ? 'pace-tile is-over' : 'pace-tile'}>
+        <span className="pace-tile__k">{todayLabel}</span>
+        <span className="pace-tile__v">{todayValue}</span>
+        <span className="pace-tile__n">{todayNote}</span>
+      </div>
+      <div className="pace-tile">
+        <span className="pace-tile__k">{it.insights.weekLabel}</span>
+        <span className="pace-tile__v">{formatEuro(week.thisWeek)}</span>
+        <span className={diff > 0 ? 'pace-tile__n is-more' : 'pace-tile__n'}>{it.insights.lastWeek(formatEuro(week.lastWeek))}</span>
+      </div>
     </section>
   );
 }

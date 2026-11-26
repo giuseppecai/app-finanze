@@ -10,6 +10,7 @@ import { IconCalendar } from '../../components/icons';
 import { InfoBox } from '../../components/InfoBox';
 import { Keypad } from '../../components/Keypad';
 import { SegmentedControl } from '../../components/SegmentedControl';
+import { SymbolIcon } from '../../components/Symbol';
 import { TopBar, useCloseScreen } from '../../components/TopBar';
 import { useConfirmSheet } from '../../components/ConfirmPanel';
 import { announce } from '../../components/Toast';
@@ -356,6 +357,7 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
             title={it.insights.impulseHint}
             onClick={() => setImpulse((v) => !v)}
           >
+            <SymbolIcon id="zap" size={16} />
             {it.insights.impulseToggle}
           </button>
         ) : null}

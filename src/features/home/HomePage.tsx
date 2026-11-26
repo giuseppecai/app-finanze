@@ -6,6 +6,7 @@ import { EnvelopeRow } from '../../components/EnvelopeRow';
 import { IconCalendar, IconCompare } from '../../components/icons';
 import { PageHeader } from '../../components/PageHeader';
 import { PotsCard } from '../../components/PotsCard';
+import { Tile } from '../../components/Symbol';
 import { billsToRegister } from '../../domain/bills';
 import { today } from '../../domain/clock';
 import { formatShortRange } from '../../domain/dates';
@@ -152,9 +153,12 @@ function CurrentPeriod({ period, envelopes, cardReserve, pots }: { period: Perio
       <PaceStrip period={period} txs={txs} balances={summary.balances} spendable={summary.spendable} today={now} />
 
       {period.intention ? (
-        <section className="card intention-card" aria-label={it.insights.intentionOf(period.name.toLowerCase())}>
-          <p className="intention-card__label">{it.insights.intentionOf(period.name.toLowerCase())}</p>
-          <p className="intention-card__text">«{period.intention}»</p>
+        <section className="card intention-card intention-card--row" aria-label={it.insights.intentionOf(period.name.toLowerCase())}>
+          <Tile symbol="star" tone="save-1" size="sm" />
+          <span>
+            <span className="intention-card__label">{it.insights.intentionOf(period.name.toLowerCase())}</span>
+            <span className="intention-card__text">{period.intention}</span>
+          </span>
         </section>
       ) : null}
 

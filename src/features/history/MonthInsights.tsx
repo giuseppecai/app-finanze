@@ -45,7 +45,7 @@ export function WholeMonth({ period, trend, items }: { period: Period; trend: Pe
           {PARTS.map((p) => (share(m.split[p.key]) > 0 ? <i key={p.key} style={{ flexGrow: share(m.split[p.key]), background: p.color }} /> : null))}
         </div>
         <ul className="whole__legend">
-          {PARTS.map((p) => {
+          {PARTS.filter((p) => m.split[p.key] !== 0 || p.key === 'savings').map((p) => {
             const v = m.split[p.key];
             return (
               <li key={p.key}>
@@ -59,28 +59,30 @@ export function WholeMonth({ period, trend, items }: { period: Period; trend: Pe
           })}
         </ul>
 
-        <div className={m.saved < 0 ? 'whole__saved is-over' : 'whole__saved'}>
-          {m.saved === 0 ? (
-            <p className="whole__saved-main">{it.insights.savedNothing}</p>
-          ) : (
-            <p className="whole__saved-main">
-              {it.insights.saved(formatEuro(m.saved))}
-              {m.rate !== null ? <span> · {it.insights.savedRate(m.rate)}</span> : null}
-            </p>
-          )}
-          <p className="whole__saved-note">
-            {period.closedAt === null
-              ? it.insights.savedInProgress
-              : closing !== 0
-                ? it.insights.savedClosing(signed(closing))
-                : null}
-          </p>
-          {m.goal > 0 ? (
+        <div className={m.saved < 0 ? 'whole__saved is-over' : m.saved === 0 ? 'whole__saved is-zero' : 'whole__saved'}>
+          <div className="whole__saved-body">
+            <p className="whole__saved-k">{it.insights.savedLabel}</p>
+            <p className="whole__saved-main">{m.saved === 0 ? it.insights.savedNothing : formatEuro(m.saved)}</p>
             <p className="whole__saved-note">
-              {it.insights.goal(formatEuro(m.goal), formatEuro(m.split.savings))} · {m.goalReached ? it.insights.goalReached : it.insights.goalMissed}
+              {period.closedAt === null
+                ? it.insights.savedInProgress
+                : closing !== 0
+                  ? it.insights.savedClosing(signed(closing))
+                  : null}
+            </p>
+          </div>
+          {m.rate !== null && m.saved !== 0 ? (
+            <p className="whole__rate">
+              <span className="whole__rate-v">{m.rate}%</span>
+              <span className="whole__rate-k">{it.insights.ofSalary}</span>
             </p>
           ) : null}
         </div>
+        {m.goal > 0 ? (
+          <p className={m.goalReached ? 'whole__goal is-reached' : 'whole__goal'}>
+            {it.insights.goal(formatEuro(m.goal), formatEuro(m.split.savings))} · <strong>{m.goalReached ? it.insights.goalReached : it.insights.goalMissed}</strong>
+          </p>
+        ) : null}
 
         {rates.length > 1 ? (
           <div className="rate-trend" aria-label={it.insights.rateTrend}>
@@ -150,9 +152,12 @@ export function WhenCard({ txs }: { txs: Transaction[] }) {
 export function IntentionCard({ period }: { period: Period }) {
   if (!period.intention) return null;
   return (
-    <div className="card intention-card sec">
-      <p className="intention-card__label">{it.insights.intentionOf(monthName(period.id))}</p>
-      <p className="intention-card__text">«{period.intention}»</p>
+    <div className="card intention-card intention-card--row sec">
+      <Tile symbol="star" tone="save-1" size="sm" />
+      <span>
+        <span className="intention-card__label">{it.insights.intentionOf(monthName(period.id))}</span>
+        <span className="intention-card__text">{period.intention}</span>
+      </span>
       {period.intentionOutcome ? (
         <span className={`outcome-chip outcome-chip--${period.intentionOutcome}`}>{it.insights.outcomes[period.intentionOutcome]}</span>
       ) : null}
