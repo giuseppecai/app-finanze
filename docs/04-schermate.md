@@ -142,3 +142,11 @@ Poi "Inizio del mese" per creare il primo periodo, e suggerimento di aggiungere 
 - **Inizia il mese**, passo Buste: in cima il campo **"Prima metti da parte"** (R21); la card scura diventa "Ti restano per le buste" al netto dell'obiettivo; avviso ambra se le buste erodono l'obiettivo.
 - **Spese fisse**: card **"In un anno"** con totale, abbonamenti/bollette e gli abbonamenti dal più caro; avviso **"Li usi ancora tutti?"** ogni 6 mesi (R23).
 - **Imposta**: riga **"Come funziona"** (gruppo Aiuto) → schermata `/come-funziona`: il modello in 5 righe e il glossario dei nomi (R7 · Nomi). In tutta l'app "voce fissa" sparisce: si dice **Pocket** (con quota) o **Pagamento** (affitto).
+
+### Spese fisse e pagamenti (dicembre 2026)
+
+- I **pagamenti** come l'affitto sono spese fisse: compaiono nella schermata **Spese fisse** (riga con il simbolo, "Pagamento · ogni mese · dallo stipendio", tocco → pannello per cambiare importo, sospendere, togliere) e si creano da **+ Aggiungi → Pagamento**. La card scura somma tutto ("Nella Pocket € X · pagamenti dallo stipendio € Y"); "Quanto costano in un anno" li comprende.
+- **Imposta → Il mese** ha la riga **Spese fisse** ("N voci · circa € X al mese") che apre la schermata.
+- **Inizia il mese, passo Spese**: un solo elenco (abbonamenti, bollette, pagamenti) in sola lettura, con totale "In tutto". In alto il pulsante **Modifica**: ogni voce diventa toccabile e apre il suo pannello (anche quelle con quota 0 questo mese e quelle sospese), più "Aggiungi una spesa fissa"; **Fine** torna all'elenco. Nessun campo importo sparso nella pagina. Le modifiche valgono da subito (anche per i mesi dopo).
+- Al passo **Pocket** "Aggiungi una Pocket" crea solo Pocket.
+- Storico, "Tutto lo stipendio": quattro parti (Spese fisse con l'affitto dentro, Pocket, Buste, Risparmi).

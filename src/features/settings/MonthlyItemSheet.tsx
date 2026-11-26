@@ -19,27 +19,30 @@ import { suggestSymbol, symbolFor } from '../../domain/symbols';
 type Props = {
   /** 'new' per una voce nuova, null = chiuso */
   target: MonthlyItem | 'new' | null;
+  /** per una voce nuova: tipo già deciso (da Spese fisse un pagamento, dal passo Pocket una Pocket) */
+  kind?: MonthlyItem['kind'];
   onClose: () => void;
 };
 
 const text = (c: number) => amountText(c);
 
 /** Crea o modifica una voce fissa dell'inizio del mese (salvadanaio o uscita, es. affitto). */
-export function MonthlyItemSheet({ target, onClose }: Props) {
+export function MonthlyItemSheet({ target, kind, onClose }: Props) {
+  const newTitle = kind === 'payment' ? it.items.newPayment : kind === 'pot' ? it.items.newPot : it.items.newTitle;
   return (
-    <BottomSheet open={target !== null} onClose={onClose} title={target === 'new' ? it.items.newTitle : target?.name ?? ''}>
-      {target !== null ? <ItemForm key={target === 'new' ? 'new' : target.id} item={target === 'new' ? null : target} onDone={onClose} /> : null}
+    <BottomSheet open={target !== null} onClose={onClose} title={target === 'new' ? newTitle : target?.name ?? ''}>
+      {target !== null ? <ItemForm key={target === 'new' ? 'new' : target.id} item={target === 'new' ? null : target} fixedKind={kind} onDone={onClose} /> : null}
     </BottomSheet>
   );
 }
 
-function ItemForm({ item, onDone }: { item: MonthlyItem | null; onDone: () => void }) {
+function ItemForm({ item, fixedKind, onDone }: { item: MonthlyItem | null; fixedKind?: MonthlyItem['kind']; onDone: () => void }) {
   const [name, setName] = useState(item?.name ?? '');
   // simbolo: quello salvato; per una voce nuova si suggerisce dal nome finché non lo scegli a mano
   const [manualIcon, setManualIcon] = useState<string | null>(item ? symbolFor(item) : null);
   const [picking, setPicking] = useState(false);
   const icon = manualIcon ?? suggestSymbol(name);
-  const [kind, setKind] = useState<MonthlyItem['kind']>(item?.kind ?? 'payment');
+  const [kind, setKind] = useState<MonthlyItem['kind']>(item?.kind ?? fixedKind ?? 'payment');
   const [amount, setAmount] = useState(item ? text(item.amount) : '');
   /** uscite: da quale conto parte (null = Revolut) */
   const [payFrom, setPayFrom] = useState<string | null>(item?.payFrom ?? null);
@@ -113,7 +116,7 @@ function ItemForm({ item, onDone }: { item: MonthlyItem | null; onDone: () => vo
       </div>
       <SymbolPicker open={picking} name={name.trim()} current={icon} suggested={suggestSymbol(name)} onPick={setManualIcon} onClose={() => setPicking(false)} />
       {/* Il tipo non cambia dopo la creazione: un salvadanaio ha già i suoi soldi. */}
-      {item ? null : (
+      {item || fixedKind ? null : (
         <div className="recurring-form__card">
           <span className="entry__label">{it.items.kind}</span>
           <SegmentedControl

@@ -267,11 +267,20 @@ describe('R23 · spese fisse in un anno', () => {
 
   it('abbonamenti € 1.278, bollette € 948, totale € 2.226; dal più caro all\'anno', () => {
     const a = annualCost(subs, bills);
-    expect(a).toMatchObject({ subscriptions: eur(1278), bills: eur(948), total: eur(2226) });
+    expect(a).toMatchObject({ subscriptions: eur(1278), bills: eur(948), payments: 0, total: eur(2226) });
     expect(a.list.map((x) => [x.recurring.name, x.yearly])).toEqual([
       ['Rata iPhone', eur(840)], ['Palestra', eur(180)], ['Spotify', eur(102)], ['Disney+', eur(72)], ['Prime', eur(60)],
       ['Dominio', eur(12)], ['iCloud', eur(12)],
     ]);
+  });
+
+  it('con l\'affitto 582 al mese (pagamento): + 6.984, totale € 9.210; le voci sospese e le Pocket non contano', () => {
+    const its = [
+      { kind: 'payment' as const, amount: eur(582), archived: false },
+      { kind: 'payment' as const, amount: eur(50), archived: true },
+      { kind: 'pot' as const, amount: eur(50), archived: false },
+    ];
+    expect(annualCost(subs, bills, its)).toMatchObject({ payments: eur(6984), total: eur(9210) });
   });
 
   it('controllo ogni 6 mesi: 20 mag → sì (183 giorni), 21 mag → no; mai fatto → sì; senza abbonamenti attivi → no', () => {

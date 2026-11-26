@@ -5,7 +5,7 @@ import { routes } from '../../app/routes';
 import { BottomSheet } from '../../components/BottomSheet';
 import { IconChevronRight, IconPlus, IconReceipt } from '../../components/icons';
 import { InfoBox } from '../../components/InfoBox';
-import { Tile } from '../../components/Symbol';
+import { SymbolIcon, Tile } from '../../components/Symbol';
 import { db } from '../../db/database';
 import { markFixedReviewed } from '../../db/repositories';
 import { annualCost, reviewDue } from '../../domain/insights';
@@ -22,9 +22,11 @@ import {
   frequencyOf, mainRecurringEnvelope, nextUpcomingCharge, recurringQuota, recurringQuotaTotal, recurringRows,
   type RecurringRow, type RecurringStatus,
 } from '../../domain/recurring';
-import type { Bill, Person, Recurring, Transaction } from '../../domain/types';
+import type { Bill, MonthlyItem, Person, Recurring, Transaction } from '../../domain/types';
+import { symbolFor } from '../../domain/symbols';
 import { it } from '../../i18n/it';
 import { RecurringSheet } from '../recurring/RecurringSheet';
+import { MonthlyItemSheet } from '../settings/MonthlyItemSheet';
 import { BillSheet } from './BillSheet';
 
 /**
@@ -45,6 +47,8 @@ export function BillsPage() {
   const [bill, setBill] = useState<Bill | 'new' | null>(null);
   const [sub, setSub] = useState<Recurring | 'new' | null>(null);
   const [choosing, setChoosing] = useState(false);
+  /** pagamento (affitto…) da creare o modificare */
+  const [pay, setPay] = useState<MonthlyItem | 'new' | null>(null);
   if (!bills || !recurring || !envelopes || !people || !loans || !pots || period === undefined || !txs || !periods || !settings) return null;
 
   const now = today();
@@ -54,6 +58,9 @@ export function BillsPage() {
   const subsQuota = recurringQuotaTotal(recurring, opening, startDay);
   const billsQuota = billsQuotaTotal(bills, opening);
   const toRegister = billsToRegister(bills, txs).length;
+  // Pagamenti come l'affitto: spese fisse anche loro, ma escono dallo stipendio (non dalla Pocket).
+  const payments = settings.monthlyItems.filter((i) => i.kind === 'payment');
+  const paymentsTotal = payments.filter((i) => !i.archived).reduce((s, i) => s + i.amount, 0);
   const range = period ?? calendarPeriodFor(now, startDay);
   const current = range.id;
   const rows = recurringRows(recurring, range, period ? txs : [], now);
@@ -68,9 +75,11 @@ export function BillsPage() {
   const items: Item[] = [
     ...rows.map((row): Item => ({ kind: 'sub', row })),
     ...bills.map((b): Item => ({ kind: 'bill', bill: b })),
+    ...payments.map((p): Item => ({ kind: 'pay', item: p })),
   ];
-  const isNow = (i: Item) => (i.kind === 'sub' ? i.row.date !== null : billNow(i.bill));
-  const sortKey = (i: Item) => (i.kind === 'sub' ? i.row.shownDate : i.bill.nextDue && isPeriodic(i.bill) ? `${i.bill.nextDue}-99` : `${current}-99`);
+  const isNow = (i: Item) => (i.kind === 'sub' ? i.row.date !== null : i.kind === 'pay' ? true : billNow(i.bill));
+  const sortKey = (i: Item) =>
+    i.kind === 'sub' ? i.row.shownDate : i.kind === 'pay' ? '0' : i.bill.nextDue && isPeriodic(i.bill) ? `${i.bill.nextDue}-99` : `${current}-99`;
   const sort = (a: Item, b: Item) =>
     byActive(active(a), active(b)) || sortKey(a).localeCompare(sortKey(b)) || nameOf(a).localeCompare(nameOf(b), 'it');
   const thisMonth = items.filter(isNow).sort(sort);
@@ -80,7 +89,7 @@ export function BillsPage() {
     names, txs, current, opening, startDay, period: !!period, now,
     accountName: (id) => settings.accounts?.find((a) => a.id === id)?.name ?? null,
   };
-  const open = (i: Item) => (i.kind === 'sub' ? setSub(i.row.recurring) : setBill(i.bill));
+  const open = (i: Item) => (i.kind === 'sub' ? setSub(i.row.recurring) : i.kind === 'pay' ? setPay(i.item) : setBill(i.bill));
 
   return (
     <div className="flow">
@@ -99,12 +108,14 @@ export function BillsPage() {
         <div className="hero__row">
           <div>
             <p className="hero__label">{it.fixed.heroLabel}</p>
-            <p className="hero__amount hero__amount--medium">{formatEuro(subsQuota + billsQuota)}</p>
+            <p className="hero__amount hero__amount--medium">{formatEuro(subsQuota + billsQuota + paymentsTotal)}</p>
           </div>
           <span className={pot < 0 ? 'hero__status is-over' : 'hero__status'}>{it.fixed.heroPot(formatEuro(pot))}</span>
         </div>
         <div className="hero-foot">
-          <span>{it.fixed.footSplit(formatEuro(subsQuota), formatEuro(billsQuota))}</span>
+          <span>{paymentsTotal > 0
+            ? it.fixed.footSplitPayments(formatEuro(subsQuota + billsQuota), formatEuro(paymentsTotal))
+            : it.fixed.footSplit(formatEuro(subsQuota), formatEuro(billsQuota))}</span>
         </div>
       </section>
 
@@ -147,7 +158,7 @@ export function BillsPage() {
       ) : null}
       {later.length > 0 ? <ItemList title={it.recurring.later} items={later} ctx={ctx} onOpen={open} /> : null}
 
-      <YearCard recurring={recurring} bills={bills} onOpen={(r) => setSub(r)} />
+      <YearCard recurring={recurring} bills={bills} items={settings.monthlyItems} onOpen={(r) => setSub(r)} />
 
       <div className="flow__spacer" />
       <InfoBox>{it.casa.note}</InfoBox>
@@ -162,9 +173,14 @@ export function BillsPage() {
             <span className="choose-kind__title">{it.fixed.chooseBill}</span>
             <span className="choose-kind__hint">{it.fixed.chooseBillHint}</span>
           </button>
+          <button type="button" className="choose-kind__option" onClick={() => { setChoosing(false); setPay('new'); }}>
+            <span className="choose-kind__title">{it.fixed.choosePayment}</span>
+            <span className="choose-kind__hint">{it.fixed.choosePaymentHint}</span>
+          </button>
         </div>
       </BottomSheet>
 
+      <MonthlyItemSheet target={pay} kind="payment" onClose={() => setPay(null)} />
       <RecurringSheet target={sub} defaultEnvelopeId={defaultEnvelope} opening={opening} periodStartDay={startDay} onClose={() => setSub(null)} />
       <BillSheet
         target={bill}
@@ -180,8 +196,8 @@ export function BillsPage() {
 }
 
 /** R23 · Quanto costano in un anno: totale e abbonamenti dal più caro (quelli che si possono togliere). */
-function YearCard({ recurring, bills, onOpen }: { recurring: Recurring[]; bills: Bill[]; onOpen: (r: Recurring) => void }) {
-  const a = annualCost(recurring, bills);
+function YearCard({ recurring, bills, items, onOpen }: { recurring: Recurring[]; bills: Bill[]; items: MonthlyItem[]; onOpen: (r: Recurring) => void }) {
+  const a = annualCost(recurring, bills, items);
   if (a.total === 0) return null;
   const max = a.list[0]?.yearly ?? 0;
   return (
@@ -190,7 +206,7 @@ function YearCard({ recurring, bills, onOpen }: { recurring: Recurring[]; bills:
       <div className="card year-card">
         <div className="year-card__head">
           <span className="year-card__total">{formatEuro(a.total)}</span>
-          <span className="year-card__split">{it.insights.yearText(formatEuro(a.subscriptions), formatEuro(a.bills))}</span>
+          <span className="year-card__split">{it.insights.yearText(formatEuro(a.subscriptions), formatEuro(a.bills), a.payments > 0 ? formatEuro(a.payments) : null)}</span>
         </div>
         {a.list.length > 0 ? (
           <ul className="year-list">
@@ -215,10 +231,10 @@ function YearCard({ recurring, bills, onOpen }: { recurring: Recurring[]; bills:
   );
 }
 
-type Item = { kind: 'sub'; row: RecurringRow } | { kind: 'bill'; bill: Bill };
+type Item = { kind: 'sub'; row: RecurringRow } | { kind: 'bill'; bill: Bill } | { kind: 'pay'; item: MonthlyItem };
 
-const active = (i: Item) => (i.kind === 'sub' ? i.row.recurring : i.bill);
-const nameOf = (i: Item) => (i.kind === 'sub' ? i.row.recurring.name : i.bill.name);
+const active = (i: Item) => (i.kind === 'sub' ? i.row.recurring : i.kind === 'pay' ? { active: !i.item.archived } : i.bill);
+const nameOf = (i: Item) => (i.kind === 'sub' ? i.row.recurring.name : i.kind === 'pay' ? i.item.name : i.bill.name);
 
 type RowContext = {
   names: Map<string, Person>;
@@ -263,8 +279,10 @@ function ItemList({ title, items, ctx, onOpen }: { title: string; items: Item[];
       <h2 className="group-label">{title}</h2>
       <ul className="card movement-list">
         {items.map((i) => (
-          <li key={`${i.kind}-${i.kind === 'sub' ? i.row.recurring.id : i.bill.id}`}>
-            {i.kind === 'sub' ? <SubRow row={i.row} ctx={ctx} onOpen={() => onOpen(i)} /> : <BillRow bill={i.bill} ctx={ctx} onOpen={() => onOpen(i)} />}
+          <li key={`${i.kind}-${i.kind === 'sub' ? i.row.recurring.id : i.kind === 'pay' ? i.item.id : i.bill.id}`}>
+            {i.kind === 'sub' ? <SubRow row={i.row} ctx={ctx} onOpen={() => onOpen(i)} />
+              : i.kind === 'pay' ? <PaymentRow item={i.item} ctx={ctx} onOpen={() => onOpen(i)} />
+              : <BillRow bill={i.bill} ctx={ctx} onOpen={() => onOpen(i)} />}
           </li>
         ))}
       </ul>
@@ -294,6 +312,22 @@ function SubRow({ row, ctx, onOpen }: { row: RecurringRow; ctx: RowContext; onOp
       paused={!r.active}
       chip={showChip ? <span className={`chip chip--${status.kind}`}>{statusLabel(status, ctx.now)}</span> : null}
       ariaLabel={it.recurring.editLabel(r.name)}
+      onClick={onOpen}
+    />
+  );
+}
+
+/** Pagamento come l'affitto: ogni mese, dallo stipendio (o da un altro conto). */
+function PaymentRow({ item, ctx, onOpen }: { item: MonthlyItem; ctx: RowContext; onOpen: () => void }) {
+  return (
+    <ScheduleRow
+      boxTop={<SymbolIcon id={symbolFor(item)} size={20} />}
+      title={item.name}
+      detail={it.fixed.paymentDetail(item.payFrom ? ctx.accountName(item.payFrom) : null)}
+      amount={formatEuro(item.amount)}
+      paused={item.archived}
+      chip={item.archived ? <span className="chip chip--paused">{it.fixed.paused}</span> : null}
+      ariaLabel={it.opening.editItem(item.name)}
       onClick={onOpen}
     />
   );

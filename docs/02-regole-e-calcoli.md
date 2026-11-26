@@ -378,6 +378,8 @@ Nello Storico, per ogni periodo, lo stipendio diviso in cinque parti, come decis
 | **Buste** | Budget del mese | Σ `allocations` |
 | **Risparmi** | quello che va a Risparmi a inizio mese | `S − tutto il resto` (può essere negativo) |
 
+In vista (Storico, schermata Spese fisse, Inizia il mese) **i pagamenti stanno dentro le Spese fisse**: l'utente li considera spese fisse come le bollette. Restano separati solo nei dati (`split.payments`) perché non passano dalla Pocket Spese fisse.
+
 Il periodo salva queste cinque cifre in `Period.split` a "Inizia il mese". Per i periodi creati prima (senza `split`) si ricostruiscono: le voci si classificano con `Settings.monthlyItems` (una voce che non c'è più conta come pagamento), `otherAccounts` vale 0.
 
 **Alla chiusura** Risparmi cambia ancora (R6): + avanzo (opzione A), + metà (C), − sforo coperto (netto ≤ 0), 0 con B. Il periodo salva questa cifra in `Period.closingSavings`; per i periodi chiusi prima si ricostruisce dalla scelta e dagli avanzi fotografati (`Σ leftovers + unassigned`, le entrate registrate nel mese restano fuori).
@@ -457,7 +459,7 @@ In Spese fisse, card **"In un anno"**:
 abbonamento attivo: importo × 12 / frequenza
 bolletta attiva:    tua quota prevista × 12 / frequenza
 ```
-Totale, divisione abbonamenti / bollette, e l'elenco degli **abbonamenti** dal più caro all'anno (sono quelli che si possono togliere). Gli abbonamenti pagati da un altro conto contano lo stesso.
+Più i **pagamenti** non sospesi (affitto): `importo × 12`. Totale, divisione abbonamenti / bollette / pagamenti, e l'elenco degli **abbonamenti** dal più caro all'anno (sono quelli che si possono togliere). Gli abbonamenti pagati da un altro conto contano lo stesso. Esempio: con l'affitto 582 al mese → + 6.984, totale **€ 9.210**.
 
 Esempio: Rata iPhone 70, Spotify 8,50, Disney+ 6, Prime 5, iCloud 1 (mensili) → 1.086; Dominio 12 l'anno → 12; Palestra 30 ogni 2 mesi → 180. Abbonamenti **€ 1.278**. Bollette di R13: Luce 40 × 12 = 480, Internet 14 × 12 = 168, Gas 30 × 6 = 180, Acqua 120 → **€ 948**. Totale **€ 2.226**.
 
@@ -490,8 +492,7 @@ Da M10 l'app usa un nome solo per ogni cosa:
 |---|---|---|
 | **Busta** | soldi del Budget del mese per una categoria di spesa, con un tetto | — |
 | **Pocket** | soldi messi da parte su Revolut (Risparmi, Spese fisse, Viaggi…); una Pocket può avere una **quota** mensile | "voce fissa" di tipo salvadanaio |
-| **Spese fisse** | bollette e abbonamenti, pagati dalla Pocket Spese fisse | — |
-| **Pagamenti** | soldi che escono ogni mese e non tornano, come l'affitto | "uscite fisse", "voce fissa" di tipo uscita |
+| **Spese fisse** | tutto quello che si paga ogni mese: bollette e abbonamenti (dalla Pocket Spese fisse) e **pagamenti** come l'affitto (direttamente dallo stipendio) | per l'affitto: "uscite fisse", "voce fissa" di tipo uscita |
 | **Risparmi** | la Pocket di quello che resta (e dell'obiettivo, R21) | — |
 
 "Voce fissa" non compare più nell'interfaccia (nel codice resta `MonthlyItem`). In Imposta, **Come funziona** spiega il modello in 5 righe con questo glossario.

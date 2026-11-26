@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { useBills, useCurrentPeriod, useEnvelopes, usePeriods, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
+import { useBills, useCurrentPeriod, useEnvelopes, useLoans, usePeople, usePeriods, usePeriodTransactions, usePots, useRecurring, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { AmountField } from '../../components/AmountField';
 import { CheckRow } from '../../components/CheckRow';
-import { IconPlus } from '../../components/icons';
+import { IconChevronRight, IconPlus } from '../../components/icons';
+import { BottomSheet } from '../../components/BottomSheet';
+import { BillSheet } from '../bills/BillSheet';
+import { RecurringSheet } from '../recurring/RecurringSheet';
 import { InfoBox } from '../../components/InfoBox';
 import { MonthHeader } from '../../components/MonthHeader';
 import { StepIndicator } from '../../components/StepIndicator';
@@ -22,9 +25,9 @@ import { activeEnvelopes, availableForEnvelopes, itemQuotas, planOpening, saving
 import { nextPeriodToStart } from '../../domain/periods';
 import { potLines, type PotLine } from '../../domain/pots';
 import { symbolFor } from '../../domain/symbols';
-import { frequencyOf, recurringDateInPeriod, recurringQuota, savedSubscriptions } from '../../domain/recurring';
+import { frequencyOf, mainRecurringEnvelope, recurringDateInPeriod, recurringQuota, savedSubscriptions } from '../../domain/recurring';
 import { accountPayments, otherAccountsRecurring, salaryAccountPlan } from '../../domain/accounts';
-import type { Bill, Cents, Envelope, IntentionOutcome, MonthlyItem, Period, Recurring, Settings, Transaction } from '../../domain/types';
+import type { Bill, Cents, Envelope, IntentionOutcome, Loan, MonthlyItem, Period, Person, Recurring, Settings, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { MonthlyItemSheet } from '../settings/MonthlyItemSheet';
 
@@ -40,7 +43,9 @@ export function OpeningPage() {
   const txs = usePeriodTransactions(current?.id ?? null);
   const bills = useBills();
   const pots = usePots();
-  if (current === undefined || !periods || !envelopes || !settings || !recurring || !txs || !bills || !pots) return null;
+  const people = usePeople();
+  const loans = useLoans();
+  if (current === undefined || !periods || !envelopes || !settings || !recurring || !txs || !bills || !pots || !people || !loans) return null;
 
   const raw = params.get('scelta');
   const option = OPTIONS.find((o) => o === raw) ?? null;
@@ -58,6 +63,8 @@ export function OpeningPage() {
       txs={txs}
       bills={bills}
       pots={potLines(pots, settings.monthlyItems)}
+      people={people}
+      loans={loans}
       fromClosing={{
         intention: params.get('proposito'),
         outcome: (['done', 'partly', 'no'] as const).find((o) => o === params.get('esito')) ?? null,
@@ -77,6 +84,8 @@ type Props = {
   txs: Transaction[];
   bills: Bill[];
   pots: PotLine[];
+  people: Person[];
+  loans: Loan[];
   /** R24, R25: quello che si è deciso alla chiusura, da salvare quando il mese inizia davvero */
   fromClosing: { intention: string | null; outcome: IntentionOutcome | null; keepCaps: string[] };
 };
@@ -93,7 +102,7 @@ function parse(text: string, allowNegative = false): { cents: Cents | null; ok: 
   return { cents: cents === null ? null : neg ? -cents : cents, ok: cents !== null };
 }
 
-function Opening({ current, option, periods, envelopes, settings, recurring, txs, bills, pots, fromClosing }: Props) {
+function Opening({ current, option, periods, envelopes, settings, recurring, txs, bills, pots, people, loans, fromClosing }: Props) {
   const navigate = useNavigate();
   const now = today();
   const startDay = settings.periodStartDay;
@@ -107,6 +116,12 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   const [caps, setCaps] = useState<Record<string, Cents>>(() => Object.fromEntries(activeEnvelopes(envelopes).map((e) => [e.id, e.cap])));
   /** voce fissa da creare o modificare (rinominare, togliere): si gestiscono qui, non più in Imposta */
   const [itemTarget, setItemTarget] = useState<MonthlyItem | 'new' | null>(null);
+  /** passo Spese: "Modifica" rende modificabile ogni spesa fissa (abbonamenti, bollette, pagamenti) */
+  const [editingFixed, setEditingFixed] = useState(false);
+  const [subTarget, setSubTarget] = useState<Recurring | 'new' | null>(null);
+  const [billTarget, setBillTarget] = useState<Bill | 'new' | null>(null);
+  const [payTarget, setPayTarget] = useState<MonthlyItem | 'new' | null>(null);
+  const [choosingFixed, setChoosingFixed] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   /** R21: prima i risparmi (vuoto = nessun obiettivo) */
   const [goalText, setGoalText] = useState(() => (settings.savingsGoal ? amountText(settings.savingsGoal) : ''));
@@ -128,11 +143,14 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
 
   // 2 · Spese fisse: abbonamenti e bollette di questo mese (le loro quote), l'affitto a parte
   const accountName = (id: string | null | undefined) => (id ? settings.accounts?.find((a) => a.id === id)?.name ?? null : null);
-  const fixedRows = [
+  type FixedRow = { id: string; name: string; tag: string; freq: number; amount: Cents; from: string | null; paused: boolean; open: () => void; pocket: boolean };
+  const allFixedRows: FixedRow[] = [
     ...recurring
-      .filter((r) => r.active)
       .map((r) => ({
         id: r.id,
+        paused: !r.active,
+        pocket: !r.payFrom,
+        open: () => setSubTarget(r),
         name: r.name,
         tag: it.fixed.tagSubscription,
         freq: frequencyOf(r),
@@ -141,10 +159,20 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
         from: accountName(r.payFrom),
       })),
     ...bills
-      .filter((b) => b.active)
-      .map((b) => ({ id: b.id, name: b.name, tag: it.fixed.tagBill, freq: b.frequency as number, amount: monthlyQuota(b, target.id), from: null as string | null })),
-  ].filter((r) => r.amount > 0).sort((a, b) => b.amount - a.amount);
-  const fixedQuota = fixedRows.reduce((s, r) => s + r.amount, 0);
+      .map((b) => ({
+        id: b.id, name: b.name, tag: it.fixed.tagBill, freq: b.frequency as number, amount: b.active ? monthlyQuota(b, target.id) : 0,
+        from: null as string | null, paused: !b.active, pocket: true, open: () => setBillTarget(b),
+      })),
+    ...settings.monthlyItems
+      .filter((i) => i.kind === 'payment')
+      .map((i) => ({
+        id: i.id, name: i.name, tag: it.fixed.tagPayment, freq: 1, amount: i.archived ? 0 : i.amount,
+        from: accountName(i.payFrom), paused: i.archived, pocket: false, open: () => setPayTarget(i),
+      })),
+  ].map((r) => (r.paused ? { ...r, amount: 0 } : r)).sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name, 'it'));
+  // Fuori da "Modifica" solo quello che si paga questo mese; in modifica tutte le voci.
+  const fixedRows = editingFixed ? allFixedRows : allFixedRows.filter((r) => r.amount > 0);
+  const pocketRows = allFixedRows.filter((r) => r.amount > 0 && r.pocket);
   const itemAmount = (id: string, fallback: Cents) => {
     const t = itemTexts[id];
     if (t === undefined) return fallback;
@@ -155,6 +183,8 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   const quotas = itemQuotas(settings.monthlyItems).map((q) => ({ ...q, amount: itemAmount(q.item.id, q.amount) }));
   const payments = quotas.filter((q) => q.item.kind === 'payment');
   const paymentsTotal = payments.reduce((s, q) => s + q.amount, 0);
+  const fixedTotal = allFixedRows.reduce((s, r) => s + r.amount, 0);
+  const fixedQuota = fixedTotal - paymentsTotal;
 
   // 3 · Pocket: saldi come su Revolut adesso; Spese fisse si calcola (al netto di quello che c'è già), Risparmi è il resto
   const balanceOf = (id: string) => parse(balanceTexts[id] ?? '', true).cents ?? 0;
@@ -210,7 +240,7 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
       case 'item':
         return item.item?.kind === 'payment' ? it.opening.notes.payment : it.opening.notes.pot;
       case 'bills':
-        return it.opening.notes.fixed(fixedRows.length);
+        return it.opening.notes.fixed(pocketRows.length);
       case 'savings':
         return item.warn ? it.opening.notes.short : it.opening.notes.savings;
     }
@@ -282,43 +312,54 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
 
       {step === 'fixed' ? (
         <section className="opening-step" aria-labelledby="step-title">
-          <h2 id="step-title" className="opening-step__title">{it.opening.fixedTitle}</h2>
-          <section className="hero" aria-label={it.opening.fixedSum}>
-            <p className="hero__label">{it.opening.fixedSum}</p>
-            <p className="hero__amount hero__amount--medium">{formatEuro(fixedQuota + paymentsTotal)}</p>
+          <div className="opening-step__head">
+            <h2 id="step-title" className="opening-step__title">{it.opening.fixedTitle}</h2>
+            <button type="button" className="pill-button" aria-pressed={editingFixed} onClick={() => setEditingFixed((v) => !v)}>
+              {editingFixed ? it.opening.editDone : it.opening.edit}
+            </button>
+          </div>
+          <section className="hero" aria-label={it.opening.fixedHero}>
+            <p className="hero__label">{it.opening.fixedHero}</p>
+            <p className="hero__amount hero__amount--medium">{formatEuro(fixedTotal)}</p>
             <div className="hero-foot">
               <span>{paymentsTotal > 0 ? it.opening.fixedFoot(formatEuro(fixedQuota), formatEuro(paymentsTotal)) : it.opening.fixedFootOnly}</span>
             </div>
           </section>
-          <p className="muted-note">{it.opening.fixedText}</p>
+          <p className="muted-note">{editingFixed ? it.opening.fixedEditText : it.opening.fixedText}</p>
           <ul className="card opening-list">
             {fixedRows.length === 0 ? <li className="opening-list__row"><span className="muted-note">{it.opening.fixedNone}</span></li> : null}
-            {fixedRows.map((r) => (
-              <li key={r.id} className="opening-list__row">
-                <span className="opening-list__text">
-                  <span className="opening-list__name">{r.name}</span>
-                  <span className="opening-list__detail">{[r.tag, r.freq > 1 ? it.recurring.frequency[r.freq] : null, r.from ? it.opening.fromAccount(r.from) : null].filter(Boolean).join(' · ')}</span>
-                </span>
-                <span className="opening-list__amount">{formatEuro(r.amount)}</span>
-              </li>
-            ))}
+            {fixedRows.map((r) => {
+              const content = (
+                <>
+                  <span className="opening-list__text">
+                    <span className={r.paused ? 'opening-list__name is-muted' : 'opening-list__name'}>{r.name}</span>
+                    <span className="opening-list__detail">
+                      {[r.tag, r.freq > 1 ? it.recurring.frequency[r.freq] : null, r.from ? it.opening.fromAccount(r.from) : null, r.paused ? it.fixed.paused : null].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                  <span className="opening-list__amount">{formatEuro(r.amount)}</span>
+                </>
+              );
+              return editingFixed ? (
+                <li key={r.id}>
+                  <button type="button" className="opening-list__row opening-list__row--button" aria-label={it.opening.editItem(r.name)} onClick={r.open}>
+                    {content}
+                    <IconChevronRight className="chev" />
+                  </button>
+                </li>
+              ) : (
+                <li key={r.id} className="opening-list__row">{content}</li>
+              );
+            })}
             <li className="opening-list__row opening-list__row--total">
               <span className="opening-list__name">{it.opening.fixedTotal}</span>
-              <span className="opening-list__amount">{formatEuro(fixedQuota)}</span>
+              <span className="opening-list__amount">{formatEuro(fixedTotal)}</span>
             </li>
           </ul>
-          {payments.length > 0 ? (
-            <>
-              <h3 className="group-label">{it.opening.paymentsTitle}</h3>
-              <div className="card opening-fields">
-                {payments.map((q) => (
-                  <div key={q.item.id} className="opening-item">
-                    {amountInput(q.item.id, accountName(q.item.payFrom) ? `${q.item.name} · ${it.opening.fromAccount(accountName(q.item.payFrom)!)}` : q.item.name, q.amount)}
-                    {editButton(q.item.id, q.item.name)}
-                  </div>
-                ))}
-              </div>
-            </>
+          {editingFixed ? (
+            <button type="button" className="list-row list-row--action" onClick={() => setChoosingFixed(true)}>
+              <IconPlus size={20} />{it.opening.addFixed}
+            </button>
           ) : null}
         </section>
       ) : null}
@@ -453,7 +494,40 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
       ) : null}
 
       {error ? <InfoBox>{error}</InfoBox> : null}
-      <MonthlyItemSheet target={itemTarget} onClose={() => setItemTarget(null)} />
+      <MonthlyItemSheet target={itemTarget} kind={itemTarget === 'new' ? 'pot' : undefined} onClose={() => setItemTarget(null)} />
+      <MonthlyItemSheet target={payTarget} kind="payment" onClose={() => setPayTarget(null)} />
+      <RecurringSheet
+        target={subTarget}
+        defaultEnvelopeId={mainRecurringEnvelope(recurring) ?? envelopes.find((e) => !e.archived)?.id ?? ''}
+        opening={target.id}
+        periodStartDay={startDay}
+        onClose={() => setSubTarget(null)}
+      />
+      <BillSheet
+        target={billTarget}
+        people={people}
+        loans={loans}
+        hasPeriod={!!current}
+        defaultPersonId={bills.find((b) => b.personId)?.personId ?? null}
+        opening={target.id}
+        onClose={() => setBillTarget(null)}
+      />
+      <BottomSheet open={choosingFixed} onClose={() => setChoosingFixed(false)} title={it.fixed.chooseTitle}>
+        <div className="choose-kind">
+          <button type="button" className="choose-kind__option" onClick={() => { setChoosingFixed(false); setSubTarget('new'); }}>
+            <span className="choose-kind__title">{it.fixed.chooseSubscription}</span>
+            <span className="choose-kind__hint">{it.fixed.chooseSubscriptionHint}</span>
+          </button>
+          <button type="button" className="choose-kind__option" onClick={() => { setChoosingFixed(false); setBillTarget('new'); }}>
+            <span className="choose-kind__title">{it.fixed.chooseBill}</span>
+            <span className="choose-kind__hint">{it.fixed.chooseBillHint}</span>
+          </button>
+          <button type="button" className="choose-kind__option" onClick={() => { setChoosingFixed(false); setPayTarget('new'); }}>
+            <span className="choose-kind__title">{it.fixed.choosePayment}</span>
+            <span className="choose-kind__hint">{it.fixed.choosePaymentHint}</span>
+          </button>
+        </div>
+      </BottomSheet>
       <div className="flow__spacer" />
       <div className="opening-nav">
         {index > 0 ? (

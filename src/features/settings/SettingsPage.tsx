@@ -21,6 +21,7 @@ import {
   type CapsChange, type DestinationOption, type FundsDestination,
 } from '../../domain/settings';
 import { averageSpending } from '../../domain/stats';
+import { annualCost } from '../../domain/insights';
 import type { Cents, Envelope, EnvelopeKind, Period, Recurring, Settings, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { PotsGroup } from './DataSection';
@@ -402,6 +403,28 @@ function NewEnvelopeForm({ onAdd }: { onAdd: (e: NewEnvelope) => void }) {
   );
 }
 
+/** Spese fisse: bollette, abbonamenti e pagamenti come l'affitto, con quanto costano al mese. */
+function FixedCostsRow({ settings }: { settings: Settings }) {
+  const recurring = useRecurring();
+  const bills = useBills();
+  if (!recurring || !bills) return null;
+  const n = recurring.filter((r) => r.active).length + bills.filter((b) => b.active).length
+    + settings.monthlyItems.filter((i) => i.kind === 'payment' && !i.archived).length;
+  const perMonth = Math.round(annualCost(recurring, bills, settings.monthlyItems).total / 12);
+  return (
+    <li>
+      <Link to={routes.bills} className="list-row list-row--button">
+        <Tile symbol="receipt" />
+        <span className="list-row__text">
+          <span className="list-row__title">{it.settings.billsRow}</span>
+          <span className="list-row__detail">{it.settings.fixedDetail(n, formatEuro(perMonth))}</span>
+        </span>
+        <IconChevronRight className="list-row__chevron" />
+      </Link>
+    </li>
+  );
+}
+
 /**
  * "Il mese": quando inizia e l'ingresso a "Inizia il mese". Voci fisse, spese fisse e buste del mese
  * si decidono dentro "Inizia il mese", passo per passo: qui non si ripetono.
@@ -427,6 +450,7 @@ function MonthGroup({ settings, current, nextName }: { settings: Settings; curre
             </select>
           </span>
         </li>
+        <FixedCostsRow settings={settings} />
         <li>
           <Link to={to} className="list-row list-row--button">
             <Tile symbol="wallet" />

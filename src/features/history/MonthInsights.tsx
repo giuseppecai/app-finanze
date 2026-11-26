@@ -4,7 +4,7 @@ import { Tile } from '../../components/Symbol';
 import { impulseSummary, monthSavings, weekdaySpending } from '../../domain/insights';
 import { formatEuro } from '../../domain/money';
 import { roundToEuro } from '../../domain/stats';
-import type { Envelope, MonthlyItem, Period, SalarySplit, Transaction } from '../../domain/types';
+import type { Envelope, MonthlyItem, Period, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
 
 const monthName = (id: string) => it.months.long[Number(id.slice(5, 7)) - 1] ?? id;
@@ -13,10 +13,10 @@ const monthShort = (id: string) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-/** Ordine e colore delle cinque parti: prima quello che esce, per ultimo quello che resta tuo. */
-const PARTS: { key: keyof SalarySplit; color: string }[] = [
-  { key: 'payments', color: 'var(--committed)' },
-  { key: 'fixed', color: 'var(--save-3)' },
+/** Ordine e colore delle parti: prima quello che esce, per ultimo quello che resta tuo. */
+type Part = 'fixed' | 'pots' | 'envelopes' | 'savings';
+const PARTS: { key: Part; color: string }[] = [
+  { key: 'fixed', color: 'var(--committed)' },
   { key: 'pots', color: 'var(--save-2)' },
   { key: 'envelopes', color: 'var(--accent)' },
   { key: 'savings', color: 'var(--money-in)' },
@@ -28,6 +28,8 @@ const signed = (cents: number) => formatEuro(cents, { sign: 'always' });
 export function WholeMonth({ period, trend, items }: { period: Period; trend: Period[]; items: readonly MonthlyItem[] }) {
   if (period.salary <= 0) return null;
   const m = monthSavings(period, items);
+  // In vista le spese fisse comprendono i pagamenti come l'affitto (escono dallo stipendio, non dalla Pocket).
+  const parts: Record<Part, number> = { fixed: m.split.fixed + m.split.payments, pots: m.split.pots, envelopes: m.split.envelopes, savings: m.split.savings };
   const closing = m.saved - m.split.savings;
   const share = (v: number) => Math.max(0, v) / period.salary;
   const month = monthName(period.id);
@@ -42,11 +44,11 @@ export function WholeMonth({ period, trend, items }: { period: Period; trend: Pe
       </div>
       <div className="card whole">
         <div className="whole__bar" role="img" aria-label={it.insights.wholeLabel(month)}>
-          {PARTS.map((p) => (share(m.split[p.key]) > 0 ? <i key={p.key} style={{ flexGrow: share(m.split[p.key]), background: p.color }} /> : null))}
+          {PARTS.map((p) => (share(parts[p.key]) > 0 ? <i key={p.key} style={{ flexGrow: share(parts[p.key]), background: p.color }} /> : null))}
         </div>
         <ul className="whole__legend">
-          {PARTS.filter((p) => m.split[p.key] !== 0 || p.key === 'savings').map((p) => {
-            const v = m.split[p.key];
+          {PARTS.filter((p) => parts[p.key] !== 0 || p.key === 'savings').map((p) => {
+            const v = parts[p.key];
             return (
               <li key={p.key}>
                 <span className="whole__key"><span className="whole__sw" style={{ background: p.color }} aria-hidden="true" />{it.insights.parts[p.key]}</span>

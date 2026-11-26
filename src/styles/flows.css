@@ -448,3 +448,13 @@
 .glossary__item + .glossary__item { border-top: 1px solid var(--line-soft); }
 .glossary dt { font-weight: 640; }
 .glossary dd { margin: 4px 0 0; color: var(--text-muted); line-height: 1.45; font-size: 15px; }
+
+/* Inizia il mese · passo Spese: un solo "Modifica" per tutte le spese fisse */
+.opening-step__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.opening-step__head .pill-button[aria-pressed="true"] { background: var(--surface-ink); color: var(--text-on-ink); }
+.opening-list__row--button {
+  width: 100%; border: none; background: none; font: inherit; color: var(--text); text-align: left; cursor: pointer;
+}
+.opening-list__row--button:active { background: var(--surface-press); }
+.opening-list__row--button .opening-list__text { flex: 1; min-width: 0; }
+.opening-list__name.is-muted { color: var(--text-faint); }

@@ -241,19 +241,26 @@ export function impulseSummary(txs: readonly Pick<Transaction, 'type' | 'amount'
 export interface AnnualCost {
   subscriptions: Cents;
   bills: Cents;
+  /** pagamenti come l'affitto (voci 'payment' non sospese) */
+  payments: Cents;
   total: Cents;
   /** abbonamenti attivi dal più caro all'anno */
   list: { recurring: Recurring; yearly: Cents }[];
 }
 
-export function annualCost(recurrings: readonly Recurring[], bills: readonly Bill[]): AnnualCost {
+export function annualCost(
+  recurrings: readonly Recurring[],
+  bills: readonly Bill[],
+  items: readonly Pick<MonthlyItem, 'kind' | 'amount' | 'archived'>[] = [],
+): AnnualCost {
   const list = recurrings
     .filter((r) => r.active)
     .map((recurring) => ({ recurring, yearly: (recurring.amount * 12) / frequencyOf(recurring) }))
     .sort((a, b) => b.yearly - a.yearly || a.recurring.name.localeCompare(b.recurring.name, 'it'));
   const subscriptions = list.reduce((s, x) => s + x.yearly, 0);
   const billsTotal = bills.filter((b) => b.active).reduce((s, b) => s + (expectedShare(b) * 12) / b.frequency, 0);
-  return { subscriptions, bills: billsTotal, total: subscriptions + billsTotal, list };
+  const payments = items.filter((i) => i.kind === 'payment' && !i.archived).reduce((s, i) => s + i.amount * 12, 0);
+  return { subscriptions, bills: billsTotal, payments, total: subscriptions + billsTotal + payments, list };
 }
 
 export const REVIEW_DAYS = 183;
