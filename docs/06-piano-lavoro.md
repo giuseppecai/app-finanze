@@ -75,3 +75,19 @@ Una milestone alla volta. Ognuna finisce con: test verdi, `npm run build` pulito
 
 ## M9 · Apple Pay → app (sperimentale)
 Vedi `07-apple-pay-comandi-rapidi.md`. Da fare **solo dopo** che l'utente ha usato l'app manualmente per qualche settimana e lo chiede. Richiede verifica sul dispositivo prima di qualsiasi implementazione definitiva.
+
+## M10 · Capire dove vanno i soldi
+Dalla revisione di novembre 2026. Regole R18–R25 e "Nomi" in `02-regole-e-calcoli.md`, schermate in `04-schermate.md` § Aggiunte M10.
+- Il mese intero e % di risparmio nello Storico (R18).
+- Cerca nei movimenti, in tutti i periodi (R19).
+- Oggi puoi spendere, questa settimana, quando spendi (R20).
+- Prima i risparmi a Inizia il mese (R21).
+- Spese d'impulso (R22).
+- Costo annuo delle spese fisse e controllo ogni 6 mesi (R23).
+- Un proposito al mese (R24).
+- Tetto: alzare o tenere (R25).
+- Un nome solo per ogni cosa e la schermata "Come funziona".
+
+Fuori da M10, per scelta dell'utente: il collegamento con Apple Pay (M9) non si fa.
+
+**Accettazione**: ogni esempio di R18–R25 è un test; con la demo lo Storico di Novembre mostra la barra dello stipendio e "D'impulso"; un backup esportato prima di M10 si importa senza errori.

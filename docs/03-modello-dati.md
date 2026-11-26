@@ -258,3 +258,40 @@ Nota: la fixture contiene anche l'entrata "Interessi conto risparmio" da € 1,1
 ## Backup
 
 In "Imposta": **Esporta backup** (file JSON con tutte le tabelle + `schemaVersion` + data) tramite `navigator.share` se disponibile, altrimenti download; **Importa backup** con conferma (sostituisce tutto). È l'unica protezione contro la perdita dei dati: ricordalo all'utente con un promemoria se l'ultimo backup ha più di 30 giorni.
+
+## M10 · Capire dove vanno i soldi (campi facoltativi, nessuna migrazione)
+
+Tutti i campi nuovi sono facoltativi e senza indici: **nessuna nuova versione Dexie**. I dati e i backup vecchi funzionano così come sono (i valori mancanti si ricostruiscono come dice R18).
+
+```ts
+interface Period {
+  // …
+  /** R18: lo stipendio diviso a "Inizia il mese" */
+  split?: { fixed: Cents; payments: Cents; pots: Cents; envelopes: Cents; savings: Cents };
+  /** abbonamenti del mese pagati da altri conti (parte di split.fixed) */
+  otherAccounts?: Cents;
+  /** R18: variazione di Risparmi alla chiusura di questo periodo (avanzo, metà, sforo coperto) */
+  closingSavings?: Cents;
+  /** R21: obiettivo di risparmio scelto per questo mese */
+  savingsGoal?: Cents;
+  /** R24: il proposito per questo mese e com'è andata */
+  intention?: string;
+  intentionOutcome?: 'done' | 'partly' | 'no';
+}
+
+interface Transaction {
+  // …
+  /** R22: spesa d'impulso */
+  impulse?: boolean;
+}
+
+interface Settings {
+  // …
+  /** R21: obiettivo di risparmio proposto a inizio mese (0/assente = nessuno) */
+  savingsGoal?: Cents;
+  /** R23: data dell'ultimo controllo degli abbonamenti */
+  fixedReviewedAt?: ISODate | null;
+  /** R25: busta → id del periodo chiuso in cui si è scelto "Tieni il tetto" */
+  capKept?: Record<string, PeriodId>;
+}
+```

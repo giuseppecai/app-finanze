@@ -129,3 +129,16 @@ Al primo avvio, 3 passi brevi:
 2. "Abbonamenti": conferma giorni e importi (poi si gestiscono in Spese fisse).
 3. "I tuoi salvadanai": saldi attuali di Risparmi e dei salvadanai delle voci fisse (Viaggi, Regali & Imprevisti).
 Poi "Inizio del mese" per creare il primo periodo, e suggerimento di aggiungere l'app alla schermata Home se non è in modalità standalone.
+
+---
+
+## Aggiunte M10 · Capire dove vanno i soldi
+
+- **Home**: sotto "Puoi ancora spendere", riga **"Oggi puoi spendere € X"** (o "Oggi: € speso di € quota", "Oggi sei oltre di € X") e **"Questa settimana € Y · la scorsa € Z"** (R20). Se c'è, card chiara **"Il proposito di ‹mese›: «…»"** (R24). La riga Spese fisse dice "È ora di controllare gli abbonamenti" quando serve (R23).
+- **Inserimento rapido** (Spesa): pulsante a interruttore **"D'impulso"** accanto alla nota (R22), anche in modifica.
+- **Movimenti**: campo **Cerca** sotto l'intestazione. Con almeno 2 caratteri: risultati di tutti i periodi raggruppati per giorno, riepilogo "N movimenti · € T · in M mesi" al posto del riepilogo del periodo (R19). Il selettore del periodo si nasconde durante la ricerca.
+- **Storico**: dopo "Dove sono andati", sezione **"Tutto lo stipendio"** (R18): barra divisa in Spese fisse · Pagamenti · Pocket · Buste · Risparmi con legenda e importi, riga "Risparmiato € X · Y% dello stipendio" (con l'obiettivo, R21), andamento della % di risparmio negli ultimi 6 mesi. Poi **"D'impulso"** (R22), **"Quando spendi"** (barre lun–dom, R20) e, se c'è, **proposito ed esito** del mese (R24). Il consiglio sul tetto ha **Alza** e **Tieni** (R25).
+- **Chiusura del mese**: in cima, se il mese aveva un proposito, "Com'è andata?" con Fatto · A metà · No. Prima di Continua, il campo **"Una cosa da fare diversamente a ‹mese›?"** (R24). Il consiglio sul tetto ha **Alza** e **Tieni** (R25).
+- **Inizia il mese**, passo Buste: in cima il campo **"Prima metti da parte"** (R21); la card scura diventa "Ti restano per le buste" al netto dell'obiettivo; avviso ambra se le buste erodono l'obiettivo.
+- **Spese fisse**: card **"In un anno"** con totale, abbonamenti/bollette e gli abbonamenti dal più caro; avviso **"Li usi ancora tutti?"** ogni 6 mesi (R23).
+- **Imposta**: riga **"Come funziona"** (gruppo Aiuto) → schermata `/come-funziona`: il modello in 5 righe e il glossario dei nomi (R7 · Nomi). In tutta l'app "voce fissa" sparisce: si dice **Pocket** (con quota) o **Pagamento** (affitto).

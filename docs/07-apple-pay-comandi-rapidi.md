@@ -1,5 +1,7 @@
 # 07 · Apple Pay e Comandi Rapidi (milestone M9, sperimentale)
 
+> **Non si fa** (novembre 2026): l’utente ha scelto di non collegare Apple Pay. Il documento resta come riferimento.
+
 Obiettivo: dopo un pagamento con Apple Pay (carte Revolut nel Wallet), registrare la spesa con il minimo sforzo — idealmente solo scegliere la busta.
 
 ## Cosa offre iOS

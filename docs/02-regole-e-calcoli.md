@@ -359,3 +359,139 @@ Dati di esempio (spesa totale per periodo, tetti 700): Giu 652 · Lug **731** (s
 - Buste ordinate per numero di movimenti negli ultimi 60 giorni (a parità: ordine definito in Imposta). Le impegnate in fondo.
 - Data = oggi (modificabile con il pulsante calendario).
 - Validazione: importo > 0, per il prestito serve una persona.
+
+---
+
+# Capire dove vanno i soldi (M10, novembre 2026)
+
+Le regole che seguono servono a **capire**, non solo a controllare: dove va tutto lo stipendio, quando si spende, cosa si poteva evitare. Nessuna aggiunge passaggi obbligatori: i campi nuovi sono facoltativi e i dati vecchi continuano a funzionare.
+
+## R18 · Il mese intero (dove va lo stipendio)
+
+Nello Storico, per ogni periodo, lo stipendio diviso in cinque parti, come deciso a "Inizia il mese":
+
+| Parte | Cosa | Da dove |
+|---|---|---|
+| **Spese fisse** | giroconto → Spese fisse + abbonamenti pagati da altri conti | `billsQuota + otherAccounts` |
+| **Pagamenti** | voci di tipo `payment` (affitto) | Σ `quotas` delle voci pagamento |
+| **Pocket** | quote delle Pocket con quota (Viaggi, Regali…) | Σ `quotas` delle voci Pocket |
+| **Buste** | Budget del mese | Σ `allocations` |
+| **Risparmi** | quello che va a Risparmi a inizio mese | `S − tutto il resto` (può essere negativo) |
+
+Il periodo salva queste cinque cifre in `Period.split` a "Inizia il mese". Per i periodi creati prima (senza `split`) si ricostruiscono: le voci si classificano con `Settings.monthlyItems` (una voce che non c'è più conta come pagamento), `otherAccounts` vale 0.
+
+**Alla chiusura** Risparmi cambia ancora (R6): + avanzo (opzione A), + metà (C), − sforo coperto (netto ≤ 0), 0 con B. Il periodo salva questa cifra in `Period.closingSavings`; per i periodi chiusi prima si ricostruisce dalla scelta e dagli avanzi fotografati (`Σ leftovers + unassigned`, le entrate registrate nel mese restano fuori).
+
+```
+risparmiato  = split.savings + closingSavings          (periodo in corso: solo split.savings)
+% risparmio  = round(risparmiato / S × 100)            (S = 0 → nessuna percentuale)
+```
+
+Esempi (S = 1.500):
+- Buste 700, Viaggi 50, Regali 25, Spese fisse 79 → Risparmi **646** → **43%**. Chiuso con l'opzione A e avanzo 96 → risparmiato **742** → **49%**.
+- Spese fisse 334,71, Affitto 582, Viaggi 50, Regali 25, buste 508,29 → Risparmi **0** → **0%**: in Storico la parte Risparmi è vuota e compare "Questo mese non hai messo niente da parte".
+- Lo stesso mese chiuso con 30 € di sforo coperti da Risparmi → risparmiato **− 30** → **− 2%**, in arancione.
+
+Le barre sono larghe in proporzione allo stipendio; una parte negativa (Risparmi sotto zero) ha larghezza 0 e il suo importo in arancione. Sotto la barra, il trend della **% di risparmio** degli ultimi 6 periodi.
+
+## R19 · Cerca nei movimenti
+
+In Movimenti un campo **Cerca** trova i movimenti in **tutti i periodi**, non solo in quello scelto.
+
+- Si normalizzano testo e ricerca: minuscole, senza accenti (`è` → `e`), spazi ripetuti ridotti. La ricerca parte da **2 caratteri**.
+- Ogni parola della ricerca deve comparire (in qualsiasi ordine) in almeno uno di: nota, nome della busta (completo o breve), nome della persona, nome della bolletta.
+- Il filtro per busta, se scelto, vale anche durante la ricerca.
+- Riepilogo: "N movimenti · € T · in M mesi", con `T = Σ spese − Σ rimborsi` dei risultati (prestiti, debiti ed entrate si vedono ma non contano) e `M` = numero di periodi diversi tra le spese e i rimborsi trovati.
+
+Esempio: Glovo 18 (ago), Glovo 22 + "glovo sushi" 31 (set), "GLOVO" 25 + rimborso Glovo 4 (ott), Glovo 50 (nov) → ricerca "glovo": **6 movimenti · € 142 · in 4 mesi**. Ricerca "glovo sushi" → 1 movimento, € 31. Ricerca "caffè" trova la nota "Caffe della settimana".
+
+## R20 · Il ritmo: oggi, questa settimana, i giorni della settimana
+
+**Oggi puoi spendere** (Home, sotto "Puoi ancora spendere"):
+```
+giorni rimasti = diffDays(oggi, fine del periodo) + 1          (minimo 1)
+speso oggi     = Σ spese − Σ rimborsi di oggi sulle buste da spendere
+quota di oggi  = floor((max(0, puoi ancora spendere) + speso oggi) / giorni rimasti)   (al centesimo)
+resta oggi     = quota di oggi − speso oggi
+```
+La quota non cambia mentre spendi durante il giorno: cambia `resta oggi`. Se `resta oggi < 0`: "Oggi sei oltre di € X" (arancione). Se "Puoi ancora spendere" è ≤ 0: "Niente da spendere fino allo stipendio".
+
+Esempio (19 nov, fine 26 nov → 8 giorni): puoi ancora spendere 231, niente oggi → quota **€ 28,87**. Poi spendi 20 in Vita → puoi ancora spendere 211, speso oggi 20 → quota resta **€ 28,87**, resta oggi **€ 8,87**.
+
+**Questa settimana** (Home): spese − rimborsi di tutte le buste da lunedì a oggi (anche a cavallo di due periodi), confrontata con la settimana scorsa allo stesso giorno (da lunedì scorso a oggi − 7). Esempio, mercoledì 18 nov: lun 16 Cinema 18, mer 18 Aperitivo 24 → **€ 42**; settimana scorsa lun 9 – mer 11: Lampadine 38, Carrefour 34 (dom 8, fuori) → **€ 38**.
+
+**Quando spendi** (Storico, mese scelto): spese − rimborsi delle buste per giorno della settimana (lunedì → domenica) e il giorno più caro: "Il sabato spendi di più: € 120, il 27% del mese". Con meno di 7 giorni di movimenti nel mese la sezione non compare.
+
+## R21 · Prima i risparmi
+
+`Settings.savingsGoal` (facoltativo): quanto mettere da parte **prima** delle buste. Si sceglie al passo **Buste** di "Inizia il mese" ("Prima metti da parte"); l'importo usato diventa quello proposto il mese dopo (come le voci). Vuoto o 0 = nessun obiettivo, tutto come prima.
+
+```
+restano per le buste = S − Spese fisse − voci − obiettivo
+Risparmi             = S − Spese fisse − voci − Σ tetti           (come R7: l'obiettivo è dentro)
+eroso                = max(0, obiettivo − Risparmi)
+```
+- `eroso > 0` e Risparmi ≥ 0 → riga ambra "Le buste si mangiano € eroso del risparmio che avevi deciso" (si può continuare).
+- Risparmi < 0 → come prima, arancione "Le buste superano lo stipendio".
+- L'obiettivo del mese si salva in `Period.savingsGoal`; lo Storico (R18) mostra "Obiettivo € 300 · messi € 646" e lo segna raggiunto se `split.savings ≥ obiettivo`.
+
+Esempio: S 1.500, Spese fisse 79, Viaggi 50, Regali 25, obiettivo 300 → restano per le buste **€ 1.046**. Buste 700 → Risparmi **646**, nessun avviso. Buste 1.100 → Risparmi **246**, eroso **€ 54**.
+
+## R22 · Spese d'impulso
+
+Una spesa (`expense` con busta) può essere segnata **d'impulso** (`Transaction.impulse = true`) con un tocco nell'inserimento o nella modifica. Facoltativo, mai chiesto.
+
+Storico, mese scelto:
+```
+impulso   = Σ importi delle spese d'impulso con busta del periodo
+quota     = round(impulso / speso del periodo × 100)         (speso = R11)
+```
+"D'impulso € X · Y% di quello che hai speso", con la busta che ne ha di più ("soprattutto Vita, € Z"). Se nel mese nessuna spesa è segnata, la riga non compare.
+
+Esempio (Novembre, speso 448,50): Zalando 45 (Shopping), Aperitivo 24 e Cena fuori 42 (Vita) d'impulso → **€ 111 · 25%**, soprattutto **Vita, € 66**.
+
+## R23 · Quanto costano in un anno le spese fisse
+
+In Spese fisse, card **"In un anno"**:
+```
+abbonamento attivo: importo × 12 / frequenza
+bolletta attiva:    tua quota prevista × 12 / frequenza
+```
+Totale, divisione abbonamenti / bollette, e l'elenco degli **abbonamenti** dal più caro all'anno (sono quelli che si possono togliere). Gli abbonamenti pagati da un altro conto contano lo stesso.
+
+Esempio: Rata iPhone 70, Spotify 8,50, Disney+ 6, Prime 5, iCloud 1 (mensili) → 1.086; Dominio 12 l'anno → 12; Palestra 30 ogni 2 mesi → 180. Abbonamenti **€ 1.278**. Bollette di R13: Luce 40 × 12 = 480, Internet 14 × 12 = 168, Gas 30 × 6 = 180, Acqua 120 → **€ 948**. Totale **€ 2.226**.
+
+**Controllo ogni 6 mesi**: con almeno un abbonamento attivo, se `Settings.fixedReviewedAt` manca o è di **183 giorni** fa o più, in Spese fisse compare "Li usi ancora tutti?" con il costo annuo degli abbonamenti e il pulsante **"Sì, li uso tutti"** (salva oggi in `fixedReviewedAt`); in Home la riga Spese fisse dice "È ora di controllare gli abbonamenti". Mettere in pausa o eliminare un abbonamento non cambia la data del controllo.
+
+Esempio (oggi 19 nov 2026): controllo il 20 mag 2026 (183 giorni) → sì; il 21 mag → no.
+
+## R24 · Un proposito al mese
+
+Alla **chiusura** (R6) un campo facoltativo: "Una cosa da fare diversamente a ‹mese nuovo›?" (massimo 140 caratteri). Il testo si salva sul periodo nuovo (`Period.intention`) e:
+- in Home compare sotto la card principale: "Il proposito di dicembre: «…»";
+- alla chiusura successiva, prima di tutto: "A inizio dicembre ti eri detto: «…». Com'è andata?" con **Fatto · A metà · No** (facoltativo); la risposta si salva in `Period.intentionOutcome` (`'done' | 'partly' | 'no'`) del periodo che si chiude;
+- lo Storico mostra proposito ed esito del mese scelto.
+
+Un testo vuoto (solo spazi) non si salva.
+
+## R25 · Tetto: alzare o tenere
+
+Il suggerimento di R6 (busta sforata in almeno 3 degli ultimi 5 periodi chiusi) offre due strade:
+- **Alza a € X** (come prima);
+- **Tieni € Y**: mostra le **3 spese più grandi** della busta negli **ultimi 3 periodi** (alla chiusura: il periodo che si chiude e i 2 chiusi prima; nello Storico: gli ultimi 3 chiusi), dalla più grande (a parità, la più recente), con data, nota e importo, e il messaggio "Per stare nel tetto servono € sforo medio in meno al mese". Da quel momento il suggerimento per quella busta non compare più finché non si chiude un altro periodo (`Settings.capKept[busta] = id dell'ultimo periodo chiuso`, o del periodo che si sta chiudendo).
+
+Esempio Spesa alimentare (tetto 50, sforo medio 7,80): ultimi 3 periodi con spese 24, 34, 31, 12, 40, 9 → **40, 34, 31**; "servono **€ 8** in meno al mese".
+
+## Nomi (R7, R16 · glossario)
+
+Da M10 l'app usa un nome solo per ogni cosa:
+
+| Nome | Cos'è | Prima si chiamava |
+|---|---|---|
+| **Busta** | soldi del Budget del mese per una categoria di spesa, con un tetto | — |
+| **Pocket** | soldi messi da parte su Revolut (Risparmi, Spese fisse, Viaggi…); una Pocket può avere una **quota** mensile | "voce fissa" di tipo salvadanaio |
+| **Spese fisse** | bollette e abbonamenti, pagati dalla Pocket Spese fisse | — |
+| **Pagamenti** | soldi che escono ogni mese e non tornano, come l'affitto | "uscite fisse", "voce fissa" di tipo uscita |
+| **Risparmi** | la Pocket di quello che resta (e dell'obiettivo, R21) | — |
+
+"Voce fissa" non compare più nell'interfaccia (nel codice resta `MonthlyItem`). In Imposta, **Come funziona** spiega il modello in 5 righe con questo glossario.
