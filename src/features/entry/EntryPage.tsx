@@ -132,6 +132,8 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
   const [direction, setDirection] = useState<LoanDirection>('lent');
   const [note, setNote] = useState(() => editing?.note ?? params.get('nota') ?? '');
   const [date, setDate] = useState<ISODate>(() => editing?.date ?? now);
+  /** R22: spesa d'impulso (solo spese) */
+  const [impulse, setImpulse] = useState(() => editing?.impulse === true);
   const [card] = useState<Card | null>(() => {
     if (editing) return editing.card;
     const c = params.get('carta');
@@ -211,7 +213,7 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
         await addLoanEntry(db, { personId, direction, amount, date, reason: note, card });
       } else {
         const t = type as 'expense' | 'refund' | 'income';
-        const fields = { type: t, amount, envelopeId: isIncome ? null : envelopeId, note: note.trim(), date };
+        const fields = { type: t, amount, envelopeId: isIncome ? null : envelopeId, note: note.trim(), date, impulse: t === 'expense' && impulse };
         if (editing) {
           await updateTransaction(db, editing.id, fields);
         } else {
@@ -330,7 +332,7 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
         </div>
       ) : null}
 
-      <div className="entry__section">
+      <div className="entry__section entry__note-row">
         <label htmlFor="entry-note" className={isLoan ? 'entry__label' : 'visually-hidden'}>{isLoan ? it.entry.reason : it.entry.note}</label>
         <input
           id="entry-note"
@@ -346,6 +348,17 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
             if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
           }}
         />
+        {type === 'expense' ? (
+          <button
+            type="button"
+            className="impulse-toggle"
+            aria-pressed={impulse}
+            title={it.insights.impulseHint}
+            onClick={() => setImpulse((v) => !v)}
+          >
+            {it.insights.impulseToggle}
+          </button>
+        ) : null}
       </div>
 
       <Keypad

@@ -1,5 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CapSuggestionCard } from '../../components/CapSuggestionCard';
+import { db } from '../../db/database';
+import { keepCap } from '../../db/repositories';
+import { capKeptHides, recentClosedIds } from '../../domain/insights';
+import { ImpulseCard, IntentionCard, WhenCard, WholeMonth } from './MonthInsights';
 import { useCurrentPeriod, useEnvelopes, usePeriods, usePeriodTransactions, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { IconArrowUp, IconCalendar, IconTrendingDown } from '../../components/icons';
@@ -34,6 +39,8 @@ export function HistoryPage() {
   const current = useCurrentPeriod();
   const txs = usePeriodTransactions(current?.id ?? null);
   const [selected, setSelected] = useState<string | null>(null);
+  /** buste per cui si è appena scelto "Tieni": restano visibili con le spese più grandi */
+  const [keptNow, setKeptNow] = useState<string[]>([]);
 
   // Movimenti del mese scelto e del mese prima (per la curva e il confronto)
   const ids = (periods ?? []).map((p) => p.id).sort();
@@ -73,10 +80,12 @@ export function HistoryPage() {
   const sel = history.find((h) => h.periodId === selId) ?? history[history.length - 1]!;
   const selPeriod = periods.find((p) => p.id === sel.periodId)!;
   const envById = new Map(envelopes.map((e) => [e.id, e]));
+  const lastClosed = recentClosedIds(periods, 3);
   const suggestions = envelopes
     .filter((e) => !e.archived)
     .map((e) => ({ envelope: e, s: capSuggestion(e, periods) }))
-    .filter((x) => x.s !== null && x.envelope.cap < x.s.suggestedCap);
+    .filter((x) => x.s !== null && x.envelope.cap < x.s.suggestedCap && (keptNow.includes(x.envelope.id) || !capKeptHides(settings.capKept, x.envelope.id, lastClosed[0] ?? null)));
+  const trend = history.map((h) => periods.find((p) => p.id === h.periodId)!).filter(Boolean);
 
   return (
     <>
@@ -107,6 +116,14 @@ export function HistoryPage() {
         <WhereList sel={sel} envById={envById} />
       </section>
 
+      <ImpulseCard txs={selTxs} spent={sel.spent} envById={envById} />
+
+      <WholeMonth period={selPeriod} trend={trend} items={settings.monthlyItems} />
+
+      <WhenCard txs={selTxs} />
+
+      <IntentionCard period={selPeriod} />
+
       <section className="sec" aria-labelledby="months-title">
         <div className="sec-head">
           <h2 id="months-title">{it.history.lastMonths}</h2>
@@ -117,17 +134,22 @@ export function HistoryPage() {
 
       {suggestions.map(({ envelope, s }) =>
         s ? (
-          <div key={envelope.id} className="insight sec">
-            <Tile symbol="lightbulb" />
-            <div className="insight__body">
-              <p className="insight__title">{it.history.oftenOver(envelope.name)}</p>
-              <p className="insight__text">{it.history.oftenOverText(s.overMonths, s.months, formatEuro(roundToEuro(s.averageOver)), formatEuro(s.suggestedCap))}</p>
-              {/* Un solo modo per cambiare un tetto: il pannello di Imposta, con il tetto suggerito già scritto */}
+          <CapSuggestionCard
+            key={envelope.id}
+            envelope={envelope}
+            suggestion={s}
+            periodIds={lastClosed}
+            // Un solo modo per cambiare un tetto: il pannello di Imposta, con il tetto suggerito già scritto
+            raise={
               <Link to={`${routes.settings}?busta=${encodeURIComponent(envelope.id)}&tetto=${s.suggestedCap}`} className="insight__action">
                 {it.history.raiseCap(formatEuro(s.suggestedCap))}
               </Link>
-            </div>
-          </div>
+            }
+            onKeep={() => {
+              setKeptNow((k) => [...k, envelope.id]);
+              if (lastClosed[0]) void keepCap(db, envelope.id, lastClosed[0]);
+            }}
+          />
         ) : null,
       )}
     </>

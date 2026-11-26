@@ -34,6 +34,19 @@ export function useTransactionsSince(date: string): Transaction[] | undefined {
   return useLiveQuery(() => db.transactions.where('date').aboveOrEqual(date).toArray(), [date]);
 }
 
+/** Tutti i movimenti (R19 · Cerca); con `enabled` false non legge niente. */
+export function useAllTransactions(enabled: boolean): Transaction[] | undefined {
+  return useLiveQuery(async (): Promise<Transaction[]> => (enabled ? db.transactions.toArray() : []), [enabled]);
+}
+
+/** Movimenti di una busta (R25 · le spese più grandi); con id null non legge niente. */
+export function useEnvelopeTransactions(envelopeId: string | null): Transaction[] | undefined {
+  return useLiveQuery(
+    async (): Promise<Transaction[]> => (envelopeId ? db.transactions.where('envelopeId').equals(envelopeId).toArray() : []),
+    [envelopeId],
+  );
+}
+
 export function useTransaction(id: string | null): Transaction | null | undefined {
   return useLiveQuery(async () => (id ? (await db.transactions.get(id)) ?? null : null), [id]);
 }

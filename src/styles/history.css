@@ -130,3 +130,52 @@
 .chart__legend-box { background: var(--state-over); }
 .chart__legend-box--selected { background: var(--state-ok); }
 .chart__legend-box--current { background: repeating-linear-gradient(45deg, #3B2363 0 2px, #E9DFF6 2px 5px); box-shadow: inset 0 0 0 1px #3B2363; }
+
+/* R18 · Tutto lo stipendio */
+.whole { padding: 16px; }
+.whole__bar { display: flex; gap: 3px; height: 14px; border-radius: 7px; overflow: hidden; background: var(--track); }
+.whole__bar > i { display: block; height: 100%; flex-basis: 0; min-width: 3px; }
+.whole__legend { list-style: none; margin: 12px 0 0; padding: 0; }
+.whole__legend > li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; }
+.whole__legend > li + li { border-top: 1px solid var(--line-soft); }
+.whole__key { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+.whole__sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.whole__value { font-weight: 640; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.whole__value.is-over { color: var(--state-over-text); }
+.whole__pct { display: inline-block; min-width: 40px; margin-left: 8px; text-align: right; font-weight: 450; font-size: 13px; color: var(--text-muted); }
+.whole__saved { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--money-in-soft); }
+.whole__saved-main { margin: 0; font-weight: 640; color: var(--money-in); }
+.whole__saved-main span { font-weight: 500; }
+.whole__saved-note { margin: 2px 0 0; font-size: 13.5px; color: var(--text-muted); }
+.whole__saved-note:empty { display: none; }
+.whole__saved.is-over { background: var(--state-over-soft); }
+.whole__saved.is-over .whole__saved-main { color: var(--state-over-text); }
+
+.rate-trend { margin-top: 16px; }
+.rate-trend__title { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.rate-trend__bars { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; height: 110px; align-items: end; }
+.rate-trend__bars > li { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
+.rate-trend__bar { display: block; width: 100%; max-width: 32px; min-height: 2px; border-radius: 5px 5px 2px 2px; background: var(--money-in-soft); box-shadow: inset 0 0 0 1px rgba(28, 122, 77, .35); }
+.rate-trend__bar.is-open { background: transparent; box-shadow: inset 0 0 0 1.5px rgba(28, 122, 77, .5); }
+.rate-trend__bars > li.is-selected .rate-trend__bar { background: var(--money-in); box-shadow: none; }
+.rate-trend__value { font-size: 12px; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.rate-trend__value.is-over { color: var(--state-over-text); }
+.is-selected .rate-trend__value { color: var(--money-in); }
+.rate-trend__label { font-size: 12px; color: var(--text-muted); }
+.is-selected .rate-trend__label { color: var(--text); font-weight: 600; }
+
+/* R20 · Quando spendi */
+.when { padding: 16px; }
+.when__text { margin: 0 0 12px; font-size: 15px; }
+.when__bars { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; height: 96px; align-items: end; }
+.when__bars > li { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
+.when__bar { display: block; width: 100%; max-width: 30px; min-height: 2px; border-radius: 5px 5px 2px 2px; background: var(--accent-3, #C9B5EA); }
+.is-top .when__bar { background: var(--accent); }
+.when__label { font-size: 12px; color: var(--text-muted); }
+.is-top .when__label { color: var(--text); font-weight: 600; }
+
+/* R24 · Esito del proposito */
+.outcome-chip { display: inline-block; margin-top: 8px; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: var(--surface); }
+.outcome-chip--done { color: var(--done-text); }
+.outcome-chip--partly { color: var(--state-low-text); }
+.outcome-chip--no { color: var(--state-over-text); }

@@ -18,13 +18,13 @@ import { planClosing, type ClosingOption, type ClosingPlan } from '../../domain/
 import { formatLongRange } from '../../domain/dates';
 import { amountText, formatEuro, parseEuro } from '../../domain/money';
 import { closingPreview, transferChecklist, type ChecklistItem } from '../../domain/monthEnd';
-import { activeEnvelopes, availableForEnvelopes, itemQuotas, planOpening, withCaps } from '../../domain/opening';
+import { activeEnvelopes, availableForEnvelopes, itemQuotas, planOpening, savingsGoalCheck, withCaps } from '../../domain/opening';
 import { nextPeriodToStart } from '../../domain/periods';
 import { potLines, type PotLine } from '../../domain/pots';
 import { symbolFor } from '../../domain/symbols';
 import { frequencyOf, recurringDateInPeriod, recurringQuota, savedSubscriptions } from '../../domain/recurring';
 import { accountPayments, otherAccountsRecurring, salaryAccountPlan } from '../../domain/accounts';
-import type { Bill, Cents, Envelope, MonthlyItem, Period, Recurring, Settings, Transaction } from '../../domain/types';
+import type { Bill, Cents, Envelope, IntentionOutcome, MonthlyItem, Period, Recurring, Settings, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { MonthlyItemSheet } from '../settings/MonthlyItemSheet';
 
@@ -58,6 +58,11 @@ export function OpeningPage() {
       txs={txs}
       bills={bills}
       pots={potLines(pots, settings.monthlyItems)}
+      fromClosing={{
+        intention: params.get('proposito'),
+        outcome: (['done', 'partly', 'no'] as const).find((o) => o === params.get('esito')) ?? null,
+        keepCaps: (params.get('tieni') ?? '').split(',').filter(Boolean),
+      }}
     />
   );
 }
@@ -72,6 +77,8 @@ type Props = {
   txs: Transaction[];
   bills: Bill[];
   pots: PotLine[];
+  /** R24, R25: quello che si è deciso alla chiusura, da salvare quando il mese inizia davvero */
+  fromClosing: { intention: string | null; outcome: IntentionOutcome | null; keepCaps: string[] };
 };
 
 /** I passi dell'Inizio del mese: prima i numeri, poi le scelte, i giroconti solo alla fine. */
@@ -86,7 +93,7 @@ function parse(text: string, allowNegative = false): { cents: Cents | null; ok: 
   return { cents: cents === null ? null : neg ? -cents : cents, ok: cents !== null };
 }
 
-function Opening({ current, option, periods, envelopes, settings, recurring, txs, bills, pots }: Props) {
+function Opening({ current, option, periods, envelopes, settings, recurring, txs, bills, pots, fromClosing }: Props) {
   const navigate = useNavigate();
   const now = today();
   const startDay = settings.periodStartDay;
@@ -101,6 +108,8 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   /** voce fissa da creare o modificare (rinominare, togliere): si gestiscono qui, non più in Imposta */
   const [itemTarget, setItemTarget] = useState<MonthlyItem | 'new' | null>(null);
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  /** R21: prima i risparmi (vuoto = nessun obiettivo) */
+  const [goalText, setGoalText] = useState(() => (settings.savingsGoal ? amountText(settings.savingsGoal) : ''));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -157,7 +166,10 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   const otherRecurring = otherAccountsRecurring(recurring, target);
   const available = availableForEnvelopes(salary ?? 0, quotas, billsInfo.amount, otherRecurring);
   const capsTotal = Object.values(caps).reduce((s, c) => s + c, 0);
-  const toSavings = available - capsTotal;
+  const goalParsed = goalText.trim() === '' ? { cents: 0, ok: true } : parse(goalText);
+  const goal = goalParsed.ok ? goalParsed.cents ?? 0 : 0;
+  const goalCheck = savingsGoalCheck(available, goal, capsTotal);
+  const toSavings = goalCheck.savings;
 
   // 5 · Giroconti
   const opening = planOpening(salary ?? 0, withCaps(envelopes, caps), quotas, billsInfo.amount, otherRecurring);
@@ -175,7 +187,7 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
     window.scrollTo({ top: 0 });
   }, [step]);
   const canNext =
-    step === 'salary' ? salaryOk : step === 'fixed' ? !itemInvalid : step === 'pots' ? !balancesInvalid && !itemInvalid : true;
+    step === 'salary' ? salaryOk : step === 'fixed' ? !itemInvalid : step === 'pots' ? !balancesInvalid && !itemInvalid : step === 'envelopes' ? goalParsed.ok : true;
 
   function titleOf(item: ChecklistItem): string {
     if (item.kind === 'leave') return it.opening.leaveTitle(salaryAccount?.account.name ?? '');
@@ -216,6 +228,10 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
         today: now,
         caps,
         potBalances: Object.fromEntries(pots.map((p) => [p.id, balanceOf(p.id)])),
+        savingsGoal: goal,
+        intention: fromClosing.intention,
+        intentionOutcome: fromClosing.outcome,
+        keepCaps: fromClosing.keepCaps,
       });
       navigate(routes.home, { replace: true });
     } catch (e) {
@@ -360,11 +376,26 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
       {step === 'envelopes' ? (
         <section className="opening-step" aria-labelledby="step-title">
           <h2 id="step-title" className="opening-step__title">{it.opening.envelopesTitle}</h2>
+          <div className="card goal-field">
+            <AmountField
+              id="savings-goal"
+              label={it.insights.goalField}
+              placeholder="0"
+              value={goalText}
+              onChange={setGoalText}
+              invalid={!goalParsed.ok}
+            />
+            <p className="goal-field__hint">{it.insights.goalHint}</p>
+          </div>
           <section className="hero" aria-label={it.opening.availableLabel}>
             <p className="hero__label">{it.opening.availableLabel}</p>
-            <p className={available < 0 ? 'hero__amount hero__amount--medium is-over' : 'hero__amount hero__amount--medium'}>{formatEuro(available)}</p>
+            <p className={goalCheck.forEnvelopes < 0 ? 'hero__amount hero__amount--medium is-over' : 'hero__amount hero__amount--medium'}>{formatEuro(goalCheck.forEnvelopes)}</p>
             <div className="hero-foot">
-              <span>{it.opening.availableFoot(formatEuro(salary ?? 0), formatEuro(billsInfo.amount + quotas.reduce((s, q) => s + q.amount, 0)))}</span>
+              <span>
+                {goal > 0
+                  ? it.insights.availableFootGoal(formatEuro(salary ?? 0), formatEuro(billsInfo.amount + otherRecurring + quotas.reduce((s, q) => s + q.amount, 0)), formatEuro(goal))
+                  : it.opening.availableFoot(formatEuro(salary ?? 0), formatEuro(billsInfo.amount + otherRecurring + quotas.reduce((s, q) => s + q.amount, 0)))}
+              </span>
             </div>
           </section>
           <ul className="card opening-list">
@@ -387,6 +418,11 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
               <span>{toSavings < 0 ? it.opening.envelopesOver : it.opening.envelopesToSavings}</span>
               <strong>{formatEuro(Math.abs(toSavings))}</strong>
             </div>
+            {goalCheck.eroded > 0 ? (
+              <div className="opening-summary__row is-warn">
+                <span>{it.insights.goalEroded(formatEuro(goalCheck.eroded))}</span>
+              </div>
+            ) : null}
           </div>
         </section>
       ) : null}

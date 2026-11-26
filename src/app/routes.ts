@@ -12,6 +12,8 @@ export const routes = {
   onboarding: '/benvenuto',
   bills: '/bollette',
   backup: '/backup',
+  /** il metodo in 5 righe e i nomi (M10) */
+  howItWorks: '/come-funziona',
   /** vecchio indirizzo di Bollette (prima stava dentro Casa & Servizi) */
   casa: '/casa',
 } as const;

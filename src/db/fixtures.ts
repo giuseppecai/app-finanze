@@ -91,9 +91,18 @@ function period(id: string, closed: number[] | null): Period {
   };
 }
 
+/** M10 · Propositi della demo (R24): ottobre con l'esito, novembre in corso. */
+const INTENTIONS: Record<string, Pick<Period, 'intention' | 'intentionOutcome'>> = {
+  '2026-10': { intention: 'Niente Zalando fino a fine mese', intentionOutcome: 'partly' },
+  '2026-11': { intention: 'Massimo 2 aperitivi a settimana' },
+};
+
 function demoPeriods(): Period[] {
-  return [...CLOSED.map(([id, av]) => period(id, av)), period('2026-11', null)];
+  return [...CLOSED.map(([id, av]) => period(id, av)), period('2026-11', null)].map((p) => ({ ...p, ...INTENTIONS[p.id] }));
 }
+
+/** M10 · Spese d'impulso della demo (R22): € 111 a novembre, soprattutto Vita. */
+const IMPULSE = new Set(['Zalando', 'Aperitivo', 'Cena fuori']);
 
 type Row = [day: number, note: string, envelope: string | null, card: Card | null, amount: number, recurringId?: string];
 
@@ -139,6 +148,7 @@ function demoTransactions(): Transaction[] {
       personId: null,
       loanAllocations: null,
       billId: null,
+      ...(IMPULSE.has(note) ? { impulse: true } : {}),
       // createdAt crescente dal più vecchio al più recente
       createdAt: `${date}T${String(8 + ((n - i) % 12)).padStart(2, '0')}:00:00.000Z`,
     };

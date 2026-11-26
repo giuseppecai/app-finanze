@@ -5,6 +5,10 @@ import { routes } from '../../app/routes';
 import { BottomSheet } from '../../components/BottomSheet';
 import { IconChevronRight, IconPlus, IconReceipt } from '../../components/icons';
 import { InfoBox } from '../../components/InfoBox';
+import { Tile } from '../../components/Symbol';
+import { db } from '../../db/database';
+import { markFixedReviewed } from '../../db/repositories';
+import { annualCost, reviewDue } from '../../domain/insights';
 import { TopBar } from '../../components/TopBar';
 import { PageHeader } from '../../components/PageHeader';
 import { ScheduleRow } from '../../components/ScheduleRow';
@@ -104,6 +108,17 @@ export function BillsPage() {
         </div>
       </section>
 
+      {reviewDue(recurring, settings.fixedReviewedAt, now) ? (
+        <div className="insight">
+          <Tile symbol="lightbulb" />
+          <div className="insight__body">
+            <p className="insight__title">{it.insights.reviewTitle}</p>
+            <p className="insight__text">{it.insights.reviewText(formatEuro(annualCost(recurring, bills).subscriptions))}</p>
+            <button type="button" className="insight__action" onClick={() => void markFixedReviewed(db, now)}>{it.insights.reviewDone}</button>
+          </div>
+        </div>
+      ) : null}
+
       {roommates.map((id) => {
         const name = names.get(id)?.name ?? it.movements.unknownPerson;
         const balance = balanceWith(loans, id);
@@ -132,6 +147,8 @@ export function BillsPage() {
       ) : null}
       {later.length > 0 ? <ItemList title={it.recurring.later} items={later} ctx={ctx} onOpen={open} /> : null}
 
+      <YearCard recurring={recurring} bills={bills} onOpen={(r) => setSub(r)} />
+
       <div className="flow__spacer" />
       <InfoBox>{it.casa.note}</InfoBox>
 
@@ -159,6 +176,34 @@ export function BillsPage() {
         onClose={() => setBill(null)}
       />
     </div>
+  );
+}
+
+/** R23 · Quanto costano in un anno: totale e abbonamenti dal più caro (quelli che si possono togliere). */
+function YearCard({ recurring, bills, onOpen }: { recurring: Recurring[]; bills: Bill[]; onOpen: (r: Recurring) => void }) {
+  const a = annualCost(recurring, bills);
+  if (a.total === 0) return null;
+  return (
+    <section className="sec" aria-labelledby="year-title">
+      <div className="sec-head">
+        <h2 id="year-title">{it.insights.yearTitle}</h2>
+        <span className="sec-total">{formatEuro(a.total)}</span>
+      </div>
+      <p className="muted-note">{it.insights.yearText(formatEuro(a.subscriptions), formatEuro(a.bills))}</p>
+      {a.list.length > 0 ? (
+        <ul className="card year-list">
+          {a.list.map(({ recurring: r, yearly }) => (
+            <li key={r.id}>
+              <button type="button" className="year-list__row" onClick={() => onOpen(r)}>
+                <span className="year-list__name">{r.name}</span>
+                <span className="year-list__amount">{it.insights.yearItem(formatEuro(yearly))}</span>
+                <IconChevronRight className="chev" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }
 

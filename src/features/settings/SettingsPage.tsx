@@ -89,6 +89,21 @@ export function SettingsPage() {
         </ul>
         <p className="group__footer">{it.settings.backupHint}</p>
       </section>
+      <section className="group" aria-labelledby="help-title">
+        <h2 id="help-title" className="group__title">{it.insights.helpTitle}</h2>
+        <ul className="card list-card list">
+          <li>
+            <Link to={routes.howItWorks} className="list-row list-row--button">
+              <Tile symbol="lightbulb" />
+              <span className="list-row__text">
+                <span className="list-row__title">{it.insights.howRow}</span>
+                <span className="list-row__detail">{it.insights.howDetail}</span>
+              </span>
+              <IconChevronRight className="list-row__chevron" />
+            </Link>
+          </li>
+        </ul>
+      </section>
     </div>
   );
 }

@@ -669,3 +669,42 @@
 .insight__text { font-size: 14px; line-height: 1.4; color: var(--text-muted); }
 .insight__action { align-self: flex-start; min-height: var(--touch); margin-top: 8px; padding: 0 16px; border: none; border-radius: 12px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); color: var(--text); font-size: 15px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; }
 .insight__action:active { background: var(--surface-press); }
+
+/* M10 · Il ritmo (Home) e il proposito del mese */
+.pace-strip { margin-top: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.pace-strip__today { margin: 0; font-size: 17px; font-weight: 640; }
+.pace-strip__today.is-over { color: var(--state-over-text); }
+.pace-strip__days, .pace-strip__muted { font-weight: 450; color: var(--text-muted); font-size: 14px; }
+.pace-strip__week { margin: 0; font-size: 15px; }
+.intention-card { margin-top: 12px; padding: 14px 16px; background: var(--save-soft); box-shadow: none; }
+.intention-card__label { margin: 0; font-size: 13px; font-weight: 600; color: var(--save-1); }
+.intention-card__text { margin: 4px 0 0; font-size: 16px; line-height: 1.35; color: var(--text); }
+
+/* R22 · D'impulso, accanto alla nota */
+.entry__note-row { display: flex; flex-direction: row; align-items: center; gap: 8px; flex-wrap: wrap; }
+.entry__note-row .entry__label { flex-basis: 100%; }
+.entry__note-row .text-input { flex: 1; min-width: 0; }
+.impulse-toggle {
+  flex: none; min-height: var(--touch); padding: 0 14px; border: none; border-radius: 12px;
+  background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); color: var(--text-muted);
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.impulse-toggle[aria-pressed="true"] { background: var(--state-low-soft); box-shadow: inset 0 0 0 1px var(--state-low); color: var(--state-low-text); }
+.impulse-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* R19 · Cerca nei movimenti */
+.search-field { position: relative; margin: 0 0 12px; }
+.search-field .text-input { width: 100%; padding-right: 48px; }
+.search-field__clear {
+  position: absolute; right: 2px; top: 2px; width: var(--touch); height: var(--touch);
+  display: grid; place-items: center; border: none; background: none; color: var(--text-muted); cursor: pointer;
+}
+.search-field__hint { margin: 6px 0 0; font-size: 13px; color: var(--text-muted); }
+
+/* R25 · Tetto: alzare o tenere */
+.insight__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.keep-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.keep-list li { display: flex; align-items: baseline; gap: 8px; font-size: 15px; }
+.keep-list__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.keep-list__date { flex: none; font-size: 13px; color: var(--text-muted); }
+.keep-list__amount { flex: none; font-weight: 640; }

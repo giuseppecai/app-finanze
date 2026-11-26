@@ -238,6 +238,8 @@ describe('R22 · spese d\'impulso', () => {
     expect(spent).toBe(eur(448.5));
     const marked = txs.map((t) => (['Zalando', 'Aperitivo', 'Cena fuori'].includes(t.note) ? { ...t, impulse: true } : { ...t, impulse: false }));
     expect(impulseSummary(marked, spent)).toEqual({ total: eur(111), share: 25, top: { envelopeId: ENV.vita, amount: eur(66) } });
+    // la demo ha già le stesse tre spese segnate
+    expect(impulseSummary(txs, spent)).toEqual(impulseSummary(marked, spent));
   });
 
   it('nessuna spesa segnata → niente riga; rimborsi e spese senza busta non contano', () => {

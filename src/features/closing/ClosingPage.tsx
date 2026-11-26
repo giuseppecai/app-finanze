@@ -2,20 +2,20 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCurrentPeriod, useEnvelopes, usePeriods, usePeriodTransactions, useRecurring } from '../../app/data';
 import { routes } from '../../app/routes';
+import { CapSuggestionCard } from '../../components/CapSuggestionCard';
 import { InfoBox } from '../../components/InfoBox';
 import { MonthHeader } from '../../components/MonthHeader';
-import { Tile } from '../../components/Symbol';
 import { OptionList } from '../../components/OptionList';
 import { StepIndicator } from '../../components/StepIndicator';
 import { TopBar } from '../../components/TopBar';
 import { db } from '../../db/database';
 import { setEnvelopeCaps } from '../../db/repositories';
 import { planClosing, type ClosingOption } from '../../domain/closing';
-import { formatLongRange } from '../../domain/dates';
+import { formatLongRange, nextMonthId } from '../../domain/dates';
+import { INTENTION_MAX, recentClosedIds } from '../../domain/insights';
 import { formatEuro } from '../../domain/money';
 import { closingPreview, suggestionsAtClosing } from '../../domain/monthEnd';
-import { roundToEuro } from '../../domain/stats';
-import type { Envelope, Period, Recurring, Transaction } from '../../domain/types';
+import type { Envelope, IntentionOutcome, Period, Recurring, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
 
 export function ClosingPage() {
@@ -49,6 +49,11 @@ function Closing({ period, envelopes, periods, recurring, txs }: Props) {
   const navigate = useNavigate();
   const [option, setOption] = useState<ClosingOption>('toSavings');
   const [raised, setRaised] = useState<string[]>([]);
+  /** R25: buste per cui si tiene il tetto (si salva quando il mese si chiude davvero) */
+  const [kept, setKept] = useState<string[]>([]);
+  /** R24: com'è andato il proposito di questo mese e quello per il mese nuovo */
+  const [outcome, setOutcome] = useState<IntentionOutcome | null>(null);
+  const [intention, setIntention] = useState('');
 
   const preview = closingPreview(envelopes, period, txs, recurring);
   const plan = planClosing(preview.leftovers, preview.unassigned, option);
@@ -56,6 +61,16 @@ function Closing({ period, envelopes, periods, recurring, txs }: Props) {
   const net = plan.net;
   const suggestions = suggestionsAtClosing(envelopes, periods, period, preview.leftovers);
   const month = period.name.toLowerCase();
+  const nextMonth = it.months.long[Number(nextMonthId(period.id).slice(5, 7)) - 1] ?? '';
+  const keepPeriods = [period.id, ...recentClosedIds(periods.filter((p) => p.id !== period.id), 2)];
+
+  function next() {
+    const q = new URLSearchParams({ scelta: net > 0 ? option : 'toSavings' });
+    if (intention.trim()) q.set('proposito', intention.trim());
+    if (outcome) q.set('esito', outcome);
+    if (kept.length > 0) q.set('tieni', kept.join(','));
+    navigate(`${routes.opening}?${q.toString()}`);
+  }
 
   async function raiseCap(envelope: Envelope, cap: number) {
     await setEnvelopeCaps(db, { [envelope.id]: cap });
@@ -66,6 +81,19 @@ function Closing({ period, envelopes, periods, recurring, txs }: Props) {
     <div className="flow">
       <MonthHeader title={it.closing.title(month)} subtitle={formatLongRange(period.calendarStart, period.calendarEnd)} />
       <StepIndicator steps={it.monthSteps.items} current={1} label={it.monthSteps.label} />
+
+      {period.intention ? (
+        <section className="card intention-check" aria-label={it.insights.intentionCheckLabel}>
+          <p className="intention-check__text">{it.insights.intentionCheck(month, period.intention)}</p>
+          <div className="segmented" role="radiogroup" aria-label={it.insights.intentionCheckLabel}>
+            {(['done', 'partly', 'no'] as const).map((o) => (
+              <button key={o} type="button" role="radio" aria-checked={outcome === o} className="segmented__option" onClick={() => setOutcome(outcome === o ? null : o)}>
+                {it.insights.outcomes[o]}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="card summary-card" aria-labelledby="how-it-went">
         <div className="summary-card__head">
@@ -127,25 +155,40 @@ function Closing({ period, envelopes, periods, recurring, txs }: Props) {
         }
         if (envelope.cap >= s.suggestedCap) return null;
         return (
-          <div key={s.envelopeId} className="insight">
-            <Tile symbol="lightbulb" />
-            <div className="insight__body">
-              <p className="insight__title">{it.history.oftenOver(envelope.name)}</p>
-              <p className="insight__text">{it.history.oftenOverText(s.overMonths, s.months, formatEuro(roundToEuro(s.averageOver)), formatEuro(s.suggestedCap))}</p>
+          <CapSuggestionCard
+            key={s.envelopeId}
+            envelope={envelope}
+            suggestion={s}
+            periodIds={keepPeriods}
+            raise={
               <button type="button" className="insight__action" onClick={() => void raiseCap(envelope, s.suggestedCap)}>
                 {it.closing.raiseCap(formatEuro(s.suggestedCap))}
               </button>
-            </div>
-          </div>
+            }
+            onKeep={() => setKept((k) => (k.includes(envelope.id) ? k : [...k, envelope.id]))}
+          />
         );
       })}
 
+      <section className="card intention-field">
+        <label htmlFor="intention" className="intention-field__label">{it.insights.intentionQuestion(nextMonth)}</label>
+        <input
+          id="intention"
+          className="text-input"
+          type="text"
+          value={intention}
+          maxLength={INTENTION_MAX}
+          placeholder={it.insights.intentionPlaceholder}
+          autoComplete="off"
+          enterKeyHint="done"
+          onChange={(e) => setIntention(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
+        />
+        <p className="intention-field__hint">{it.insights.intentionHint}</p>
+      </section>
+
       <div className="flow__spacer" />
-      <button
-        type="button"
-        className="primary-button"
-        onClick={() => navigate(`${routes.opening}?scelta=${net > 0 ? option : 'toSavings'}`)}
-      >
+      <button type="button" className="primary-button" onClick={next}>
         {it.closing.continue}
       </button>
     </div>

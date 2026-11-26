@@ -9,6 +9,7 @@ import { PotsCard } from '../../components/PotsCard';
 import { billsToRegister } from '../../domain/bills';
 import { today } from '../../domain/clock';
 import { formatShortRange } from '../../domain/dates';
+import { reviewDue } from '../../domain/insights';
 import { summarizePeriod } from '../../domain/envelopes';
 import { totalDebt, totalOwed } from '../../domain/loans';
 import { potLines, type PotLine } from '../../domain/pots';
@@ -16,9 +17,10 @@ import { formatEuro } from '../../domain/money';
 import { daysAgo } from '../../domain/movements';
 import { daysUntilSalary, isTimeToClose } from '../../domain/periods';
 import { nextUpcomingCharge, recurringRows } from '../../domain/recurring';
-import type { Bill, Envelope, Period } from '../../domain/types';
+import type { Bill, Envelope, Period, Settings } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { BackupReminder } from './BackupReminder';
+import { PaceStrip } from './PaceStrip';
 import { ReconcileSheet } from './ReconcileSheet';
 
 /** Ogni busta apre i Movimenti filtrati. */
@@ -44,7 +46,7 @@ export function HomePage() {
     <>
       <BackupReminder settings={settings} periods={periods} />
       {period ? <CurrentPeriod period={period} envelopes={envelopes} cardReserve={settings.cardReserve} pots={lines} /> : <NoPeriod />}
-      <PotsSection period={period} lines={lines} bills={bills} loansOwed={totalOwed(loans)} debtsOwed={totalDebt(loans)} />
+      <PotsSection period={period} lines={lines} bills={bills} settings={settings} loansOwed={totalOwed(loans)} debtsOwed={totalDebt(loans)} />
     </>
   );
 }
@@ -53,7 +55,7 @@ export function HomePage() {
  * "Messi da parte": Risparmi, salvadanai e Spese fisse (apre le spese fisse: bollette da registrare,
  * altrimenti il prossimo addebito automatico).
  */
-function PotsSection({ period, lines, bills, loansOwed, debtsOwed }: { period: Period | null; lines: PotLine[]; bills: Bill[]; loansOwed: number; debtsOwed: number }) {
+function PotsSection({ period, lines, bills, settings, loansOwed, debtsOwed }: { period: Period | null; lines: PotLine[]; bills: Bill[]; settings: Settings; loansOwed: number; debtsOwed: number }) {
   const txs = usePeriodTransactions(period?.id ?? null);
   const recurring = useRecurring();
   if (!txs || !recurring) return null;
@@ -63,6 +65,8 @@ function PotsSection({ period, lines, bills, loansOwed, debtsOwed }: { period: P
     ? null
     : toRegister > 0
       ? it.home.billsToRegister(toRegister)
+      : reviewDue(recurring, settings.fixedReviewedAt, today())
+        ? it.insights.reviewHome
       : next
         ? it.home.nextCharge(next.recurring.name, formatEuro(next.recurring.amount), next.status.inDays <= 0 ? it.recurring.status.today : next.status.inDays === 1 ? it.recurring.status.tomorrow : it.recurring.status.inDays(next.status.inDays))
         : bills.some((b) => b.active && b.frequency === 1) ? it.home.billsAllRegistered : null;
@@ -144,6 +148,15 @@ function CurrentPeriod({ period, envelopes, cardReserve, pots }: { period: Perio
           )}
         </div>
       </section>
+
+      <PaceStrip period={period} txs={txs} balances={summary.balances} spendable={summary.spendable} today={now} />
+
+      {period.intention ? (
+        <section className="card intention-card" aria-label={it.insights.intentionOf(period.name.toLowerCase())}>
+          <p className="intention-card__label">{it.insights.intentionOf(period.name.toLowerCase())}</p>
+          <p className="intention-card__text">«{period.intention}»</p>
+        </section>
+      ) : null}
 
       <section className="sec" aria-labelledby="envelopes-title">
         <SectionHead id="envelopes-title" title={it.home.envelopes} tag={it.home.envelopesTag} />

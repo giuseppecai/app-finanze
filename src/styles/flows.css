@@ -426,3 +426,25 @@
 .opening-item .opening-edit { align-self: flex-end; }
 .opening-pot__head .opening-edit { margin-left: auto; }
 .opening-edit { min-height: 44px; padding: 0 4px; border: none; background: none; font-size: 14px; font-weight: 600; color: var(--accent); }
+
+/* R24 · Proposito alla chiusura */
+.intention-check { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.intention-check__text { margin: 0; font-size: 15px; line-height: 1.4; }
+.intention-field { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.intention-field__label { font-weight: 640; }
+.intention-field__hint { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+/* R21 · Prima i risparmi */
+.goal-field { padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+.goal-field__hint { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+.opening-summary__row.is-warn { color: var(--state-low-text); }
+
+/* Come funziona */
+.how-steps { list-style: none; margin: 0; padding: 6px 16px; }
+.how-steps > li { display: flex; gap: 12px; padding: 12px 0; line-height: 1.45; }
+.how-steps > li + li { border-top: 1px solid var(--line-soft); }
+.how-steps__n { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-press); font-weight: 700; font-size: 14px; }
+.glossary { margin: 0; padding: 4px 16px; }
+.glossary__item { padding: 12px 0; }
+.glossary__item + .glossary__item { border-top: 1px solid var(--line-soft); }
+.glossary dt { font-weight: 640; }
+.glossary dd { margin: 4px 0 0; color: var(--text-muted); line-height: 1.45; font-size: 15px; }

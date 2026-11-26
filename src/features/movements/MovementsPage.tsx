@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useEnvelopes, usePeople, usePeriods, usePeriodTransactions, useSettings } from '../../app/data';
+import { useAllTransactions, useBills, useEnvelopes, usePeople, usePeriods, usePeriodTransactions, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { FilterChips } from '../../components/FilterChips';
-import { IconArrowDownLeft, IconArrowUpRight, IconChevronDown, IconReceipt } from '../../components/icons';
+import { IconArrowDownLeft, IconArrowUpRight, IconChevronDown, IconClose, IconReceipt } from '../../components/icons';
+import { searchMovements, searchSummary, searchTerms } from '../../domain/insights';
 import { PageHeader } from '../../components/PageHeader';
 import { SymbolIcon } from '../../components/Symbol';
 import { symbolFor } from '../../domain/symbols';
@@ -28,8 +29,13 @@ export function MovementsPage() {
   const fallback = periods ? currentPeriod(periods) ?? sorted[0] ?? null : null;
   const period = sorted.find((p) => p.id === params.get('periodo')) ?? fallback;
   const txs = usePeriodTransactions(period?.id ?? null);
+  const bills = useBills();
+  // R19 · Cerca: la ricerca sta nell'indirizzo, così tornando da un movimento resta.
+  const query = params.get('cerca') ?? '';
+  const searching = searchTerms(query) !== null;
+  const all = useAllTransactions(searching);
 
-  if (!periods || !envelopes || !people || !txs) return null;
+  if (!periods || !envelopes || !people || !txs || !bills || !all) return null;
 
   const filter = params.get('busta') ?? ALL;
   const setParam = (key: string, value: string | null) => {
@@ -51,7 +57,10 @@ export function MovementsPage() {
   const summary = expensesSummary(txs);
   const visibleEnvelopes = envelopes.filter((e) => !e.archived || e.id in period.allocations);
   const selected = filter === ALL ? null : envelopes.find((e) => e.id === filter) ?? null;
-  const visible = selected ? txs.filter((t) => t.envelopeId === selected.id) : txs;
+  const found = searching ? searchMovements(all, query, { envelopes, people, bills }) ?? [] : null;
+  const source = found ?? txs;
+  const visible = selected ? source.filter((t) => t.envelopeId === selected.id) : source;
+  const foundSummary = found ? searchSummary(visible) : null;
   const balance = selected
     ? summarizePeriod(envelopes, period, txs).balances.find((b) => b.envelope.id === selected.id) ?? null
     : null;
@@ -60,9 +69,13 @@ export function MovementsPage() {
     <>
       <PageHeader
         title={it.movements.title}
-        chip={{ icon: <IconReceipt />, text: it.movements.spent(formatEuro(summary.total, { decimals: 'always' })) }}
-        extra={<PeriodSelect periods={sorted} value={period} onChange={(id) => setParam('periodo', id)} />}
+        chip={foundSummary
+          ? { icon: <IconReceipt />, text: it.insights.searchSummary(foundSummary.count, formatEuro(foundSummary.total, { decimals: 'always' }), foundSummary.months) }
+          : { icon: <IconReceipt />, text: it.movements.spent(formatEuro(summary.total, { decimals: 'always' })) }}
+        extra={foundSummary ? null : <PeriodSelect periods={sorted} value={period} onChange={(id) => setParam('periodo', id)} />}
       />
+
+      <SearchField value={query} onChange={(v) => setParam('cerca', v === '' ? null : v)} />
 
       <FilterChips
         label={it.movements.filterLabel}
@@ -71,7 +84,7 @@ export function MovementsPage() {
         onChange={(v) => setParam('busta', v === ALL ? null : v)}
       />
 
-      {balance ? (
+      {balance && !found ? (
         <p className="filter-line">
           <span>{it.movements.envelopeLine(balance.envelope.name, formatEuro(balance.spent), formatEuro(balance.put))}</span>
           <span className={balance.remaining < 0 ? 'filter-line__left is-over' : 'filter-line__left'}>
@@ -84,9 +97,35 @@ export function MovementsPage() {
         txs={visible}
         envelopes={envelopes}
         people={people}
-        emptyText={selected ? it.movements.emptyFiltered(selected.name) : it.movements.empty}
+        emptyText={found ? it.insights.searchEmpty(query.trim()) : selected ? it.movements.emptyFiltered(selected.name) : it.movements.empty}
+        showYear={!!found}
       />
     </>
+  );
+}
+
+/** R19 · Cerca in tutti i mesi. */
+function SearchField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const short = value.trim() !== '' && searchTerms(value) === null;
+  return (
+    <div className="search-field">
+      <label htmlFor="movements-search" className="visually-hidden">{it.insights.search}</label>
+      <input
+        id="movements-search"
+        className="text-input"
+        type="text"
+        value={value}
+        placeholder={it.insights.searchPlaceholder}
+        autoComplete="off"
+        enterKeyHint="search"
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+      />
+      {value !== '' ? (
+        <button type="button" className="search-field__clear" aria-label={it.insights.searchClear} onClick={() => onChange('')}><IconClose size={18} /></button>
+      ) : null}
+      {short ? <p className="search-field__hint">{it.insights.searchShort}</p> : null}
+    </div>
   );
 }
 
@@ -118,9 +157,9 @@ function signed(cents: number): string {
   return formatEuro(cents, { decimals: 'always', sign: 'always' });
 }
 
-type ListProps = { txs: Transaction[]; envelopes: Envelope[]; people: Person[]; emptyText: string };
+type ListProps = { txs: Transaction[]; envelopes: Envelope[]; people: Person[]; emptyText: string; showYear?: boolean };
 
-function MovementList({ txs, envelopes, people, emptyText }: ListProps) {
+function MovementList({ txs, envelopes, people, emptyText, showYear = false }: ListProps) {
   if (txs.length === 0) return <p className="placeholder">{emptyText}</p>;
   const envById = new Map(envelopes.map((e) => [e.id, e]));
   const personById = new Map(people.map((p) => [p.id, p]));
@@ -132,7 +171,7 @@ function MovementList({ txs, envelopes, people, emptyText }: ListProps) {
           <section key={group.date} className="day-group">
             {/* Intestazione fissa in alto mentre si scorre: giorno e cosa conta nel totale */}
             <div className="day-group__head">
-              <h2>{dayLabel(group.date)}</h2>
+              <h2>{dayLabel(group.date)}{showYear && group.date.slice(0, 4) !== today().slice(0, 4) ? ` ${group.date.slice(0, 4)}` : ''}</h2>
               <span>
                 {kind === 'none' ? it.movements.dayNone : kind === 'spent' ? it.movements.daySpent(signed(group.total)) : it.movements.dayIn(signed(group.total))}
               </span>

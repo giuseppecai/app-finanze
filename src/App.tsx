@@ -13,6 +13,7 @@ import { MovementsPage } from './features/movements/MovementsPage';
 import { OnboardingPage } from './features/onboarding/OnboardingPage';
 import { OpeningPage } from './features/opening/OpeningPage';
 import { BackupPage } from './features/settings/BackupPage';
+import { HowItWorksPage } from './features/help/HowItWorksPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 
 export function App() {
@@ -34,6 +35,7 @@ export function App() {
           <Route path={routes.onboarding} element={<OnboardingPage />} />
           <Route path={routes.bills} element={<BillsPage />} />
           <Route path={routes.backup} element={<BackupPage />} />
+          <Route path={routes.howItWorks} element={<HowItWorksPage />} />
           <Route path={routes.casa} element={<Navigate to={routes.bills} replace />} />
         </Route>
         <Route path="*" element={<Navigate to={routes.home} replace />} />
