@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { closingNet, planClosing } from '../closing';
-import { buildNewPeriod, itemQuotas, planOpening } from '../opening';
+import { availableForEnvelopes, buildNewPeriod, itemQuotas, planOpening } from '../opening';
 import { DEFAULT_MONTHLY_ITEMS } from '../pots';
 
 const items = itemQuotas(DEFAULT_MONTHLY_ITEMS);
@@ -25,6 +25,15 @@ describe('R5 · Confronta con Revolut', () => {
   });
   it('il da assegnare entra nell\'atteso', () => {
     expect(reconcile({ budgetPocket: 35262, quotidiano: 6200, extra: 3800 }, 25150, 112, 20000).outcome).toBe('ok');
+  });
+  it('con tutte le Pocket: si confronta il totale (Pocket comprese); una Pocket più bassa su Revolut si vede nella differenza', () => {
+    // Risparmi 1.240, Viaggi 180, Regali 75, Spese fisse 134 → 1.629 nell'app
+    expect(reconcile({ budgetPocket: 35150, quotidiano: 6200, extra: 3800 }, 25150, 0, 20000, { revolut: 162900, app: 162900 })).toMatchObject({ real: 208050, expected: 208050, outcome: 'ok' });
+    expect(reconcile({ budgetPocket: 35150, quotidiano: 6200, extra: 3800 }, 25150, 0, 20000, { revolut: 161900, app: 162900 })).toMatchObject({ diff: -1000, outcome: 'missingExpense' });
+  });
+  it('abbonamento pagato con la carta Extra ma dalla Pocket Spese fisse nell’app: il totale torna lo stesso', () => {
+    // Spotify 8,50: su Revolut la carta Extra scende (38 → 29,50), la Pocket no; nell'app scende la Pocket (134 → 125,50)
+    expect(reconcile({ budgetPocket: 35150, quotidiano: 6200, extra: 2950 }, 25150, 0, 20000, { revolut: 162900, app: 162050 }).outcome).toBe('ok');
   });
   it('primo confronto: calibra la riserva = reale − (Σ residui + da assegnare)', () => {
     const r = reconcile({ budgetPocket: 33910, quotidiano: 6200, extra: 3800 }, 25150, 0, null);
@@ -127,5 +136,21 @@ describe('R7 · Inizio del mese', () => {
       closing: planClosing(ott.leftovers!, 0, 'carryOver'),
     });
     expect(period.carryIn[ENV.spesa]).toBe(-1200);
+  });
+});
+
+describe('Inizio del mese a passi: quanto resta per le buste', () => {
+  it('stipendio 1.500 − spese fisse 334,71 − affitto 582 − Viaggi 50 − Regali 25 = 508,29 per le buste', () => {
+    const quotas = [...items, rent].map((q) => (q.item.id === 'rent' ? { ...q, amount: 58200 } : q));
+    expect(availableForEnvelopes(150000, quotas, 33471)).toBe(50829);
+  });
+  it('i tetti scelti all’inizio del mese vanno nelle allocazioni; Risparmi = il resto', () => {
+    const envelopes = data.envelopes.filter((e) => !e.archived);
+    const caps = Object.fromEntries(envelopes.map((e) => [e.id, 5000]));
+    const { period, potDeltas } = buildNewPeriod({
+      target: calendarPeriodById('2026-12', 27), today: '2026-11-27', salary: 150000, envelopes, items, billsQuota: 0, caps, closing: null,
+    });
+    expect(Object.values(period.allocations).every((v) => v === 5000)).toBe(true);
+    expect(potDeltas.savings).toBe(150000 - 5000 * envelopes.length - 7500);
   });
 });

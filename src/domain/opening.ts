@@ -29,6 +29,19 @@ export function capsTotal(envelopes: readonly Envelope[]): Cents {
   return activeEnvelopes(envelopes).reduce((s, e) => s + e.cap, 0);
 }
 
+/** Buste con i tetti scelti all'"Inizio del mese" (`caps` sovrascrive quelli di Imposta). */
+export function withCaps(envelopes: readonly Envelope[], caps: Readonly<Record<string, Cents>> = {}): Envelope[] {
+  return envelopes.map((e) => (caps[e.id] !== undefined ? { ...e, cap: caps[e.id]! } : e));
+}
+
+/**
+ * Quanto resta per le buste (passo "Buste" dell'Inizio del mese): stipendio − giroconto Spese fisse
+ * − uscite fisse (affitto) − quote delle Pocket. Quello che le buste non usano va a Risparmi.
+ */
+export function availableForEnvelopes(salary: Cents, items: readonly ItemQuota[], bills: Cents): Cents {
+  return salary - bills - items.reduce((s, q) => s + q.amount, 0);
+}
+
 /** Voci attive con l'importo di questo mese (`amounts` sovrascrive l'importo proposto). */
 export function itemQuotas(items: readonly MonthlyItem[], amounts: Readonly<Record<string, Cents>> = {}): ItemQuota[] {
   return items.filter((i) => !i.archived).map((item) => ({ item, amount: amounts[item.id] ?? item.amount }));
@@ -49,6 +62,8 @@ export interface NewPeriodInput {
   items: readonly ItemQuota[];
   /** giroconto mensile → Bollette (R13) */
   billsQuota?: Cents;
+  /** tetti scelti all'"Inizio del mese" (id busta → tetto); assenti = quelli di Imposta */
+  caps?: Readonly<Record<string, Cents>>;
   /** piano di chiusura del periodo precedente (null per il primo periodo) */
   closing: Pick<ClosingPlan, 'nextCarryIn' | 'nextUnassigned' | 'savingsDelta'> | null;
 }
@@ -62,8 +77,9 @@ export interface NewPeriodResult {
 /** Crea il periodo: fotografa i tetti, applica riporti / da assegnare della chiusura. */
 export function buildNewPeriod(input: NewPeriodInput): NewPeriodResult {
   const billsQuota = input.billsQuota ?? 0;
-  const plan = planOpening(input.salary, input.envelopes, input.items, billsQuota);
-  const allocations: Record<string, Cents> = Object.fromEntries(activeEnvelopes(input.envelopes).map((e) => [e.id, e.cap]));
+  const envelopes = withCaps(input.envelopes, input.caps);
+  const plan = planOpening(input.salary, envelopes, input.items, billsQuota);
+  const allocations: Record<string, Cents> = Object.fromEntries(activeEnvelopes(envelopes).map((e) => [e.id, e.cap]));
   const period: Period = {
     ...input.target,
     startedAt: input.today,

@@ -33,7 +33,7 @@ Tre sezioni con titolo grande e una riga di spiegazione, ognuna con un aspetto d
 4. **Messi da parte** (Pocket): Risparmi, salvadanai delle voci fisse e **Spese fisse** (riga che apre `/bollette`, con "N da registrare questo mese" o il prossimo addebito automatico). Bollette e abbonamenti non sono tra le buste (R16): Home ha solo **Buste** e **Messi da parte**.
 5. **Messi da parte** ("Le Pocket su Revolut", totale a destra): riquadro lilla, barra divisa in tonalità (Risparmi in accento, gli altri salvadanai in viola chiaro), elenco con importi; ultima riga "Prestiti da riavere · € 55 ›" → Prestiti (nascosta se 0; con debiti aperti aggiunge "· devi € Y"). Bollette qui non compare.
 
-**Pannello Confronta** (bottom sheet): sottotitolo con la data dell'ultimo confronto, 3 campi importo (Budget del mese, Carta Quotidiano, Carta Extra), riga "Su Revolut € X · Nell'app € Y", riquadro esito secondo R5 con le azioni. Al primo confronto: calibrazione della riserva.
+**Pannello Confronta** (bottom sheet): sottotitolo con la data dell'ultimo confronto, campi importo in tre gruppi — **Buste** (Budget del mese), **Carte** (Quotidiano, Extra), **Pocket** (tutte quelle di "Messi da parte", ognuna con "nell'app € X" sotto il nome), riga "Su Revolut € X · Nell'app € Y", riquadro esito secondo R5 con le azioni. Al primo confronto: calibrazione della riserva.
 
 ## 2 · Inserimento rapido (`NuovaSpesa.dc.html`)
 
@@ -77,12 +77,13 @@ Movimenti di esempio (periodo Novembre): 19 Pranzo con colleghi (Vita, 22) · 19
 
 ## 6 · Inizio del mese (`InizioMese.dc.html`)
 
-- Titolo "Inizia novembre" + intervallo. Passo 3 dell'indicatore.
-- Campo "Stipendio arrivato il 27" (importo).
-- "Giroconti da fare su Revolut": righe spuntabili (R7) con destinazione, nota e importo. Le voci fisse hanno l'importo con una matita: tocco → pannello per cambiarlo per questo mese. Sotto: "+ Aggiungi una voce fissa (es. affitto)".
-- Nota: "Le due carte restano a € 100: quando scendono le ricarichi da Budget del mese, senza registrare niente."
-- Link "Vuoi cambiare le buste di questo mese? Modifica →".
-- Pulsante: "Giroconti fatti: N di M" → con tutto spuntato "Fatto: inizia il mese" (crea il periodo, R7) → Home.
+Percorso a **5 passi** (indicatore "Stipendio · Spese · Pocket · Buste · Giroconti"), con **Indietro** / **Avanti** in basso. Titolo "Inizia dicembre" + intervallo.
+
+1. **Stipendio**: "Quanto è arrivato?", campo "Stipendio arrivato il 27". Avanti solo con un importo valido.
+2. **Spese fisse del mese**: elenco di abbonamenti e bollette con la quota di questo mese (R16; tag Abbonamento/Bolletta, frequenza per i non mensili), riga di totale "Abbonamenti e bollette". Sotto, **Uscite fisse** (affitto) a parte, con l'importo modificabile per questo mese. In fondo "In tutto, spese fisse e uscite € X".
+3. **Le tue Pocket**: per ogni Pocket di "Messi da parte" (Risparmi, Viaggi, Regali, Spese fisse, altre) il **saldo adesso** da ricopiare da Revolut (precompilato con quello dell'app) e **questo mese**: modificabile per le Pocket con quota (Viaggi, Regali…), calcolato per Spese fisse (al netto di quello che c'è già, "Servono € X, € Y sono già nella Pocket"), "il resto" per Risparmi. "+ Aggiungi una voce fissa". Budget del mese non c'è: le buste si decidono al passo dopo.
+4. **Quanto metti nelle buste**: card scura "Ti restano per le buste € X" (= stipendio − giroconto Spese fisse − uscite − quote delle Pocket), sotto ogni busta con lo stepper, partendo dai tetti di Imposta. In fondo "Quello che avanza va a Risparmi € Y" (arancione "Le buste superano lo stipendio di € Y" se negativo). I tetti scelti diventano quelli di Imposta.
+5. **Giroconti da fare su Revolut**: righe spuntabili (R7) con destinazione, nota e importo; nota sulle carte a € 100. Pulsante "Giroconti fatti: N di M" → con tutto spuntato "Fatto: inizia il mese" (aggiorna i saldi delle Pocket a quelli ricopiati, salva i tetti, crea il periodo, R7) → Home.
 
 ## 7 · Imposta (`ModificaBuste.dc.html`, rivista)
 

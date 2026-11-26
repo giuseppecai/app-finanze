@@ -25,7 +25,7 @@
 .steps__item { display: flex; flex-direction: column; gap: 5px; }
 .steps__bar { height: 4px; border-radius: 2px; background: var(--track); }
 .steps__item.is-done .steps__bar { background: var(--accent); }
-.steps__label { font-size: 12.5px; font-weight: 520; color: var(--text-muted); }
+.steps__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 520; color: var(--text-muted); }
 .steps__item[aria-current='step'] .steps__label { font-weight: 650; color: var(--text); }
 
 /* ── Riepilogo "Com'è andata" ─────────────────────────────── */
@@ -380,3 +380,45 @@
 .switch-row input { width: 22px; height: 22px; accent-color: var(--accent); }
 
 .welcome-chip { align-self: flex-start; }
+
+/* Inizio del mese a passi */
+.opening-step { display: flex; flex-direction: column; gap: 12px; }
+.opening-step__title { margin: 4px 2px 0; font-size: 20px; font-weight: 650; }
+.opening-list { display: flex; flex-direction: column; list-style: none; margin: 0; padding: 0; }
+.opening-list > * + * { border-top: 1px solid var(--line-soft); }
+.opening-list__row { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 56px; padding: 10px 16px; }
+.opening-list__row--total { background: var(--surface-sunk); }
+.opening-list__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.opening-list__name { font-size: var(--fs-body); font-weight: 520; }
+.opening-list__detail { font-size: 13px; color: var(--text-muted); }
+.opening-list__amount { flex: none; font-size: 17px; font-weight: 620; white-space: nowrap; }
+.opening-fields { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
+.opening-pot { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; }
+.opening-pot__head { display: flex; align-items: center; gap: 10px; }
+.opening-pot__computed { display: flex; flex-direction: column; gap: 2px; }
+.opening-pot__label { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+/* valore calcolato: testo, non un campo spento */
+.opening-pot__value { margin-top: 8px; font-size: 18px; font-weight: 650; white-space: nowrap; }
+.opening-pot__note { font-size: 12px; color: var(--text-muted); }
+.opening-env { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.opening-summary { display: flex; flex-direction: column; padding: 4px 16px; }
+.opening-summary__row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; min-height: 48px; padding: 10px 0; font-size: 15px; color: var(--text-muted); }
+.opening-summary__row + .opening-summary__row { border-top: 1px solid var(--line-soft); }
+.opening-summary__row strong { font-size: 18px; font-weight: 650; color: var(--text); white-space: nowrap; }
+.opening-summary__row--main strong { font-size: 22px; color: var(--accent-strong); }
+.opening-summary__row.is-over, .opening-summary__row.is-over strong { color: var(--state-over-text); }
+/* Indietro / Avanti sempre a portata di pollice, come la barra di salvataggio di Imposta */
+.opening-nav {
+  position: sticky;
+  bottom: calc(max(var(--safe-bottom), 10px));
+  z-index: 45;
+  display: flex;
+  gap: 8px;
+  margin: 6px -12px 0;
+  padding: 12px;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-float), inset 0 0 0 1px var(--line);
+}
+.opening-nav .outcome__button { min-height: 52px; }
+.opening-nav__next { flex-grow: 1; }

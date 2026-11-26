@@ -43,7 +43,7 @@ export function HomePage() {
   return (
     <>
       <BackupReminder settings={settings} periods={periods} />
-      {period ? <CurrentPeriod period={period} envelopes={envelopes} cardReserve={settings.cardReserve} /> : <NoPeriod />}
+      {period ? <CurrentPeriod period={period} envelopes={envelopes} cardReserve={settings.cardReserve} pots={lines} /> : <NoPeriod />}
       <PotsSection period={period} lines={lines} bills={bills} loansOwed={totalOwed(loans)} debtsOwed={totalDebt(loans)} />
     </>
   );
@@ -105,7 +105,7 @@ function NoPeriod() {
   );
 }
 
-function CurrentPeriod({ period, envelopes, cardReserve }: { period: Period; envelopes: Envelope[]; cardReserve: number | null }) {
+function CurrentPeriod({ period, envelopes, cardReserve, pots }: { period: Period; envelopes: Envelope[]; cardReserve: number | null; pots: PotLine[] }) {
   const [reconcileOpen, setReconcileOpen] = useState(false);
   const txs = usePeriodTransactions(period.id);
   const lastReconciliation = useLastReconciliation();
@@ -167,6 +167,7 @@ function CurrentPeriod({ period, envelopes, cardReserve }: { period: Period; env
         unassigned={summary.unassigned}
         cardReserve={cardReserve}
         last={lastReconciliation}
+        pots={pots}
       />
     </>
   );

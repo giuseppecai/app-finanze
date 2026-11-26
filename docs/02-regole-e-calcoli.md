@@ -87,15 +87,16 @@ I **buoni pasto** non si registrano.
 
 ## R5 · Confronta con Revolut
 
-L'utente ricopia tre saldi: Pocket **Budget del mese**, carta **Quotidiano**, carta **Extra**.
+L'utente ricopia **tutti i saldi** di Revolut: Pocket **Budget del mese**, carta **Quotidiano**, carta **Extra** e **ogni Pocket di "Messi da parte"** (Risparmi, Viaggi, Regali & Imprevisti, Spese fisse, e qualsiasi altra). L'elenco delle Pocket è quello di Home: una Pocket aggiunta compare nel Confronta, una tolta sparisce. Sotto ogni Pocket c'è "nell'app € X" (il suo saldo nell'app), per vedere subito quale non torna.
 
 ```
-reale    = budgetDelMese + quotidiano + extra
-atteso   = Σ residui di TUTTE le buste + daAssegnare + riservaCarte
+reale    = budgetDelMese + quotidiano + extra + Σ Pocket ricopiate
+atteso   = Σ residui di TUTTE le buste + daAssegnare + riservaCarte + Σ Pocket nell'app
 diff     = reale − atteso
 ```
+Si confronta il **totale**: così un abbonamento addebitato sulla carta Extra ma pagato nell'app dalla Pocket Spese fisse (R16) non crea differenze (la carta scende su Revolut, la Pocket scende nell'app).
 
-`riservaCarte` (in `Settings`) è la parte dei soldi sulle carte che non appartiene a nessuna busta (i ~100 € di "fondo" per carta). Si **calibra al primo confronto** dopo il primo "Inizio del mese": `riservaCarte = reale − (Σ residui + daAssegnare)`, con il messaggio "Primo confronto: ho registrato € X come riserva delle carte". Si può correggere in "Imposta".
+`riservaCarte` (in `Settings`) è la parte dei soldi sulle carte che non appartiene a nessuna busta (i ~100 € di "fondo" per carta). Si **calibra al primo confronto** dopo il primo "Inizio del mese": `riservaCarte = reale − (Σ residui + daAssegnare + Σ Pocket nell'app)`, con il messaggio "Primo confronto: ho registrato € X come riserva delle carte". Si può correggere in "Imposta".
 
 Esiti:
 - `diff == 0` → "Tutto in ordine", salva il confronto (data) → in Home "Ultimo confronto: 3 giorni fa".
@@ -103,7 +104,8 @@ Esiti:
 - `diff > 0` → "€ diff in più su Revolut" (interessi o rimborso) → **Registra come entrata** (crea `income`) oppure **È un rimborso** (apre l'inserimento in modalità Rimborso con l'importo).
 
 Esempio: riservaCarte = 200,00; residui = 251,50; daAssegnare = 0 → atteso 451,50.
-Saldi inseriti 339,10 + 62,00 + 38,00 = 439,10 → diff = **− 12,40** → "Manca una spesa da € 12,40".
+Saldi inseriti 339,10 + 62,00 + 38,00 = 439,10 → diff = **− 12,40** → "Manca una spesa da € 12,40" (Pocket a parte, qui uguali su Revolut e nell'app).
+Con le Pocket: Risparmi 1.240 + Viaggi 180 + Regali 75 + Spese fisse 134 = 1.629 nell'app; se su Revolut Viaggi è 170 → diff − 10, e sotto Viaggi si legge "nell'app € 180,00".
 (Nel mockup la riserva non compare: nell'app va inclusa.)
 
 ## R6 · Chiusura del mese
@@ -145,6 +147,8 @@ Checklist dei giroconti su Revolut (spuntabili, l'app non li esegue), in quest'o
 3. una riga per voce fissa: "→ Viaggi: € V" per i salvadanai, "Paga Affitto: € A" per le uscite;
 4. (se ci sono bollette attive e il giroconto è > 0) → Bollette: € Σ quote − quanto c'è già nella Pocket (R13);
 5. → Risparmi: € risparmi (se negativo, riga arancione "Lo stipendio non copre le buste: − € X").
+
+La schermata è un percorso a passi (Stipendio → Spese fisse → Pocket → Buste → Giroconti, vedi 04-schermate). Al passo Pocket l'utente ricopia il **saldo attuale** di ogni Pocket (prima dei giroconti): alla conferma i salvadanai prendono quei saldi e poi ricevono le quote; il giroconto → Spese fisse si calcola con il saldo ricopiato. Al passo Buste sceglie i tetti di questo mese (partono da quelli di Imposta e li sostituiscono): `restano per le buste = S − Spese fisse − voci`, `Risparmi = restano − Σ tetti`. Esempio: S 1.500, spese fisse 334,71, affitto 582, Viaggi 50, Regali 25 → **€ 508,29** per le buste.
 
 Con tutto spuntato il pulsante diventa "Fatto: inizia il mese" → crea il `Period` con `startedAt = today()`, fotografa i tetti in `allocations` e gli importi delle voci in `quotas`, applica i riporti dell'opzione B o il `daAssegnare` dell'opzione C, aggiorna i salvadanai (ogni voce-salvadanaio + il suo importo, Bollette + quote, Risparmi + risparmi). Le uscite non toccano nessun salvadanaio.
 

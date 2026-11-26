@@ -163,6 +163,8 @@ export interface Reconciliation {
   budgetPocket: Cents;
   quotidiano: Cents;
   extra: Cents;
+  /** saldi delle Pocket ricopiati (id salvadanaio → saldo), dal Confronta con tutte le Pocket */
+  pots?: Record<string, Cents>;
   expected: Cents;
   diff: Cents;
   outcome: ReconciliationOutcome;

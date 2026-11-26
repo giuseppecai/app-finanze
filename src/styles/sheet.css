@@ -161,3 +161,10 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
 .sheet-foot { padding: 12px 0 calc(var(--safe-bottom) + 16px); border-top: 1px solid var(--line-soft); background: var(--surface); }
 .sheet-foot .primary-button { width: 100%; }
 .suggest-note { display: flex; align-items: center; gap: 6px; margin-top: -4px; font-size: 13px; color: var(--text-muted); }
+
+/* Confronta: gruppi Buste / Carte / Pocket, con "nell'app € X" sotto ogni Pocket */
+.reconcile-group { display: flex; flex-direction: column; }
+.reconcile-group + .reconcile-group { margin-top: 6px; }
+.reconcile-group__title { margin: 8px 0 2px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.balance-row__label { display: flex; flex-direction: column; gap: 2px; }
+.balance-row__hint { font-size: 12px; font-weight: 400; color: var(--text-muted); }

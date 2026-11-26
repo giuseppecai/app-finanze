@@ -137,6 +137,10 @@ export interface StartPeriodInput {
   quotas: Record<string, Cents>;
   /** scelta per l'avanzo del periodo aperto; ignorata se non c'è un periodo da chiudere */
   closingOption: ClosingOption;
+  /** tetti delle buste scelti per questo mese: diventano anche i tetti di Imposta */
+  caps?: Record<string, Cents>;
+  /** saldi delle Pocket ricopiati da Revolut prima dei giroconti (id salvadanaio → saldo) */
+  potBalances?: Record<string, Cents>;
   today: ISODate;
 }
 
@@ -157,6 +161,12 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
   if (!Number.isInteger(input.salary) || input.salary <= 0) throw new Error('Stipendio non valido');
   for (const v of Object.values(input.quotas)) {
     if (!Number.isInteger(v) || v < 0) throw new Error('Importo di una voce non valido');
+  }
+  for (const v of Object.values(input.caps ?? {})) {
+    if (!Number.isInteger(v) || v < 0) throw new Error('Tetto non valido');
+  }
+  for (const v of Object.values(input.potBalances ?? {})) {
+    if (!Number.isInteger(v)) throw new Error('Saldo di una Pocket non valido');
   }
   return db.transaction(
     'rw',
@@ -185,6 +195,14 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
         await db.periods.put(closed);
       }
 
+      // Saldi delle Pocket come su Revolut adesso (prima dei giroconti di questo inizio mese).
+      for (const [id, balance] of Object.entries(input.potBalances ?? {})) {
+        if (await db.pots.get(id)) await db.pots.update(id, { balance });
+      }
+      // Tetti scelti per questo mese: valgono anche per i prossimi (sono quelli di Imposta).
+      for (const [id, cap] of Object.entries(input.caps ?? {})) await db.envelopes.update(id, { cap });
+      const envelopesNow = input.caps ? await db.envelopes.orderBy('order').toArray() : envelopes;
+
       const last = periods.reduce<Period | null>((a, p) => (!a || p.id > a.id ? p : a), null);
       const target = nextPeriodToStart(last, input.today, settings.periodStartDay);
       if (await db.periods.get(target.id)) throw new Error(`Il periodo ${target.id} esiste già`);
@@ -193,7 +211,7 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
         target,
         today: input.today,
         salary: input.salary,
-        envelopes,
+        envelopes: envelopesNow,
         items: itemQuotas(settings.monthlyItems, input.quotas),
         billsQuota: billsTransfer(
           bills,

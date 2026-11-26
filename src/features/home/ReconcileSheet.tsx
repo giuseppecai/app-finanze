@@ -7,6 +7,7 @@ import { saveReconciliation, type SaveReconciliationInput } from '../../db/repos
 import { today } from '../../domain/clock';
 import { formatEuro, parseEuro } from '../../domain/money';
 import { daysAgo } from '../../domain/movements';
+import type { PotLine } from '../../domain/pots';
 import { reconcile, type RevolutBalances } from '../../domain/reconcile';
 import type { Cents, Period, Reconciliation, ReconciliationOutcome } from '../../domain/types';
 import { it } from '../../i18n/it';
@@ -20,28 +21,46 @@ type Props = {
   unassigned: Cents;
   cardReserve: Cents | null;
   last: Reconciliation | null;
+  /** tutte le Pocket di "Messi da parte": compaiono e spariscono con loro */
+  pots: PotLine[];
 };
 
-const FIELDS: (keyof RevolutBalances)[] = ['budgetPocket', 'quotidiano', 'extra'];
+type Field = { key: string; label: string; hint?: string };
+const potKey = (id: string) => `pot:${id}`;
 
-/** R5 · Ricopia i tre saldi di Revolut, l'app dice se torna e cosa fare. */
-export function ReconcileSheet({ open, onClose, period, envelopesTotal, unassigned, cardReserve, last }: Props) {
+/** R5 · Ricopia i saldi di Revolut (Budget del mese, le due carte e tutte le Pocket): l'app dice se torna e cosa fare. */
+export function ReconcileSheet({ open, onClose, period, envelopesTotal, unassigned, cardReserve, last, pots }: Props) {
   const navigate = useNavigate();
-  const [values, setValues] = useState<Record<keyof RevolutBalances, string>>({ budgetPocket: '', quotidiano: '', extra: '' });
+  const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const groups: { title: string; fields: Field[] }[] = [
+    { title: it.reconcile.groupBudget, fields: [{ key: 'budgetPocket', label: it.reconcile.fields.budgetPocket }] },
+    { title: it.reconcile.groupCards, fields: [{ key: 'quotidiano', label: it.reconcile.fields.quotidiano }, { key: 'extra', label: it.reconcile.fields.extra }] },
+    ...(pots.length > 0
+      ? [{ title: it.reconcile.groupPots, fields: pots.map((p) => ({ key: potKey(p.id), label: p.name, hint: it.reconcile.inAppHint(formatEuro(p.balance, { decimals: 'always' })) })) }]
+      : []),
+  ];
+  const fields = groups.flatMap((g) => g.fields);
+  const text = (k: string) => values[k] ?? '';
+  const valueOf = (k: string) => (text(k).trim() === '' ? null : parseEuro(text(k)));
+
   const now = today();
-  const parsed = FIELDS.map((f) => [f, values[f].trim() === '' ? null : parseEuro(values[f])] as const);
-  const filled = FIELDS.every((f) => values[f].trim() !== '');
-  const invalid = parsed.some(([f, v]) => values[f].trim() !== '' && v === null);
-  const amountOf = (f: keyof RevolutBalances) => parsed.find(([k]) => k === f)?.[1] ?? 0;
+  const filled = fields.every((f) => text(f.key).trim() !== '');
+  const invalid = fields.some((f) => text(f.key).trim() !== '' && valueOf(f.key) === null);
+  const amountOf = (k: string) => valueOf(k) ?? 0;
   const balances: RevolutBalances = { budgetPocket: amountOf('budgetPocket'), quotidiano: amountOf('quotidiano'), extra: amountOf('extra') };
-  const result = reconcile(balances, envelopesTotal, unassigned, cardReserve);
+  const potsRevolut = Object.fromEntries(pots.map((p) => [p.id, amountOf(potKey(p.id))]));
+  const potsComparison = {
+    revolut: Object.values(potsRevolut).reduce((a, b) => a + b, 0),
+    app: pots.reduce((a, p) => a + p.balance, 0),
+  };
+  const result = reconcile(balances, envelopesTotal, unassigned, cardReserve, potsComparison);
   const ready = filled && !invalid;
 
   function close() {
-    setValues({ budgetPocket: '', quotidiano: '', extra: '' });
+    setValues({});
     setError(null);
     onClose();
   }
@@ -51,7 +70,7 @@ export function ReconcileSheet({ open, onClose, period, envelopesTotal, unassign
     setError(null);
     try {
       await saveReconciliation(db, {
-        reconciliation: { date: now, periodId: period.id, ...balances, expected: result.expected, diff: result.diff, outcome },
+        reconciliation: { date: now, periodId: period.id, ...balances, pots: potsRevolut, expected: result.expected, diff: result.diff, outcome },
         ...extra,
       });
       return true;
@@ -97,27 +116,35 @@ export function ReconcileSheet({ open, onClose, period, envelopesTotal, unassign
 
   return (
     <BottomSheet open={open} onClose={close} title={it.reconcile.title} subtitle={subtitle}>
-      {FIELDS.map((f) => (
-        <div key={f} className="balance-row">
-          <label htmlFor={`balance-${f}`}>{it.reconcile.fields[f]}</label>
-          <div className={values[f].trim() !== '' && parseEuro(values[f]) === null ? 'amount-field__box is-invalid' : 'amount-field__box'}>
-            <span className="amount-field__currency" aria-hidden="true">€</span>
-            <input
-              id={`balance-${f}`}
-              type="text"
-              inputMode="decimal"
-              autoComplete="off"
-              enterKeyHint="next"
-              value={values[f]}
-              onChange={(e) => setValues((v) => ({ ...v, [f]: e.target.value }))}
-            />
-          </div>
-        </div>
+      {groups.map((g) => (
+        <section key={g.title} className="reconcile-group" aria-label={g.title}>
+          <h3 className="reconcile-group__title">{g.title}</h3>
+          {g.fields.map((f) => (
+            <div key={f.key} className="balance-row">
+              <label htmlFor={`balance-${f.key}`} className="balance-row__label">
+                {f.label}
+                {f.hint ? <span className="balance-row__hint">{f.hint}</span> : null}
+              </label>
+              <div className={text(f.key).trim() !== '' && valueOf(f.key) === null ? 'amount-field__box is-invalid' : 'amount-field__box'}>
+                <span className="amount-field__currency" aria-hidden="true">€</span>
+                <input
+                  id={`balance-${f.key}`}
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  enterKeyHint="next"
+                  value={text(f.key)}
+                  onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                />
+              </div>
+            </div>
+          ))}
+        </section>
       ))}
 
       <div className="reconcile-totals">
         <span>{it.reconcile.onRevolut(ready ? money(result.real) : '—')}</span>
-        <span>{it.reconcile.inApp(money(cardReserve === null ? envelopesTotal + unassigned : result.expected))}</span>
+        <span>{it.reconcile.inApp(money(cardReserve === null ? envelopesTotal + unassigned + potsComparison.app : result.expected))}</span>
       </div>
 
       <div aria-live="polite">
