@@ -1,6 +1,7 @@
 // Chiusura e inizio del mese: anteprima della chiusura, checklist dei giroconti, suggerimenti di tetto.
 import { leftoversOf, type ClosingPlan } from './closing';
 import { summarizePeriod, type PeriodSummary } from './envelopes';
+import type { SalaryAccountPlan } from './accounts';
 import type { ItemQuota, OpeningPlan } from './opening';
 import { chargeToTransaction, dueCharges, type DueCharge } from './recurring';
 import { capSuggestion, type CapSuggestion } from './stats';
@@ -40,7 +41,7 @@ export type ChecklistAccount = 'salary' | 'budget' | 'savings' | 'bills' | (stri
 export interface ChecklistItem {
   /** chiave stabile della riga: 'closing' | 'budget' | 'bills' | 'savings' | 'item:<id>' */
   key: string;
-  kind: 'closing' | 'budget' | 'item' | 'bills' | 'savings';
+  kind: 'leave' | 'move' | 'closing' | 'budget' | 'item' | 'bills' | 'savings';
   from: ChecklistAccount;
   to: ChecklistAccount;
   /** importo da spostare; per "savings" può essere negativo (lo stipendio non copre le buste) */
@@ -55,13 +56,26 @@ export interface ChecklistItem {
  * le voci fisse (salvadanai e uscite come l'affitto), Bollette (se ci sono bollette) e Risparmi (R7).
  * L'app non li esegue: sono una lista da spuntare.
  */
-export function transferChecklist(opening: OpeningPlan, closing: Pick<ClosingPlan, 'transfer'> | null): ChecklistItem[] {
+export function transferChecklist(
+  opening: OpeningPlan,
+  closing: Pick<ClosingPlan, 'transfer'> | null,
+  /** stipendio su un altro conto: prima "Lascia su Isybank", poi "Isybank → Revolut" */
+  salaryAccount: Pick<SalaryAccountPlan, 'account' | 'leave' | 'move'> | null = null,
+): ChecklistItem[] {
   const items: ChecklistItem[] = [];
+  if (salaryAccount) {
+    if (salaryAccount.leave > 0) {
+      items.push({ key: 'leave', kind: 'leave', from: 'salary', to: salaryAccount.account.id, amount: salaryAccount.leave, warn: false });
+    }
+    items.push({ key: 'move', kind: 'move', from: salaryAccount.account.id, to: 'revolut', amount: salaryAccount.move, warn: salaryAccount.move < 0 });
+  }
   if (closing?.transfer) {
     items.push({ key: 'closing', kind: 'closing', from: closing.transfer.from, to: closing.transfer.to, amount: closing.transfer.amount, warn: false });
   }
   items.push({ key: 'budget', kind: 'budget', from: 'salary', to: 'budget', amount: opening.budget, warn: false });
   for (const q of opening.items) {
+    // Le uscite pagate da un altro conto (affitto da Isybank) sono già in "Lascia su …".
+    if (q.item.payFrom) continue;
     items.push({ key: `item:${q.item.id}`, kind: 'item', from: 'salary', to: q.item.id, amount: q.amount, warn: false, item: q.item });
   }
   if (opening.bills > 0) items.push({ key: 'bills', kind: 'bills', from: 'salary', to: 'bills', amount: opening.bills, warn: false });

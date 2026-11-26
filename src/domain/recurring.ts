@@ -76,7 +76,8 @@ export function recurringDuePeriod(recurring: Pick<Recurring, 'dayOfMonth' | 'fr
  * - non mensili non accantonati: tutto nel mese della scadenza, 0 negli altri.
  */
 export function recurringQuota(recurring: Recurring, opening: PeriodId, startDay: number): Cents {
-  if (!recurring.active) return 0;
+  // Pagato da un altro conto (es. rata iPhone da Isybank): non passa dalla Pocket Spese fisse.
+  if (!recurring.active || recurring.payFrom) return 0;
   const freq = frequencyOf(recurring);
   return savingQuota(
     {
@@ -142,7 +143,9 @@ export function chargeToTransaction(charge: DueCharge, periodId: string, id: str
     // Si paga dalla Pocket Spese fisse, senza busta (R16).
     envelopeId: null,
     note: charge.recurring.name,
-    card: charge.recurring.card,
+    // Da un altro conto (Isybank): niente carta Revolut, si segna il conto (e la carta, se ne ha più di una).
+    card: charge.recurring.payFrom ? null : charge.recurring.card,
+    ...(charge.recurring.payFrom ? { accountId: charge.recurring.payFrom, accountCardId: charge.recurring.payCard ?? null } : {}),
     source: 'recurring',
     recurringId: charge.recurring.id,
     personId: null,

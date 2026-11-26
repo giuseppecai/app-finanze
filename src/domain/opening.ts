@@ -5,7 +5,7 @@ import type { Cents, Envelope, ISODate, MonthlyItem, Period, PotId } from './typ
 
 /** Una voce fissa con l'importo scelto per questo mese. */
 export interface ItemQuota {
-  item: Pick<MonthlyItem, 'id' | 'name' | 'kind'>;
+  item: Pick<MonthlyItem, 'id' | 'name' | 'kind'> & Partial<Pick<MonthlyItem, 'payFrom'>>;
   amount: Cents;
 }
 
@@ -15,7 +15,9 @@ export interface OpeningPlan {
   items: ItemQuota[];
   /** giroconto mensile → Bollette (R13), 0 se non ci sono bollette */
   bills: Cents;
-  /** S − budget − Σ voci − Bollette; negativo se lo stipendio non copre */
+  /** abbonamenti/rate di questo mese pagati da altri conti (es. rata iPhone da Isybank) */
+  other: Cents;
+  /** S − budget − Σ voci − Bollette − altri conti; negativo se lo stipendio non copre */
   savings: Cents;
   short: boolean;
 }
@@ -38,8 +40,8 @@ export function withCaps(envelopes: readonly Envelope[], caps: Readonly<Record<s
  * Quanto resta per le buste (passo "Buste" dell'Inizio del mese): stipendio − giroconto Spese fisse
  * − uscite fisse (affitto) − quote delle Pocket. Quello che le buste non usano va a Risparmi.
  */
-export function availableForEnvelopes(salary: Cents, items: readonly ItemQuota[], bills: Cents): Cents {
-  return salary - bills - items.reduce((s, q) => s + q.amount, 0);
+export function availableForEnvelopes(salary: Cents, items: readonly ItemQuota[], bills: Cents, other: Cents = 0): Cents {
+  return salary - bills - other - items.reduce((s, q) => s + q.amount, 0);
 }
 
 /** Voci attive con l'importo di questo mese (`amounts` sovrascrive l'importo proposto). */
@@ -47,11 +49,11 @@ export function itemQuotas(items: readonly MonthlyItem[], amounts: Readonly<Reco
   return items.filter((i) => !i.archived).map((item) => ({ item, amount: amounts[item.id] ?? item.amount }));
 }
 
-export function planOpening(salary: Cents, envelopes: readonly Envelope[], items: readonly ItemQuota[], bills: Cents = 0): OpeningPlan {
+export function planOpening(salary: Cents, envelopes: readonly Envelope[], items: readonly ItemQuota[], bills: Cents = 0, other: Cents = 0): OpeningPlan {
   const budget = capsTotal(envelopes);
   const fixed = items.reduce((s, q) => s + q.amount, 0);
-  const savings = salary - budget - fixed - bills;
-  return { budget, items: [...items], bills, savings, short: savings < 0 };
+  const savings = salary - budget - fixed - bills - other;
+  return { budget, items: [...items], bills, other, savings, short: savings < 0 };
 }
 
 export interface NewPeriodInput {
@@ -62,6 +64,8 @@ export interface NewPeriodInput {
   items: readonly ItemQuota[];
   /** giroconto mensile → Bollette (R13) */
   billsQuota?: Cents;
+  /** abbonamenti/rate del mese pagati da altri conti (escono dallo stipendio, non vanno su Revolut) */
+  otherAccounts?: Cents;
   /** tetti scelti all'"Inizio del mese" (id busta → tetto); assenti = quelli di Imposta */
   caps?: Readonly<Record<string, Cents>>;
   /** piano di chiusura del periodo precedente (null per il primo periodo) */
@@ -78,7 +82,7 @@ export interface NewPeriodResult {
 export function buildNewPeriod(input: NewPeriodInput): NewPeriodResult {
   const billsQuota = input.billsQuota ?? 0;
   const envelopes = withCaps(input.envelopes, input.caps);
-  const plan = planOpening(input.salary, envelopes, input.items, billsQuota);
+  const plan = planOpening(input.salary, envelopes, input.items, billsQuota, input.otherAccounts ?? 0);
   const allocations: Record<string, Cents> = Object.fromEntries(activeEnvelopes(envelopes).map((e) => [e.id, e.cap]));
   const period: Period = {
     ...input.target,

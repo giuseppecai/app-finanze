@@ -317,6 +317,18 @@ Esempio (oggi novembre, prossimo giroconto dicembre): Spotify 8,50 + Disney+ 6 +
 
 Con R16 la busta degli abbonamenti non serve più: all'aggiornamento (schema v6) la Pocket "Bollette" diventa "Spese fisse" e, se non c'è un mese aperto, la busta impegnata usata dagli abbonamenti si archivia (o si cancella se mai usata). A mese aperto resta e si toglie da Imposta.
 
+## R17 · Altri conti (Isybank…)
+
+Le Pocket restano **solo su Revolut**. Altri conti (es. **Isybank**) si aggiungono e si tolgono in Imposta → **Conti** (`Settings.accounts`); su uno può arrivare lo stipendio (`Settings.salaryAccountId`, assente = Revolut).
+
+- Un'**uscita fissa** (affitto) o un **abbonamento/rata** può avere **"Si paga da"** un altro conto (`payFrom`). Gli abbonamenti pagati da un altro conto non passano dalla Pocket Spese fisse (quota 0, l'addebito non tocca la Pocket) ma escono comunque dallo stipendio: `Risparmi = S − buste − voci − Spese fisse − abbonamenti da altri conti`.
+- **Inizio del mese** con lo stipendio su un altro conto: prima dei giroconti su Revolut due righe — **"Lascia su Isybank € L"** (L = uscite e abbonamenti di questo periodo che partono da lì) e **"Isybank → Revolut € S − L"**. L'uscita fissa pagata da Isybank non ha una riga sua.
+- **Carte di un conto** (`OtherAccount.cards`): si aggiungono e si tolgono dentro il conto. Revolut ha le sue due, **Quotidiano** ed **Extra** (fisse: le usano Confronta e Nuova spesa). Con **una sola carta (o nessuna)** non c'è niente da scegliere: il pagamento parte dal conto. Con **due o più**, ogni pagamento da quel conto sceglie la carta (`Recurring.payCard`). L'addebito automatico da un altro conto non ha carta Revolut: segna il conto (`Transaction.accountId`, `accountCardId`) e in Movimenti si legge "Isybank · auto".
+- Togliere un conto: i pagamenti che partivano da lì tornano a Revolut; se ci arrivava lo stipendio, torna su Revolut.
+- Il Confronta resta su Revolut: sugli altri conti si lascia solo quello che devono pagare, che poi esce.
+
+Esempio: stipendio 1.500 su Isybank, affitto 582 (a mano) e rata iPhone 70,24 (il 5) da Isybank, Spotify 8,50 da Revolut, Viaggi 50, buste 200 → **Lascia su Isybank € 652,24**, **Isybank → Revolut € 847,76** = Budget 200 + Viaggi 50 + Spese fisse 8,50 + Risparmi **589,26**.
+
 ## R14 · Promemoria backup
 
 I dati vivono solo sul telefono. In Home compare "Fai il backup" se:

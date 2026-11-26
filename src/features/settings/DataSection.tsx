@@ -21,6 +21,7 @@ import { it } from '../../i18n/it';
 import { Tile } from '../../components/Symbol';
 import { SymbolPicker, TileEdit } from '../../components/SymbolPicker';
 import { suggestSymbol, symbolFor } from '../../domain/symbols';
+import { OtherAccountsList } from './AccountsGroup';
 
 const text = (c: number) => amountText(c);
 
@@ -30,7 +31,10 @@ type Editing =
   | { kind: 'newPot' }
   | { kind: 'reserve'; value: Cents | null };
 
-/** Salvadanai e carte: un tocco apre il pannello per correggere il saldo, rinominare o togliere. */
+/**
+ * Conti: Revolut con dentro le sue Pocket e le sue carte (un tocco su una Pocket apre il pannello per
+ * correggere il saldo, rinominare o togliere), poi gli altri conti (Isybank…) con le loro carte.
+ */
 export function PotsGroup({ settings }: { settings: Settings }) {
   const pots = usePots();
   const current = useCurrentPeriod();
@@ -41,8 +45,17 @@ export function PotsGroup({ settings }: { settings: Settings }) {
   const balances = Object.fromEntries(lines.map((l) => [l.id, l.balance]));
   return (
     <section className="group" aria-labelledby="pots-group-title">
-      <h2 id="pots-group-title" className="group__title">{it.settings.potsTitle}</h2>
-      <ul className="card list-card list">
+      <h2 id="pots-group-title" className="group__title">{it.accounts2.title}</h2>
+      {/* Revolut: un conto con dentro le sue Pocket e le sue carte (le Pocket esistono solo qui). */}
+      <ul className="card list-card list" aria-label="Revolut">
+        <li className="list-row account-head">
+          <Tile symbol="wallet" />
+          <span className="list-row__text">
+            <span className="list-row__title">Revolut</span>
+            <span className="list-row__detail">{settings.salaryAccountId ? it.accounts2.revolutPlain : it.accounts2.salaryHere}</span>
+          </span>
+        </li>
+        <li className="list-subhead">{it.accounts2.pocketsLabel}</li>
         {lines.map((p) => (
           <li key={p.id}>
             <button type="button" className="list-row list-row--button" onClick={() => setEditing({ kind: 'pot', id: p.id, name: p.name, value: p.balance, icon: symbolFor(p) })}>
@@ -57,6 +70,19 @@ export function PotsGroup({ settings }: { settings: Settings }) {
           </li>
         ))}
         <li>
+          <button type="button" className="list-row list-row--action" onClick={() => { setMessage(null); setEditing({ kind: 'newPot' }); }}>
+            <IconPlus size={20} />{it.accounts2.newPocket}
+          </button>
+        </li>
+        <li className="list-subhead">{it.accounts2.cards}</li>
+        <li className="list-row">
+          <Tile symbol="credit-card" />
+          <span className="list-row__text">
+            <span className="list-row__title">{it.accounts2.revolutCardsTitle}</span>
+            <span className="list-row__detail">{it.accounts2.revolutCardsDetail}</span>
+          </span>
+        </li>
+        <li>
           <button type="button" className="list-row list-row--button" onClick={() => setEditing({ kind: 'reserve', value: settings.cardReserve })}>
             <Tile symbol="credit-card" />
             <span className="list-row__text">
@@ -67,12 +93,8 @@ export function PotsGroup({ settings }: { settings: Settings }) {
             <IconChevronRight className="list-row__chevron" />
           </button>
         </li>
-        <li>
-          <button type="button" className="list-row list-row--action" onClick={() => { setMessage(null); setEditing({ kind: 'newPot' }); }}>
-            <IconPlus size={20} />{it.settings.newPot.replace('+ ', '')}
-          </button>
-        </li>
       </ul>
+      <OtherAccountsList settings={settings} />
       <p className="group__footer">{it.settings.potsHint}</p>
       {message ? <p className="group__message" role="status">{message}</p> : null}
       <BottomSheet

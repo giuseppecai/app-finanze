@@ -260,3 +260,15 @@
 /* Nuova busta: simbolo suggerito accanto al nome */
 .new-envelope__name { display: flex; align-items: flex-end; gap: 12px; }
 .new-envelope__name .entry__section { flex: 1; min-width: 0; }
+
+/* Carte di un conto (Imposta → Conti) */
+.account-cards { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.account-cards__row { display: flex; align-items: center; gap: 8px; }
+.account-cards__row .text-input { flex: 1; min-width: 0; }
+.account-cards__remove { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border: none; border-radius: 12px; background: var(--surface-sunk); color: var(--text-muted); }
+
+/* Conti: Revolut con le sue Pocket e carte, poi gli altri conti */
+.list-subhead { padding: 12px 16px 4px; font-size: 12px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.list > .list-subhead { border-top: none; }
+.account-head .list-row__title { font-size: 17px; font-weight: 650; }
+.account-others { margin-top: 10px; }

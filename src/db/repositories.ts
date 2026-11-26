@@ -12,11 +12,12 @@ import {
 } from '../domain/settings';
 import { currentPeriod, nextPeriodToStart } from '../domain/periods';
 import { chargeToTransaction, dueCharges, recurringQuota, savedSubscriptions } from '../domain/recurring';
+import { otherAccountsRecurring } from '../domain/accounts';
 import {
   applyRepayment, canDeleteLoan, createLoanEntry, deleteLoanEntry, savingsEffect, undoRepayment as undoLoanAllocations,
 } from '../domain/loans';
 import type {
-  Bill, Card, Cents, Envelope, ISODate, Loan, LoanDirection, MonthlyItem, Period, Person, Pot, PotId, Reconciliation, Recurring, Settings, Transaction,
+  Bill, Card, Cents, Envelope, ISODate, Loan, LoanDirection, MonthlyItem, OtherAccount, Period, Person, Pot, PotId, Reconciliation, Recurring, Settings, Transaction,
 } from '../domain/types';
 import type { FinanzeDB } from './schema';
 
@@ -99,6 +100,8 @@ async function applyFundCharges(db: FinanzeDB, txs: readonly Transaction[], sign
   for (const t of txs) {
     if (t.type !== 'expense' || !t.recurringId || t.envelopeId !== null) continue;
     const r = await db.recurring.get(t.recurringId);
+    // Pagato da un altro conto (rata iPhone da Isybank): la Pocket Spese fisse non c'entra.
+    if (r?.payFrom) continue;
     if (r) await db.recurring.update(r.id, { fund: (r.fund ?? 0) + sign * t.amount });
     await adjustPot(db, 'bills', sign * t.amount);
   }
@@ -213,6 +216,7 @@ export async function startPeriod(db: FinanzeDB, input: StartPeriodInput): Promi
         salary: input.salary,
         envelopes: envelopesNow,
         items: itemQuotas(settings.monthlyItems, input.quotas),
+        otherAccounts: otherAccountsRecurring(await db.recurring.toArray(), target),
         billsQuota: billsTransfer(
           bills,
           (await db.pots.get('bills'))?.balance ?? 0,
@@ -314,6 +318,41 @@ export async function saveMonthlyItem(db: FinanzeDB, item: MonthlyItem): Promise
       if (pot) await db.pots.update(item.id, { name, ...icon });
       else await db.pots.add({ id: item.id, name, balance: 0, ...icon });
     }
+  });
+}
+
+// ── Altri conti (Isybank…) ─────────────────────────────────────────────────
+
+/** Crea o rinomina un altro conto; `salary` = qui arriva lo stipendio (uno solo alla volta). */
+export async function saveAccount(db: FinanzeDB, account: OtherAccount, salary: boolean): Promise<void> {
+  const name = account.name.trim();
+  if (name === '') throw new Error('Nome mancante');
+  await db.transaction('rw', db.settings, async () => {
+    const settings = await getSettings(db);
+    const list = settings.accounts ?? [];
+    const cards = (account.cards ?? []).map((c) => ({ ...c, name: c.name.trim() })).filter((c) => c.name !== '');
+    const next = { id: account.id, name, cards };
+    const accounts = list.some((a) => a.id === account.id) ? list.map((a) => (a.id === account.id ? next : a)) : [...list, next];
+    const salaryAccountId = salary ? account.id : settings.salaryAccountId === account.id ? null : settings.salaryAccountId ?? null;
+    await db.settings.update('settings', { accounts, salaryAccountId });
+  });
+}
+
+/** Toglie un conto: i pagamenti che partivano da lì tornano a Revolut, lo stipendio torna su Revolut. */
+export async function removeAccount(db: FinanzeDB, id: string): Promise<void> {
+  await db.transaction('rw', [db.settings, db.recurring], async () => {
+    const settings = await getSettings(db);
+    await db.settings.update('settings', {
+      accounts: (settings.accounts ?? []).filter((a) => a.id !== id),
+      salaryAccountId: settings.salaryAccountId === id ? null : settings.salaryAccountId ?? null,
+      monthlyItems: settings.monthlyItems.map((i) => (i.payFrom === id ? { ...i, payFrom: null } : i)),
+    });
+    await db.recurring.toCollection().modify((r) => {
+      if (r.payFrom === id) {
+        r.payFrom = null;
+        r.payCard = null;
+      }
+    });
   });
 }
 

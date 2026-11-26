@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSettings } from '../../app/data';
 import { AmountField } from '../../components/AmountField';
 import { BottomSheet } from '../../components/BottomSheet';
 import { ConfirmPanel } from '../../components/ConfirmPanel';
@@ -12,6 +13,7 @@ import { parseEuro, amountText } from '../../domain/money';
 import { formatEuro } from '../../domain/money';
 import { frequencyOf, nextChargeDate, RECURRING_FREQUENCIES, recurringDuePeriod, recurringQuota } from '../../domain/recurring';
 import { SavingPrompt } from '../../components/SavingPrompt';
+import { accountCards, needsCardChoice } from '../../domain/accounts';
 import type { Card, Recurring, RecurringFrequency } from '../../domain/types';
 import { it } from '../../i18n/it';
 
@@ -82,6 +84,14 @@ function RecurringForm({ target, defaultEnvelopeId, opening, periodStartDay, onD
   const [saveFrom, setSaveFrom] = useState<string | null>(existing?.saveFrom ?? null);
   const [fund, setFund] = useState(existing?.fund ?? 0);
   const [prompting, setPrompting] = useState(false);
+  const settings = useSettings();
+  const accounts = settings?.accounts ?? [];
+  /** da quale conto parte (null = Revolut, Pocket Spese fisse) */
+  const [payFrom, setPayFrom] = useState<string | null>(existing?.payFrom ?? null);
+  const [payCard, setPayCard] = useState<string | null>(existing?.payCard ?? null);
+  const payAccount = accounts.find((a) => a.id === payFrom) ?? null;
+  // Carta da scegliere: Revolut (Quotidiano/Extra), oppure quelle del conto se ne ha più di una.
+  const accountCardList = accountCards(payAccount);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -110,8 +120,10 @@ function RecurringForm({ target, defaultEnvelopeId, opening, periodStartDay, onD
         dayOfMonth: day,
         frequency,
         anchorMonth: frequency > 1 ? nextMonth : null,
-        saving: frequency > 1 && saving,
-        saveFrom: frequency > 1 && saving ? saveFrom : null,
+        saving: frequency > 1 && saving && !payFrom,
+        saveFrom: frequency > 1 && saving && !payFrom ? saveFrom : null,
+        payFrom: payAccount ? payAccount.id : null,
+        payCard: payAccount && needsCardChoice(payAccount) ? (accountCardList.find((c) => c.id === payCard)?.id ?? accountCardList[0]!.id) : null,
         fund: frequency > 1 && saving ? fund : 0,
         envelopeId: existing?.envelopeId ?? defaultEnvelopeId,
         card,
@@ -195,7 +207,16 @@ function RecurringForm({ target, defaultEnvelopeId, opening, periodStartDay, onD
         ) : null}
       </div>
       {frequency > 1 ? <p className="muted-note">{it.recurring.nextMonthHint}</p> : null}
-      {frequency > 1 ? (
+      {accounts.length > 0 ? (
+        <div className="select-field">
+          <label htmlFor="rec-pay-from">{it.accounts2.payFrom}</label>
+          <select id="rec-pay-from" value={payFrom ?? ''} onChange={(e) => setPayFrom(e.target.value || null)}>
+            <option value="">{it.accounts2.payFromRevolutFixed}</option>
+            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </div>
+      ) : null}
+      {frequency > 1 && !payFrom ? (
         <Switch
           label={it.saving.switchLabel}
           hint={saving
@@ -209,18 +230,27 @@ function RecurringForm({ target, defaultEnvelopeId, opening, periodStartDay, onD
           }}
         />
       ) : null}
-      <div className="recurring-form__card">
-        <span className="entry__label">{it.recurring.card}</span>
-        <SegmentedControl
-          label={it.recurring.card}
-          options={[
-            { value: 'extra', label: it.cards.extra },
-            { value: 'quotidiano', label: it.cards.quotidiano },
-          ]}
-          value={card}
-          onChange={setCard}
-        />
-      </div>
+      {!payAccount ? (
+        <div className="recurring-form__card">
+          <span className="entry__label">{it.recurring.card}</span>
+          <SegmentedControl
+            label={it.recurring.card}
+            options={[
+              { value: 'extra', label: it.cards.extra },
+              { value: 'quotidiano', label: it.cards.quotidiano },
+            ]}
+            value={card}
+            onChange={setCard}
+          />
+        </div>
+      ) : needsCardChoice(payAccount) ? (
+        <div className="select-field">
+          <label htmlFor="rec-pay-card">{it.accounts2.cardLabel}</label>
+          <select id="rec-pay-card" value={payCard ?? accountCardList[0]!.id} onChange={(e) => setPayCard(e.target.value)}>
+            {accountCardList.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+      ) : null}
       <Switch label={it.recurring.active} hint={it.recurring.activeHint} checked={active} onChange={setActive} />
       {error ? <p className="outcome outcome--info" role="alert">{error}</p> : null}
       <div className="recurring-form__actions">

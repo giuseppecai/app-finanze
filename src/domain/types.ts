@@ -18,6 +18,23 @@ export interface Settings {
   lastBackupAt?: string | null;
   /** promemoria backup rimandato fino a questa data (esclusa) */
   backupSnoozedUntil?: ISODate | null;
+  /** altri conti fuori da Revolut (Isybank…): le Pocket restano solo su Revolut */
+  accounts?: OtherAccount[];
+  /** conto dove arriva lo stipendio; null/assente = Revolut */
+  salaryAccountId?: string | null;
+}
+
+/** Conto fuori da Revolut: ci arriva lo stipendio e/o da lì escono dei pagamenti fissi (affitto, rata). */
+export interface OtherAccount {
+  id: string;
+  name: string;
+  /** carte del conto; con una sola (o nessuna) non c'è niente da scegliere */
+  cards?: AccountCard[];
+}
+
+export interface AccountCard {
+  id: string;
+  name: string;
 }
 
 export type EnvelopeKind = 'spendable' | 'committed';
@@ -80,6 +97,9 @@ export interface Transaction {
   loanAllocations: LoanAllocation[] | null;
   /** movimento nato da una bolletta (R13, v2) */
   billId: string | null;
+  /** pagato da un altro conto (es. rata iPhone da Isybank) e, se il conto ne ha più di una, con quale carta */
+  accountId?: string | null;
+  accountCardId?: string | null;
   createdAt: string;
 }
 
@@ -98,6 +118,10 @@ export interface Recurring {
   saveFrom?: PeriodId | null;
   /** soldi di questo abbonamento nella Pocket Spese fisse (R16) */
   fund?: Cents;
+  /** si paga da un altro conto (id di `Settings.accounts`); null/assente = Revolut, Pocket Spese fisse */
+  payFrom?: string | null;
+  /** carta di quel conto, solo se ne ha più di una */
+  payCard?: string | null;
   envelopeId: string;
   card: Card;
   active: boolean;
@@ -144,6 +168,8 @@ export interface MonthlyItem {
   archived: boolean;
   /** simbolo (nome icona Lucide); per le voci-salvadanaio è lo stesso del salvadanaio */
   icon?: string;
+  /** uscite: si paga da un altro conto (id di `Settings.accounts`); null/assente = Revolut */
+  payFrom?: string | null;
 }
 
 export interface Pot {

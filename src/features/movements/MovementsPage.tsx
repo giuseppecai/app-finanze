@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useEnvelopes, usePeople, usePeriods, usePeriodTransactions } from '../../app/data';
+import { useEnvelopes, usePeople, usePeriods, usePeriodTransactions, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { FilterChips } from '../../components/FilterChips';
 import { IconArrowDownLeft, IconArrowUpRight, IconChevronDown, IconReceipt } from '../../components/icons';
@@ -150,6 +150,7 @@ function MovementList({ txs, envelopes, people, emptyText }: ListProps) {
 }
 
 function MovementRow({ tx, envelope, person }: { tx: Transaction; envelope?: Envelope; person?: Person }) {
+  const accounts = useSettings()?.accounts ?? [];
   const isLoan = tx.type === 'loan' || tx.type === 'loanRepayment' || tx.type === 'debt' || tx.type === 'debtRepayment';
   const personName = person?.name ?? it.movements.unknownPerson;
   const cardName = tx.card ? it.cards[tx.card] : it.budgetPocket;
@@ -183,7 +184,10 @@ function MovementRow({ tx, envelope, person }: { tx: Transaction; envelope?: Env
   } else {
     icon = <SymbolIcon id={envelope ? symbolFor(envelope) : 'tag'} size={20} />;
     title = tx.note || envelope?.name || '';
-    const parts = [envelope?.shortName ?? '', cardName];
+    // Pagato da un altro conto (rata da Isybank): il conto, e la carta se ne ha più di una.
+    const account = tx.accountId ? accounts.find((a) => a.id === tx.accountId) : undefined;
+    const accountLabel = account ? [account.name, account.cards?.find((c) => c.id === tx.accountCardId)?.name].filter(Boolean).join(' · ') : null;
+    const parts = accountLabel ? [accountLabel] : [envelope?.shortName ?? '', cardName];
     if (tx.type === 'refund') parts.push(it.movements.refund);
     if (tx.source === 'recurring') parts.push(it.movements.auto);
     detail = parts.join(' · ');

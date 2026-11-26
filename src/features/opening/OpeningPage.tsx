@@ -12,7 +12,7 @@ import { Stepper } from '../../components/Stepper';
 import { Tile } from '../../components/Symbol';
 import { db } from '../../db/database';
 import { startPeriod } from '../../db/repositories';
-import { billsTransfer, expectedShare, monthlyQuota } from '../../domain/bills';
+import { billsTransfer, monthlyQuota } from '../../domain/bills';
 import { today } from '../../domain/clock';
 import { planClosing, type ClosingOption, type ClosingPlan } from '../../domain/closing';
 import { formatLongRange } from '../../domain/dates';
@@ -22,7 +22,8 @@ import { activeEnvelopes, availableForEnvelopes, itemQuotas, planOpening, withCa
 import { nextPeriodToStart } from '../../domain/periods';
 import { potLines, type PotLine } from '../../domain/pots';
 import { symbolFor } from '../../domain/symbols';
-import { frequencyOf, recurringQuota, savedSubscriptions } from '../../domain/recurring';
+import { frequencyOf, recurringDateInPeriod, recurringQuota, savedSubscriptions } from '../../domain/recurring';
+import { accountPayments, otherAccountsRecurring, salaryAccountPlan } from '../../domain/accounts';
 import type { Bill, Cents, Envelope, MonthlyItem, Period, Recurring, Settings, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { MonthlyItemSheet } from '../settings/MonthlyItemSheet';
@@ -117,13 +118,22 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   const salaryOk = salary !== null && salary > 0;
 
   // 2 · Spese fisse: abbonamenti e bollette di questo mese (le loro quote), l'affitto a parte
+  const accountName = (id: string | null | undefined) => (id ? settings.accounts?.find((a) => a.id === id)?.name ?? null : null);
   const fixedRows = [
     ...recurring
       .filter((r) => r.active)
-      .map((r) => ({ id: r.id, name: r.name, tag: it.fixed.tagSubscription, freq: frequencyOf(r), amount: recurringQuota(r, target.id, startDay) })),
+      .map((r) => ({
+        id: r.id,
+        name: r.name,
+        tag: it.fixed.tagSubscription,
+        freq: frequencyOf(r),
+        // Da un altro conto (rata da Isybank): l'importo se si addebita questo mese, non passa dalla Pocket.
+        amount: r.payFrom ? (recurringDateInPeriod(r, target) !== null ? r.amount : 0) : recurringQuota(r, target.id, startDay),
+        from: accountName(r.payFrom),
+      })),
     ...bills
       .filter((b) => b.active)
-      .map((b) => ({ id: b.id, name: b.name, tag: it.fixed.tagBill, freq: b.frequency as number, amount: monthlyQuota(b, target.id), share: expectedShare(b) })),
+      .map((b) => ({ id: b.id, name: b.name, tag: it.fixed.tagBill, freq: b.frequency as number, amount: monthlyQuota(b, target.id), from: null as string | null })),
   ].filter((r) => r.amount > 0).sort((a, b) => b.amount - a.amount);
   const fixedQuota = fixedRows.reduce((s, r) => s + r.amount, 0);
   const itemAmount = (id: string, fallback: Cents) => {
@@ -144,13 +154,16 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
   const potQuotas = quotas.filter((q) => q.item.kind === 'pot');
 
   // 4 · Buste: quanto resta, e quello che le buste non usano va a Risparmi
-  const available = availableForEnvelopes(salary ?? 0, quotas, billsInfo.amount);
+  const otherRecurring = otherAccountsRecurring(recurring, target);
+  const available = availableForEnvelopes(salary ?? 0, quotas, billsInfo.amount, otherRecurring);
   const capsTotal = Object.values(caps).reduce((s, c) => s + c, 0);
   const toSavings = available - capsTotal;
 
   // 5 · Giroconti
-  const opening = planOpening(salary ?? 0, withCaps(envelopes, caps), quotas, billsInfo.amount);
-  const items = transferChecklist(opening, closing);
+  const opening = planOpening(salary ?? 0, withCaps(envelopes, caps), quotas, billsInfo.amount, otherRecurring);
+  // Stipendio su un altro conto (Isybank): lì restano i suoi pagamenti, il resto va su Revolut.
+  const salaryAccount = salaryAccountPlan(settings, salary ?? 0, settings.salaryAccountId ? accountPayments(settings.salaryAccountId, recurring, quotas, target) : []);
+  const items = transferChecklist(opening, closing, salaryAccount);
   const keyOf = (i: ChecklistItem) => `${i.key}:${i.amount}`;
   const done = items.filter((i) => checked.has(keyOf(i))).length;
   const allDone = done === items.length;
@@ -165,6 +178,8 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
     step === 'salary' ? salaryOk : step === 'fixed' ? !itemInvalid : step === 'pots' ? !balancesInvalid && !itemInvalid : true;
 
   function titleOf(item: ChecklistItem): string {
+    if (item.kind === 'leave') return it.opening.leaveTitle(salaryAccount?.account.name ?? '');
+    if (item.kind === 'move') return it.opening.moveTitle(salaryAccount?.account.name ?? '');
     if (item.kind === 'closing') return item.to === 'savings' ? it.opening.closingTitle(closingMonth) : it.accounts[item.to] ?? '';
     if (item.item) return item.item.kind === 'payment' ? it.opening.payTitle(item.item.name) : item.item.name;
     return it.accounts[item.to] ?? '';
@@ -172,6 +187,10 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
 
   function noteOf(item: ChecklistItem): string {
     switch (item.kind) {
+      case 'leave':
+        return salaryAccount?.payments.map((p) => p.name).join(', ') ?? '';
+      case 'move':
+        return item.warn ? it.opening.notes.short : it.opening.notes.move;
       case 'closing':
         return item.to === 'savings' ? it.opening.notes.toSavings : it.opening.notes.closingDeficit(closingMonth);
       case 'budget':
@@ -236,7 +255,7 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
           <AmountField
             id="salary"
             large
-            label={it.opening.salary(startDay)}
+            label={accountName(settings.salaryAccountId) ? it.opening.salaryOn(accountName(settings.salaryAccountId)!, startDay) : it.opening.salary(startDay)}
             placeholder={it.opening.salaryPlaceholder}
             value={salaryText}
             onChange={setSalaryText}
@@ -262,7 +281,7 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
               <li key={r.id} className="opening-list__row">
                 <span className="opening-list__text">
                   <span className="opening-list__name">{r.name}</span>
-                  <span className="opening-list__detail">{r.freq > 1 ? `${r.tag} · ${it.recurring.frequency[r.freq] ?? ''}` : r.tag}</span>
+                  <span className="opening-list__detail">{[r.tag, r.freq > 1 ? it.recurring.frequency[r.freq] : null, r.from ? it.opening.fromAccount(r.from) : null].filter(Boolean).join(' · ')}</span>
                 </span>
                 <span className="opening-list__amount">{formatEuro(r.amount)}</span>
               </li>
@@ -278,7 +297,7 @@ function Opening({ current, option, periods, envelopes, settings, recurring, txs
               <div className="card opening-fields">
                 {payments.map((q) => (
                   <div key={q.item.id} className="opening-item">
-                    {amountInput(q.item.id, q.item.name, q.amount)}
+                    {amountInput(q.item.id, accountName(q.item.payFrom) ? `${q.item.name} · ${it.opening.fromAccount(accountName(q.item.payFrom)!)}` : q.item.name, q.amount)}
                     {editButton(q.item.id, q.item.name)}
                   </div>
                 ))}

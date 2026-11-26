@@ -41,6 +41,8 @@ function ItemForm({ item, onDone }: { item: MonthlyItem | null; onDone: () => vo
   const icon = manualIcon ?? suggestSymbol(name);
   const [kind, setKind] = useState<MonthlyItem['kind']>(item?.kind ?? 'payment');
   const [amount, setAmount] = useState(item ? text(item.amount) : '');
+  /** uscite: da quale conto parte (null = Revolut) */
+  const [payFrom, setPayFrom] = useState<string | null>(item?.payFrom ?? null);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<{ message: string; balance: number } | null>(null);
   const [dest, setDest] = useState<FundsDestination>(DEFAULT_DESTINATION);
@@ -75,7 +77,8 @@ function ItemForm({ item, onDone }: { item: MonthlyItem | null; onDone: () => vo
       return;
     }
     try {
-      await saveMonthlyItem(db, { id: item?.id ?? newId(), name, kind, amount: cents, archived, icon });
+      const from = kind === 'payment' && settings?.accounts?.some((a) => a.id === payFrom) ? payFrom : null;
+      await saveMonthlyItem(db, { id: item?.id ?? newId(), name, kind, amount: cents, archived, icon, payFrom: from });
       onDone();
     } catch (e) {
       console.error(e);
@@ -127,6 +130,15 @@ function ItemForm({ item, onDone }: { item: MonthlyItem | null; onDone: () => vo
       )}
       <AmountField id="item-amount" label={it.items.amount} value={amount} onChange={setAmount} invalid={amount !== '' && cents === null} />
       <p className="muted-note">{it.items.amountHint}</p>
+      {kind === 'payment' && (settings?.accounts?.length ?? 0) > 0 ? (
+        <div className="select-field">
+          <label htmlFor="item-pay-from">{it.accounts2.payFrom}</label>
+          <select id="item-pay-from" value={payFrom ?? ''} onChange={(e) => setPayFrom(e.target.value || null)}>
+            <option value="">{it.accounts2.payFromRevolut}</option>
+            {settings?.accounts?.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </div>
+      ) : null}
       {item?.archived ? <p className="muted-note">{it.items.archivedNote}</p> : null}
       {error ? <p className="outcome outcome--info" role="alert">{error}</p> : null}
       <button type="submit" className="primary-button" disabled={!valid}>{it.items.save}</button>

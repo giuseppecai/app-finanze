@@ -72,7 +72,10 @@ export function BillsPage() {
   const thisMonth = items.filter(isNow).sort(sort);
   const later = items.filter((i) => !isNow(i)).sort(sort);
 
-  const ctx: RowContext = { names, txs, current, opening, startDay, period: !!period, now };
+  const ctx: RowContext = {
+    names, txs, current, opening, startDay, period: !!period, now,
+    accountName: (id) => settings.accounts?.find((a) => a.id === id)?.name ?? null,
+  };
   const open = (i: Item) => (i.kind === 'sub' ? setSub(i.row.recurring) : setBill(i.bill));
 
   return (
@@ -175,6 +178,8 @@ type RowContext = {
   /** c'è un mese aperto (altrimenti niente stati "scalato" / "da registrare") */
   period: boolean;
   now: string;
+  /** nome di un altro conto (Isybank…) */
+  accountName: (id: string) => string | null;
 };
 
 function statusLabel(status: RecurringStatus, now: string): string {
@@ -230,7 +235,7 @@ function SubRow({ row, ctx, onOpen }: { row: RecurringRow; ctx: RowContext; onOp
       boxTop={String(d)}
       boxBottom={it.months.short[m - 1]}
       title={r.name}
-      detail={it.fixed.tagSubscription}
+      detail={r.payFrom && ctx.accountName(r.payFrom) ? `${it.fixed.tagSubscription} · ${it.opening.fromAccount(ctx.accountName(r.payFrom)!)}` : it.fixed.tagSubscription}
       detail2={freq > 1 && r.active ? savingLine(freq, r.saving === true, recurringQuota(r, from, ctx.startDay)) : null}
       amount={formatEuro(r.amount)}
       paused={!r.active}
