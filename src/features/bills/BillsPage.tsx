@@ -8,7 +8,7 @@ import { InfoBox } from '../../components/InfoBox';
 import { SymbolIcon, Tile } from '../../components/Symbol';
 import { db } from '../../db/database';
 import { markFixedReviewed } from '../../db/repositories';
-import { annualCost, monthlyFixedCost, reviewDue } from '../../domain/insights';
+import { annualCost, fixedThisMonth, monthlyFixedCost, reviewDue } from '../../domain/insights';
 import { TopBar } from '../../components/TopBar';
 import { PageHeader } from '../../components/PageHeader';
 import { ScheduleRow } from '../../components/ScheduleRow';
@@ -58,11 +58,11 @@ export function BillsPage() {
   const toRegister = billsToRegister(bills, txs).length;
   // Pagamenti come l'affitto: spese fisse anche loro, ma escono dallo stipendio (non dalla Pocket).
   const payments = settings.monthlyItems.filter((i) => i.kind === 'payment');
-  // Il costo di un mese normale (come "circa € X al mese" in Imposta), non il giroconto: non dipende
-  // da quello che è già nella Pocket, altrimenti a metà mese le mensili già accantonate sparirebbero.
-  const cost = monthlyFixedCost(recurring, bills, settings.monthlyItems);
-  const yearly = annualCost(recurring, bills, settings.monthlyItems);
   const range = period ?? calendarPeriodFor(now, startDay);
+  // La Pocket divisa in due: quello che esce ancora questo mese e quello che resta per le scadenze dopo.
+  const month = fixedThisMonth({
+    recurrings: recurring, bills, items: settings.monthlyItems, period: range, periodTxs: period ? txs : [], today: now, pocket: pot,
+  });
   const current = range.id;
   const rows = recurringRows(recurring, range, period ? txs : [], now);
   const next = period ? nextUpcomingCharge(rows) : null;
@@ -104,19 +104,22 @@ export function BillsPage() {
         muted={it.casa.fromPocket}
       />
 
-      {/* In grande quello che ti serve sapere: quanto costano al mese. Il saldo della Pocket (lo stesso di Home) è secondario. */}
+      {/* In grande quello che esce QUESTO mese; sotto quello che resta nella Pocket per le scadenze dopo. */}
       <section className="hero" aria-label={it.fixed.heroLabel}>
         <div className="hero__row">
           <div>
             <p className="hero__label">{it.fixed.heroLabel}</p>
-            <p className="hero__amount hero__amount--medium">{formatEuro(cost.total)}</p>
+            <p className="hero__amount hero__amount--medium">{formatEuro(month.dueThisMonth)}</p>
           </div>
           <span className={pot < 0 ? 'hero__status is-over' : 'hero__status'}>{it.fixed.heroPot(formatEuro(pot))}</span>
         </div>
-        <div className="hero-foot">
-          <span>{cost.fromSalary > 0
-            ? it.fixed.footSplitPayments(formatEuro(cost.fromPocket), formatEuro(cost.fromSalary))
-            : it.fixed.footSplit(formatEuro(Math.round(yearly.subscriptions / 12)), formatEuro(Math.round(yearly.bills / 12)))}</span>
+        <div className="hero-foot hero-foot--stack">
+          <span className={month.forLater < 0 ? 'is-warn' : undefined}>
+            {month.forLater < 0
+              ? it.fixed.heroMissing(formatEuro(-month.forLater))
+              : it.fixed.heroLater(formatEuro(month.forLater), month.laterNames)}
+          </span>
+          {month.fromSalary > 0 ? <span>{it.fixed.heroSalary(formatEuro(month.fromSalary))}</span> : null}
         </div>
       </section>
 
@@ -200,6 +203,7 @@ export function BillsPage() {
 function YearCard({ recurring, bills, items, onOpen }: { recurring: Recurring[]; bills: Bill[]; items: MonthlyItem[]; onOpen: (r: Recurring) => void }) {
   const a = annualCost(recurring, bills, items);
   if (a.total === 0) return null;
+  const perMonth = monthlyFixedCost(recurring, bills, items);
   const max = a.list[0]?.yearly ?? 0;
   return (
     <section className="recurring-list-section" aria-labelledby="year-title">
@@ -207,7 +211,7 @@ function YearCard({ recurring, bills, items, onOpen }: { recurring: Recurring[];
       <div className="card year-card">
         <div className="year-card__head">
           <span className="year-card__total">{formatEuro(a.total)}</span>
-          <span className="year-card__split">{it.insights.yearText(formatEuro(a.subscriptions), formatEuro(a.bills), a.payments > 0 ? formatEuro(a.payments) : null)}</span>
+          <span className="year-card__split">{it.insights.yearPerMonth(formatEuro(perMonth.total))} · {it.insights.yearText(formatEuro(a.subscriptions), formatEuro(a.bills), a.payments > 0 ? formatEuro(a.payments) : null)}</span>
         </div>
         {a.list.length > 0 ? (
           <ul className="year-list">

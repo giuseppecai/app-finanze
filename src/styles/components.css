@@ -717,3 +717,7 @@
 .keep-list__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .keep-list__date { flex: none; font-size: 13px; color: var(--text-muted); }
 .keep-list__amount { flex: none; font-weight: 640; }
+
+/* Spese fisse: due righe sotto il numero (per dopo, dallo stipendio) */
+.hero-foot--stack { flex-direction: column; align-items: flex-start; gap: 4px; }
+.hero-foot .is-warn { color: #F3B89E; }

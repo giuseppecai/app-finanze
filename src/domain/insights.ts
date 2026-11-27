@@ -1,8 +1,8 @@
 // M10 · Capire dove vanno i soldi: R18 (il mese intero), R19 (cerca), R20 (ritmo), R22 (impulso),
 // R23 (costo annuo), R24 (proposito), R25 (tetto: tenere). R21 (prima i risparmi) è in opening.ts.
-import { expectedShare } from './bills';
+import { expectedShare, isPeriodic } from './bills';
 import { addDays, diffDays, weekday } from './dates';
-import { frequencyOf } from './recurring';
+import { frequencyOf, recurringStatus } from './recurring';
 import type {
   Bill, Cents, ISODate, MonthlyItem, Period, PeriodId, Recurring, SalarySplit, Transaction,
 } from './types';
@@ -281,6 +281,59 @@ export function monthlyFixedCost(
   const total = Math.round(a.total / 12);
   const fromSalary = Math.round((a.payments + otherAccounts) / 12);
   return { total, fromPocket: total - fromSalary, fromSalary };
+}
+
+export interface FixedMonth {
+  /** escono ancora dalla Pocket Spese fisse in questo periodo (addebiti e bollette non ancora passati) */
+  dueThisMonth: Cents;
+  /** restano nella Pocket per le scadenze dei mesi dopo (negativo = mancano soldi per questo mese) */
+  forLater: Cents;
+  /** voci a cui appartengono i soldi per dopo, dalla parte più grande */
+  laterNames: string[];
+  /** escono questo mese dallo stipendio o da altri conti: pagamenti (affitto) e abbonamenti da altri conti */
+  fromSalary: Cents;
+}
+
+/**
+ * Spese fisse · la Pocket divisa in due: quello che esce ancora QUESTO mese e quello che resta per
+ * le scadenze dopo (Acqua, Metro…). Questo mese: abbonamenti dalla Pocket con addebito ancora da
+ * venire, bollette mensili non registrate, periodiche attese ora (tua quota prevista). Per dopo:
+ * il resto della Pocket, che a "Inizia il mese" resta lì (R13: non riduce il giroconto).
+ */
+export function fixedThisMonth(input: {
+  recurrings: readonly Recurring[];
+  bills: readonly Bill[];
+  items: readonly Pick<MonthlyItem, 'kind' | 'amount' | 'archived'>[];
+  period: { id: PeriodId; calendarStart: ISODate; calendarEnd: ISODate };
+  periodTxs: readonly Transaction[];
+  today: ISODate;
+  pocket: Cents;
+}): FixedMonth {
+  const { recurrings, bills, items, period, periodTxs, today, pocket } = input;
+  let dueThisMonth = 0;
+  let fromSalary = items.filter((i) => i.kind === 'payment' && !i.archived).reduce((s, i) => s + i.amount, 0);
+  const dueIds = new Set<string>();
+  for (const r of recurrings) {
+    const status = recurringStatus(r, period, periodTxs, today);
+    if (r.payFrom) {
+      if (status.kind === 'upcoming' || status.kind === 'charged') fromSalary += r.amount;
+      continue;
+    }
+    if (status.kind === 'upcoming') dueThisMonth += r.amount;
+    if (status.kind === 'upcoming' || status.kind === 'charged') dueIds.add(r.id);
+  }
+  for (const b of bills) {
+    if (!b.active) continue;
+    const registered = periodTxs.some((t) => t.billId === b.id && t.type === 'expense');
+    const dueNow = isPeriodic(b) ? !!b.nextDue && b.nextDue <= period.id : !registered;
+    if (dueNow) dueThisMonth += expectedShare(b);
+    if (dueNow || !isPeriodic(b)) dueIds.add(b.id);
+  }
+  const later = [
+    ...recurrings.filter((r) => r.active && !r.payFrom && !dueIds.has(r.id)).map((r) => ({ name: r.name, fund: r.fund ?? 0 })),
+    ...bills.filter((b) => b.active && !dueIds.has(b.id)).map((b) => ({ name: b.name, fund: b.fund })),
+  ].filter((x) => x.fund > 0).sort((a, b) => b.fund - a.fund);
+  return { dueThisMonth, forLater: pocket - dueThisMonth, laterNames: later.map((x) => x.name), fromSalary };
 }
 
 export const REVIEW_DAYS = 183;

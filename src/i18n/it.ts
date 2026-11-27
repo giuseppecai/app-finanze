@@ -488,13 +488,15 @@ export const it = {
     tagPayment: 'Pagamento',
     paymentDetail: (from: string | null) => (from ? `Pagamento · da ${from}` : 'Pagamento · dallo stipendio'),
     paused: 'sospeso',
-    footSplit: (subs: string, bills: string) => `Abbonamenti ${subs} · bollette ${bills}`,
-    footSplitPayments: (pocket: string, payments: string) => `Dalla Pocket ${pocket} · dallo stipendio ${payments}`,
     perMonth: (amount: string) => `${amount} al mese`,
     nextCharge: (name: string, when: string) => `Prossimo: ${name} ${when}`,
-    heroLabel: 'Costano al mese, in media',
+    heroLabel: 'Dalla Pocket, questo mese',
+    heroLater: (amount: string, names: readonly string[]) =>
+      `Restano ${amount} per le prossime scadenze${names.length > 0 ? ` (${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''})` : ''}`,
+    heroMissing: (amount: string) => `Mancano ${amount} nella Pocket per questo mese`,
+    heroSalary: (amount: string) => `Dallo stipendio, a parte: ${amount}`,
     noDate: 'data non nota',
-    heroPot: (amount: string) => `nella Pocket adesso ${amount}`,
+    heroPot: (amount: string) => `nella Pocket ${amount}`,
   },
 
   saving: {
@@ -884,6 +886,7 @@ export const it = {
     // R23 · in un anno
     yearTitle: 'Quanto costano in un anno',
     yearText: (subs: string, bills: string, payments: string | null) => `abbonamenti ${subs} · bollette ${bills}${payments ? ` · pagamenti ${payments}` : ''}`,
+    yearPerMonth: (amount: string) => `circa ${amount} al mese`,
     yearItem: (amount: string) => `${amount} l’anno`,
     reviewTitle: 'Li usi ancora tutti?',
     reviewText: (amount: string) => `Gli abbonamenti ti costano ${amount} l’anno. Tocca quelli che non usi più per metterli in pausa o eliminarli.`,
