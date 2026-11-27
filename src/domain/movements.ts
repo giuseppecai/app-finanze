@@ -12,6 +12,11 @@ export function countsInTotals(type: TxType): boolean {
   return type === 'expense' || type === 'refund' || type === 'income';
 }
 
+/** Nel totale del giorno: spese, rimborsi ed entrate; non il rimborso messo in una Pocket (R4). */
+function countsInDay(tx: Pick<Transaction, 'type' | 'potId'>): boolean {
+  return countsInTotals(tx.type) && !(tx.type === 'refund' && tx.potId);
+}
+
 export interface DayGroup {
   date: ISODate;
   transactions: Transaction[];
@@ -32,7 +37,7 @@ export function groupByDay(txs: readonly Transaction[]): DayGroup[] {
       groups.push(group);
     }
     group.transactions.push(tx);
-    if (countsInTotals(tx.type)) group.total += signedAmount(tx);
+    if (countsInDay(tx)) group.total += signedAmount(tx);
   }
   return groups;
 }
@@ -42,7 +47,7 @@ export function groupByDay(txs: readonly Transaction[]): DayGroup[] {
  * "spese − € 48,00", "entrate + € 1,12", "nessuna spesa".
  */
 export function dayTotalKind(group: Pick<DayGroup, 'transactions' | 'total'>): 'spent' | 'in' | 'none' {
-  if (!group.transactions.some((t) => countsInTotals(t.type)) || group.total === 0) return 'none';
+  if (!group.transactions.some(countsInDay) || group.total === 0) return 'none';
   return group.total < 0 ? 'spent' : 'in';
 }
 

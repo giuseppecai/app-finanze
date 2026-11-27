@@ -74,11 +74,15 @@ Barra (dal redesign di novembre 2026): **mostra quanto resta**, `larghezza = max
 |---|---|---|---|
 | `expense` (spesa) | − importo sulla busta | — | anche quelle generate dagli abbonamenti (`source: 'recurring'`) |
 | `refund` (rimborso) | + importo sulla busta | — | reso, cashback, soldi restituiti da un negozio |
+| `refund` in una Pocket | nessuno | quella Pocket + importo | un regalo o soldi da mettere da parte (`potId`, `envelopeId: null`) |
 | `income` (entrata) | + importo su `daAssegnare` del periodo | — | tipicamente interessi trovati col Confronta |
 | `loan` (prestito) | nessuno | Risparmi − importo | l'app ricorda di spostare l'importo da Risparmi alla carta |
 | `loanRepayment` (restituzione) | nessuno | Risparmi + importo | l'app ricorda di rimettere l'importo in Risparmi |
 | `debt` (debito, R9-bis) | nessuno | Risparmi + importo | soldi tuoi che spettano a un'altra persona |
 | `debtRepayment` (paghi un debito) | nessuno | Risparmi − importo | l'app ricorda di spostare l'importo da Risparmi |
+
+**Rimborso in una Pocket.** In modalità Rimborso si sceglie "In una busta" (default) o "In una Pocket": tutte quelle di "Messi da parte" tranne Spese fisse (che è solo per bollette e abbonamenti). Il rimborso in una Pocket non è una spesa al contrario: non tocca buste, "speso", totale del giorno in Movimenti, ritmo, ricerca né Storico; alza solo il saldo della Pocket nell'app (su Revolut l'utente sposta i soldi in quella Pocket, così il Confronta torna). Modificarlo sposta la differenza; eliminarlo toglie l'importo dalla Pocket (se è stata tolta da Imposta non si tocca niente).
+Esempio: Viaggi € 180, regalo di compleanno € 50 → rimborso in Pocket Viaggi → Viaggi **€ 230**, nessuna busta cambia; portato a € 60 → Viaggi € 240; eliminato → Viaggi € 180.
 
 Le bollette (R13) generano questi stessi movimenti; la spesa di una bolletta periodica è un `expense` senza busta, pagato dal salvadanaio Bollette.
 

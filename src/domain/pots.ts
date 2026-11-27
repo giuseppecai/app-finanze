@@ -1,5 +1,5 @@
 // Salvadanai (specchio delle Pocket Revolut) e voci fisse dell'inizio del mese (R7).
-import type { Cents, MonthlyItem, Pot } from './types';
+import type { Cents, MonthlyItem, Pot, Transaction } from './types';
 
 /** Voci fisse iniziali: Viaggi e Regali & Imprevisti (salvadanai). L'affitto lo aggiunge l'utente. */
 export const DEFAULT_MONTHLY_ITEMS: readonly MonthlyItem[] = [
@@ -39,4 +39,23 @@ export function potLines(pots: readonly Pot[], items: readonly MonthlyItem[]): P
 
 export function potsTotal(lines: readonly PotLine[]): Cents {
   return lines.reduce((s, l) => s + l.balance, 0);
+}
+
+/**
+ * R4 · Pocket dove si può mettere un rimborso (un regalo, soldi da mettere da parte): tutte quelle
+ * di "Messi da parte" tranne Spese fisse, che è solo per bollette e abbonamenti.
+ */
+export function refundPots(lines: readonly PotLine[]): PotLine[] {
+  return lines.filter((l) => l.id !== 'bills');
+}
+
+/** Effetto di un movimento su un salvadanaio: solo il rimborso in una Pocket (+ importo). */
+export function potDeltaOf(tx: Pick<Transaction, 'type' | 'amount' | 'potId'>): { potId: string; delta: Cents } | null {
+  if (tx.type !== 'refund' || !tx.potId) return null;
+  return { potId: tx.potId, delta: tx.amount };
+}
+
+/** Rimborso finito in una Pocket: non tocca buste né spese. */
+export function isPotRefund(tx: Pick<Transaction, 'type' | 'potId'>): boolean {
+  return tx.type === 'refund' && !!tx.potId;
 }

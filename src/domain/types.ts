@@ -135,6 +135,8 @@ export interface Transaction {
   accountCardId?: string | null;
   /** R22: spesa d'impulso */
   impulse?: boolean;
+  /** R4: rimborso messo in una Pocket (regalo, soldi da mettere da parte) invece che in una busta */
+  potId?: string | null;
   createdAt: string;
 }
 

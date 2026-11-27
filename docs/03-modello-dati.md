@@ -139,6 +139,7 @@ type TxType = 'expense' | 'refund' | 'income' | 'loan' | 'loanRepayment' | 'debt
 interface Transaction {
   // …campi della v1…
   billId: string | null;          // movimento nato da una bolletta (R13)
+  potId?: string | null;          // rimborso messo in una Pocket invece che in una busta (R4)
 }
 
 interface Loan {

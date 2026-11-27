@@ -124,11 +124,13 @@ export interface SearchSummary {
   months: number;
 }
 
-export function searchSummary(txs: readonly Pick<Transaction, 'type' | 'amount' | 'periodId'>[]): SearchSummary {
+export function searchSummary(txs: readonly Pick<Transaction, 'type' | 'amount' | 'periodId' | 'potId'>[]): SearchSummary {
   let total = 0;
   const months = new Set<string>();
   for (const t of txs) {
     if (t.type !== 'expense' && t.type !== 'refund') continue;
+    // Un rimborso messo in una Pocket (un regalo) non riduce le spese.
+    if (t.type === 'refund' && t.potId) continue;
     total += t.type === 'expense' ? t.amount : -t.amount;
     months.add(t.periodId);
   }

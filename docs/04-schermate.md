@@ -43,6 +43,7 @@ Tre sezioni con titolo grande e una riga di spiegazione, ognuna con un aspetto d
   - Spesa: "‹Busta›: restano € X dopo questa spesa" oppure, in arancione, "‹Busta›: sfori di € X — puoi spostare soldi da un'altra busta";
   - Rimborso: "‹Busta›: torna a € X" (colore accento);
   - Prestito: "‹Persona› ti dovrà € X".
+- Rimborso: sopra la griglia un selettore **In una busta / In una Pocket** (R4); con "In una Pocket" la griglia mostra le Pocket (tranne Spese fisse) con il saldo, la riga di feedback dice "‹Pocket›: sale a € X" e il pulsante "Rimborso di € X in ‹Pocket›".
 - Spesa/Rimborso: **"In quale busta?"** griglia 3 × 2 (nome breve + residuo; residuo negativo in arancione), ordinate per uso (R12).
 - Prestito: **"A chi lo presti?"** pulsanti persona con "ti deve € X" + "+ Persona" (crea al volo, chiede solo il nome) e riquadro informativo "Non è una spesa: non tocca le buste. Dopo il salvataggio sposta € X da Risparmi a Quotidiano."
 - Campo **Nota** (in Prestito si chiama **Motivo**, placeholder "es. monete Homescapes").

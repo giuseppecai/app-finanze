@@ -14,6 +14,7 @@ import { currentPeriod, nextPeriodToStart } from '../domain/periods';
 import { chargeToTransaction, dueCharges, recurringQuota, savedSubscriptions } from '../domain/recurring';
 import { otherAccountsRecurring } from '../domain/accounts';
 import { cleanIntention } from '../domain/insights';
+import { potDeltaOf } from '../domain/pots';
 import {
   applyRepayment, canDeleteLoan, createLoanEntry, deleteLoanEntry, savingsEffect, undoRepayment as undoLoanAllocations,
 } from '../domain/loans';
@@ -59,11 +60,14 @@ export type NewTransaction = Omit<Transaction, 'id' | 'periodId' | 'createdAt'>;
  */
 export async function addTransaction(db: FinanzeDB, input: NewTransaction): Promise<Transaction> {
   if (!Number.isInteger(input.amount) || input.amount <= 0) throw new Error('Importo non valido');
-  return db.transaction('rw', [db.periods, db.transactions, db.settings], async () => {
+  return db.transaction('rw', [db.periods, db.transactions, db.settings, db.pots], async () => {
     const period = await getCurrentPeriod(db);
     if (!period) throw new Error('Nessun periodo aperto: fai prima "Inizio del mese"');
     const tx: Transaction = { ...input, id: newId(), periodId: period.id, createdAt: nowISO() };
     await db.transactions.add(tx);
+    // Rimborso in una Pocket (un regalo da mettere da parte): il salvadanaio sale (R4).
+    const pot = potDeltaOf(tx);
+    if (pot) await adjustPot(db, pot.potId, pot.delta);
     if (tx.envelopeId && (tx.type === 'expense' || tx.type === 'refund')) {
       await db.settings.update('settings', { lastEnvelopeId: tx.envelopeId });
     }
@@ -80,8 +84,16 @@ export async function updateTransaction(
   if (patch.amount !== undefined && (!Number.isInteger(patch.amount) || patch.amount <= 0)) {
     throw new Error('Importo non valido');
   }
-  const changed = await db.transactions.update(id, patch);
-  if (changed === 0 && !(await db.transactions.get(id))) throw new Error(`Movimento non trovato: ${id}`);
+  await db.transaction('rw', [db.transactions, db.pots], async () => {
+    const old = await db.transactions.get(id);
+    if (!old) throw new Error(`Movimento non trovato: ${id}`);
+    await db.transactions.update(id, patch);
+    // Rimborso in una Pocket: tolgo l'effetto di prima e metto quello nuovo (importo o Pocket cambiati).
+    const before = potDeltaOf(old);
+    const after = potDeltaOf({ ...old, ...patch });
+    if (before) await adjustPotIfAny(db, before.potId, -before.delta);
+    if (after) await adjustPot(db, after.potId, after.delta);
+  });
 }
 
 export async function deleteTransaction(db: FinanzeDB, id: string): Promise<void> {
@@ -89,6 +101,9 @@ export async function deleteTransaction(db: FinanzeDB, id: string): Promise<void
     const tx = await db.transactions.get(id);
     // Addebito di un abbonamento accantonato: i soldi tornano nel suo fondo e nella Pocket Bollette (R15).
     if (tx && tx.type === 'expense' && tx.recurringId && tx.envelopeId === null) await applyFundCharges(db, [tx], +1);
+    // Rimborso in una Pocket: i soldi escono di nuovo dal salvadanaio (se esiste ancora).
+    const pot = tx ? potDeltaOf(tx) : null;
+    if (pot) await adjustPotIfAny(db, pot.potId, -pot.delta);
     await db.transactions.delete(id);
   });
 }
@@ -478,6 +493,11 @@ async function adjustPot(db: FinanzeDB, id: PotId, delta: Cents): Promise<void> 
   const pot = await db.pots.get(id);
   if (!pot) throw new Error(`Salvadanaio mancante: ${id}`);
   await db.pots.update(id, { balance: pot.balance + delta });
+}
+
+/** Come adjustPot, ma un salvadanaio già tolto da Imposta si ignora (i suoi soldi sono già stati spostati). */
+async function adjustPotIfAny(db: FinanzeDB, id: PotId, delta: Cents): Promise<void> {
+  if (await db.pots.get(id)) await adjustPot(db, id, delta);
 }
 
 async function putLoans(db: FinanzeDB, loans: Loan[]): Promise<void> {

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  useBills, useCurrentPeriod, useEnvelopes, useLoans, usePeople, usePeriods, usePeriodTransactions, useSettings, useTransaction,
+  useBills, useCurrentPeriod, useEnvelopes, useLoans, usePeople, usePeriods, usePeriodTransactions, usePots, useSettings, useTransaction,
   useTransactionsSince,
 } from '../../app/data';
 import { routes } from '../../app/routes';
@@ -9,6 +9,7 @@ import { EnvelopePicker } from '../../components/EnvelopePicker';
 import { IconCalendar } from '../../components/icons';
 import { InfoBox } from '../../components/InfoBox';
 import { Keypad } from '../../components/Keypad';
+import { PotPicker } from '../../components/PotPicker';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { SymbolIcon } from '../../components/Symbol';
 import { TopBar, useCloseScreen } from '../../components/TopBar';
@@ -25,6 +26,7 @@ import { barFill, summarizePeriod } from '../../domain/envelopes';
 import { balanceWith } from '../../domain/loans';
 import { formatEuro, KEYPAD_MAX_DIGITS } from '../../domain/money';
 import { entryFeedback } from '../../domain/movements';
+import { potDeltaOf, potLines, refundPots, type PotLine } from '../../domain/pots';
 import type { Card, Cents, Envelope, ISODate, Loan, LoanDirection, Period, Person, Settings, Transaction } from '../../domain/types';
 import { it } from '../../i18n/it';
 import { BillTxEdit } from './BillTxEdit';
@@ -47,12 +49,13 @@ export function EntryPage() {
   const people = usePeople();
   const loans = useLoans();
   const bills = useBills();
+  const pots = usePots();
   const now = today();
   const recent = useTransactionsSince(addDays(now, -60));
   const periodId = editing ? editing.periodId : current?.id;
   const periodTxs = usePeriodTransactions(periodId);
 
-  if (editing === undefined || current === undefined || !periods || !envelopes || !settings || !recent || !periodTxs || !people || !loans || !bills) {
+  if (editing === undefined || current === undefined || !periods || !envelopes || !settings || !recent || !periodTxs || !people || !loans || !bills || !pots) {
     return null;
   }
   if (editId && editing === null) return <Message text={it.entry.notFound} />;
@@ -79,6 +82,7 @@ export function EntryPage() {
       recentTxs={recent}
       people={people}
       loans={loans}
+      pots={refundPots(potLines(pots, settings.monthlyItems))}
       today={now}
       params={params}
     />
@@ -106,6 +110,8 @@ type FormProps = {
   recentTxs: Transaction[];
   people: Person[];
   loans: Loan[];
+  /** Pocket dove può andare un rimborso (R4) */
+  pots: PotLine[];
   today: ISODate;
   params: URLSearchParams;
 };
@@ -116,7 +122,7 @@ function initialAmount(params: URLSearchParams): Cents {
   return Number(raw);
 }
 
-function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs, people, loans, today: now, params }: FormProps) {
+function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs, people, loans, pots, today: now, params }: FormProps) {
   const close = useCloseScreen();
   const [ask, confirmSheet] = useConfirmSheet();
   const sorted = useMemo(() => sortEnvelopesForPicker(envelopes, recentTxs, now), [envelopes, recentTxs, now]);
@@ -129,6 +135,9 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
   const [envelopeId, setEnvelopeId] = useState<string | null>(
     () => editing?.envelopeId ?? preselectedEnvelope(sorted, settings.lastEnvelopeId)?.id ?? null,
   );
+  /** R4: il rimborso va in una busta o in una Pocket (un regalo da mettere da parte) */
+  const [refundTo, setRefundTo] = useState<'envelope' | 'pot'>(() => (editing?.potId ? 'pot' : 'envelope'));
+  const [potId, setPotId] = useState<string | null>(() => editing?.potId ?? pots[0]?.id ?? null);
   const [personId, setPersonId] = useState<string | null>(() => params.get('persona'));
   const [direction, setDirection] = useState<LoanDirection>('lent');
   const [note, setNote] = useState(() => editing?.note ?? params.get('nota') ?? '');
@@ -157,6 +166,8 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
 
   const isIncome = type === 'income';
   const isLoan = type === 'loan';
+  const toPot = type === 'refund' && refundTo === 'pot';
+  const pot = toPot ? pots.find((p) => p.id === potId) ?? null : null;
   const envelope = envelopes.find((e) => e.id === envelopeId) ?? null;
   const person = people.find((p) => p.id === personId) ?? null;
   const pickerEnvelopes = envelope && !sorted.some((e) => e.id === envelope.id) ? [...sorted, envelope] : sorted;
@@ -164,7 +175,8 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
   const errors = validateEntry({
     type: isLoan ? 'loan' : type,
     amount,
-    envelopeId: isIncome || isLoan ? 'n/a' : envelopeId,
+    envelopeId: isIncome || isLoan ? 'n/a' : toPot ? null : envelopeId,
+    potId: toPot ? pot?.id ?? null : null,
     personId,
   });
   const canSave = errors.length === 0 && !saving;
@@ -179,6 +191,13 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
       tone: 'muted',
       fill: null,
     };
+  } else if (toPot) {
+    if (pot) {
+      // Saldo della Pocket senza il movimento che sto modificando.
+      const old = editing ? potDeltaOf(editing) : null;
+      const before = pot.balance - (old && old.potId === pot.id ? old.delta : 0);
+      feedback = { text: it.entry.feedbackPot(pot.name, formatEuro(before + amount, { decimals: 'always' })), tone: 'accent', fill: null };
+    }
   } else if (!isIncome && !isLoan && envelope) {
     const before = remaining[envelope.id] ?? 0;
     const f = entryFeedback(type === 'refund' ? 'refund' : 'expense', before, amount);
@@ -201,7 +220,7 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
       : isIncome
         ? it.entry.saveIncome(amountText)
         : type === 'refund'
-          ? it.entry.saveRefund(amountText, envelope?.shortName ?? '')
+          ? it.entry.saveRefund(amountText, (toPot ? pot?.name : envelope?.shortName) ?? '')
           : it.entry.saveExpense(amountText, envelope?.shortName ?? '');
 
   async function save() {
@@ -214,7 +233,10 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
         await addLoanEntry(db, { personId, direction, amount, date, reason: note, card });
       } else {
         const t = type as 'expense' | 'refund' | 'income';
-        const fields = { type: t, amount, envelopeId: isIncome ? null : envelopeId, note: note.trim(), date, impulse: t === 'expense' && impulse };
+        const fields = {
+          type: t, amount, envelopeId: isIncome || toPot ? null : envelopeId, potId: toPot ? potId : null,
+          note: note.trim(), date, impulse: t === 'expense' && impulse,
+        };
         if (editing) {
           await updateTransaction(db, editing.id, fields);
         } else {
@@ -224,7 +246,7 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
           });
           // Torna alla schermata di prima con "Salvati € 12,40 in Vita · Annulla".
           announce(
-            isIncome ? it.entry.savedIncome(amountText) : it.entry.saved(amountText, envelope?.shortName ?? ''),
+            isIncome ? it.entry.savedIncome(amountText) : it.entry.saved(amountText, (toPot ? pot?.name : envelope?.shortName) ?? ''),
             () => deleteTransaction(db, tx.id),
           );
         }
@@ -321,6 +343,21 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
         </>
       ) : !isIncome ? (
         <div className="entry__section">
+          {type === 'refund' && pots.length > 0 ? (
+            <SegmentedControl
+              label={it.entry.refundTo}
+              options={[
+                { value: 'envelope', label: it.entry.refundToEnvelope },
+                { value: 'pot', label: it.entry.refundToPot },
+              ]}
+              value={refundTo}
+              onChange={setRefundTo}
+            />
+          ) : null}
+          {toPot ? (
+            <PotPicker label={it.entry.potLabel} pots={pots} value={potId} onChange={setPotId} />
+          ) : (
+          <>
           <h2 className="entry__label">{it.entry.whichEnvelope}</h2>
           <EnvelopePicker
             label={it.entry.envelopeLabel}
@@ -330,6 +367,8 @@ function EntryForm({ editing, period, envelopes, settings, periodTxs, recentTxs,
             value={envelopeId}
             onChange={setEnvelopeId}
           />
+          </>
+          )}
         </div>
       ) : null}
 

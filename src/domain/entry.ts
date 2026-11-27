@@ -64,13 +64,16 @@ export interface EntryDraft {
   amount: Cents;
   envelopeId: string | null;
   personId: string | null;
+  /** rimborso in una Pocket (R4) */
+  potId?: string | null;
 }
 
-/** Validazione: importo > 0; spesa/rimborso servono una busta; il prestito serve una persona. */
+/** Validazione: importo > 0; la spesa serve una busta, il rimborso una busta o una Pocket; il prestito una persona. */
 export function validateEntry(draft: EntryDraft): EntryError[] {
   const errors: EntryError[] = [];
   if (!Number.isInteger(draft.amount) || draft.amount <= 0) errors.push('amountRequired');
-  if ((draft.type === 'expense' || draft.type === 'refund') && !draft.envelopeId) errors.push('envelopeRequired');
+  if (draft.type === 'expense' && !draft.envelopeId) errors.push('envelopeRequired');
+  if (draft.type === 'refund' && !draft.envelopeId && !draft.potId) errors.push('envelopeRequired');
   if ((draft.type === 'loan' || draft.type === 'loanRepayment') && !draft.personId) errors.push('personRequired');
   return errors;
 }

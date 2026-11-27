@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useAllTransactions, useBills, useEnvelopes, usePeople, usePeriods, usePeriodTransactions, useSettings } from '../../app/data';
+import { useAllTransactions, useBills, useEnvelopes, usePeople, usePeriods, usePeriodTransactions, usePots, useSettings } from '../../app/data';
 import { routes } from '../../app/routes';
 import { FilterChips } from '../../components/FilterChips';
 import { IconArrowDownLeft, IconArrowUpRight, IconChevronDown, IconClose, IconReceipt } from '../../components/icons';
@@ -190,6 +190,7 @@ function MovementList({ txs, envelopes, people, emptyText, showYear = false }: L
 
 function MovementRow({ tx, envelope, person }: { tx: Transaction; envelope?: Envelope; person?: Person }) {
   const accounts = useSettings()?.accounts ?? [];
+  const pots = usePots();
   const isLoan = tx.type === 'loan' || tx.type === 'loanRepayment' || tx.type === 'debt' || tx.type === 'debtRepayment';
   const personName = person?.name ?? it.movements.unknownPerson;
   const cardName = tx.card ? it.cards[tx.card] : it.budgetPocket;
@@ -216,6 +217,14 @@ function MovementRow({ tx, envelope, person }: { tx: Transaction; envelope?: Env
     }[tx.type as 'loan' | 'loanRepayment' | 'debt' | 'debtRepayment'];
     title = tx.note || label;
     detail = label;
+  } else if (tx.type === 'refund' && tx.potId) {
+    // Rimborso messo in una Pocket (R4): un regalo, soldi da mettere da parte.
+    const pot = pots?.find((p) => p.id === tx.potId);
+    const potName = pot?.name ?? it.entry.potLabel;
+    icon = <SymbolIcon id={symbolFor({ name: potName, icon: pot?.icon })} size={20} />;
+    iconClass += ' movement__icon--in';
+    title = tx.note || potName;
+    detail = `${potName} · ${it.movements.potRefund}`;
   } else if (tx.type === 'expense' && !tx.envelopeId && tx.billId) {
     icon = <IconReceipt />;
     title = tx.note || it.casa.title;
