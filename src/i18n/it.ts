@@ -489,12 +489,12 @@ export const it = {
     paymentDetail: (from: string | null) => (from ? `Pagamento · da ${from}` : 'Pagamento · dallo stipendio'),
     paused: 'sospeso',
     footSplit: (subs: string, bills: string) => `Abbonamenti ${subs} · bollette ${bills}`,
-    footSplitPayments: (pocket: string, payments: string) => `Nella Pocket ${pocket} · dallo stipendio ${payments}`,
+    footSplitPayments: (pocket: string, payments: string) => `Dalla Pocket ${pocket} · dallo stipendio ${payments}`,
     perMonth: (amount: string) => `${amount} al mese`,
     nextCharge: (name: string, when: string) => `Prossimo: ${name} ${when}`,
-    heroLabel: 'Ogni mese ci metti',
+    heroLabel: 'Costano al mese, in media',
     noDate: 'data non nota',
-    heroPot: (amount: string) => `ora nella Pocket ${amount}`,
+    heroPot: (amount: string) => `nella Pocket adesso ${amount}`,
   },
 
   saving: {

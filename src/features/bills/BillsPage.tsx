@@ -8,18 +8,18 @@ import { InfoBox } from '../../components/InfoBox';
 import { SymbolIcon, Tile } from '../../components/Symbol';
 import { db } from '../../db/database';
 import { markFixedReviewed } from '../../db/repositories';
-import { annualCost, reviewDue } from '../../domain/insights';
+import { annualCost, monthlyFixedCost, reviewDue } from '../../domain/insights';
 import { TopBar } from '../../components/TopBar';
 import { PageHeader } from '../../components/PageHeader';
 import { ScheduleRow } from '../../components/ScheduleRow';
-import { billsQuotaTotal, billsToRegister, expectedShare, fundStatus, isPeriodic, isSaving, monthlyQuota } from '../../domain/bills';
+import { billsToRegister, expectedShare, fundStatus, isPeriodic, isSaving, monthlyQuota } from '../../domain/bills';
 import { today } from '../../domain/clock';
 import { formatShortDate, formatShortRange, monthsBetween, parseISODate } from '../../domain/dates';
 import { calendarPeriodFor, nextOpeningId } from '../../domain/periods';
 import { balanceWith } from '../../domain/loans';
 import { formatEuro } from '../../domain/money';
 import {
-  frequencyOf, mainRecurringEnvelope, nextUpcomingCharge, recurringQuota, recurringQuotaTotal, recurringRows,
+  frequencyOf, mainRecurringEnvelope, nextUpcomingCharge, recurringQuota, recurringRows,
   type RecurringRow, type RecurringStatus,
 } from '../../domain/recurring';
 import type { Bill, MonthlyItem, Person, Recurring, Transaction } from '../../domain/types';
@@ -55,12 +55,13 @@ export function BillsPage() {
   const startDay = settings.periodStartDay;
   const pot = pots.find((p) => p.id === 'bills')?.balance ?? 0;
   const opening = nextOpeningId(periods, now, startDay);
-  const subsQuota = recurringQuotaTotal(recurring, opening, startDay);
-  const billsQuota = billsQuotaTotal(bills, opening);
   const toRegister = billsToRegister(bills, txs).length;
   // Pagamenti come l'affitto: spese fisse anche loro, ma escono dallo stipendio (non dalla Pocket).
   const payments = settings.monthlyItems.filter((i) => i.kind === 'payment');
-  const paymentsTotal = payments.filter((i) => !i.archived).reduce((s, i) => s + i.amount, 0);
+  // Il costo di un mese normale (come "circa € X al mese" in Imposta), non il giroconto: non dipende
+  // da quello che è già nella Pocket, altrimenti a metà mese le mensili già accantonate sparirebbero.
+  const cost = monthlyFixedCost(recurring, bills, settings.monthlyItems);
+  const yearly = annualCost(recurring, bills, settings.monthlyItems);
   const range = period ?? calendarPeriodFor(now, startDay);
   const current = range.id;
   const rows = recurringRows(recurring, range, period ? txs : [], now);
@@ -103,19 +104,19 @@ export function BillsPage() {
         muted={it.casa.fromPocket}
       />
 
-      {/* In grande quello che ti serve sapere: quanto ci metti ogni mese. Il saldo della Pocket è secondario. */}
+      {/* In grande quello che ti serve sapere: quanto costano al mese. Il saldo della Pocket (lo stesso di Home) è secondario. */}
       <section className="hero" aria-label={it.fixed.heroLabel}>
         <div className="hero__row">
           <div>
             <p className="hero__label">{it.fixed.heroLabel}</p>
-            <p className="hero__amount hero__amount--medium">{formatEuro(subsQuota + billsQuota + paymentsTotal)}</p>
+            <p className="hero__amount hero__amount--medium">{formatEuro(cost.total)}</p>
           </div>
           <span className={pot < 0 ? 'hero__status is-over' : 'hero__status'}>{it.fixed.heroPot(formatEuro(pot))}</span>
         </div>
         <div className="hero-foot">
-          <span>{paymentsTotal > 0
-            ? it.fixed.footSplitPayments(formatEuro(subsQuota + billsQuota), formatEuro(paymentsTotal))
-            : it.fixed.footSplit(formatEuro(subsQuota), formatEuro(billsQuota))}</span>
+          <span>{cost.fromSalary > 0
+            ? it.fixed.footSplitPayments(formatEuro(cost.fromPocket), formatEuro(cost.fromSalary))
+            : it.fixed.footSplit(formatEuro(Math.round(yearly.subscriptions / 12)), formatEuro(Math.round(yearly.bills / 12)))}</span>
         </div>
       </section>
 

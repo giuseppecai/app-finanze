@@ -115,7 +115,7 @@ Elenco raggruppato come le Impostazioni di iOS: titoletti di gruppo grigi, card 
 Un'unica schermata (`/bollette`; `/abbonamenti` e `/casa` rimandano qui). Si apre dalla riga **Spese fisse** tra i Messi da parte in Home e da Imposta. Schermo intero con chiudi.
 
 - "Spese fisse" · chip "N da registrare" (o "Prossimo: Spotify domani") · "dalla Pocket Spese fisse" · "+ Aggiungi".
-- **Card scura**: "Nella Pocket Spese fisse € X", a destra "+ € Y al mese" (il giroconto di inizio mese), sotto "Abbonamenti € A · bollette € B al mese".
+- **Card scura**: in grande "Costano al mese, in media € X" (costo di un anno ÷ 12, lo stesso "circa € X al mese" di Imposta; non dipende da quanto è già nella Pocket), a destra "nella Pocket adesso € Y" (lo stesso saldo di Home), sotto "Dalla Pocket € A · dallo stipendio € B" (B = pagamenti e abbonamenti da altri conti) o, senza, "Abbonamenti € A · bollette € B".
 - **Con Elisa**: riga con il saldo unico → Prestiti.
 - **Questo mese · 27 ott – 26 nov**: abbonamenti con addebito nel periodo (riquadro giorno + mese, "scalato" / "tra N giorni") e bollette del mese (riquadro mese, "registrata il 1 nov" / "da registrare" / "in ritardo"). **Più avanti**: annuali e bollette periodiche dei mesi dopo ("tra N mesi" / "a febbraio").
 - Riga: nome, "Abbonamento · ogni mese" oppure "Bolletta · metà, paghi tu" / "solo tua"; per i non mensili una seconda riga "ogni anno · + € 3,16/mese, ne hai € 12" (accantonato) o "tutto nel mese"; a destra l'importo (tua quota per le bollette).

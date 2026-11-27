@@ -265,6 +265,24 @@ export function annualCost(
   return { subscriptions, bills: billsTotal, payments, total: subscriptions + billsTotal + payments, list };
 }
 
+/**
+ * R23 · Quanto costano le spese fisse in un mese normale: il costo di un anno diviso 12 (le annuali
+ * pesano un dodicesimo, le bimestrali metà). Non dipende da quello che è già nella Pocket: è il
+ * costo, non il giroconto del mese. `fromSalary` = pagamenti (affitto) e abbonamenti pagati da un
+ * altro conto; `fromPocket` = il resto, che passa dalla Pocket Spese fisse.
+ */
+export function monthlyFixedCost(
+  recurrings: readonly Recurring[],
+  bills: readonly Bill[],
+  items: readonly Pick<MonthlyItem, 'kind' | 'amount' | 'archived'>[] = [],
+): { total: Cents; fromPocket: Cents; fromSalary: Cents } {
+  const a = annualCost(recurrings, bills, items);
+  const otherAccounts = a.list.filter((x) => x.recurring.payFrom).reduce((s, x) => s + x.yearly, 0);
+  const total = Math.round(a.total / 12);
+  const fromSalary = Math.round((a.payments + otherAccounts) / 12);
+  return { total, fromPocket: total - fromSalary, fromSalary };
+}
+
 export const REVIEW_DAYS = 183;
 
 /** "Li usi ancora tutti?": con abbonamenti attivi, se il controllo manca o ha 6 mesi (183 giorni). */
